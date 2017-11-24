@@ -38,7 +38,7 @@ fit_entropy_formatted <- function(data_out, lam=NULL) {
     
     ## set regualrization parameter to 1 / log(n) if it isn't set
     if(is.null(lam)) {
-        lam <- as.numeric(var(y) / log(n))
+        lam <- as.numeric(1 / log(n))
     }
     
     ## objective function    

@@ -5,7 +5,14 @@ library(tidyverse)
 library(parallel)
 source("multiple_outcomes.R")
 source("simulate_outcomes.R")
+source("entropy.R")
 source("fit_synth.R")
+
+## list of synthetic control methods to use
+methods <- list(fit_separate_ent, fit_separate_syn,
+                fit_joint_ent, fit_joint_syn,
+                fit_index_ent, fit_index_syn)
+
 
 eval_run <- function(outcomes, metadata) {
     #' Compute evaluation statistics for a simulation run
@@ -73,43 +80,25 @@ loocv <- function(outcomes, metadata, ncores=1) {
 }
 
 
-combine_methods <- function(outcomes, metadata, trt_unit) {
+combine_methods <- function(outcomes, metadata, trt_unit, methods) {
     #' Fit synthetic controls separately and with an index
     #' @param outcomes Tidy dataframe with the outcomes
     #' @param metadata Dataframe with info about the simulation
     #' @param trt_unit Unit that is treated (target for regression)
+    #' @param methods List of functions to fit
     #'
-    #" @return synthetic controls fit both ways
-    ## fit synthetic controls separately
-    sep_out <- fit_separate(outcomes, metadata, trt_unit)
+    #' @return synthetic controls fit by each function in methods
 
-
-    ## fit the synthetic controls jointly
-    joint_out <- fit_joint(outcomes, metadata, trt_unit)
+    outs <- lapply(methods,
+                   function(method) method(outcomes, metadata, trt_unit))
     
-    ## fit the average of the outcomes
-    avg_out <- fit_index(outcomes, metadata, trt_unit)
-
-    ## Use random weights
-    #rand_out <- fit_random(outcomes, metadata, trt_unit)
-
-    ## Use uniform weights
-    unif_out <- fit_uniform(outcomes, metadata, trt_unit)
     
     ## combine outcomes
-    outcomes <- rbind(sep_out$outcomes, joint_out$outcomes,
-                      avg_out$outcomes, #rand_out$outcomes,
-                      unif_out$outcomes)
+    outcomes <- bind_rows(lapply(outs, function(out) out$outcomes))
 
     ## combine weights
-    weights <- sep_out$weights
-    names(weights) <- sapply(1:length(weights),
-                             function(i) paste("sep", i, sep=""))
-    weights$index <- avg_out$weights
-    weights$joint <- joint_out$weights
-    #weights$random <- rand_out$weights
-    weights$uniform <- unif_out$weights
-
+    weights <- do.call(c, lapply(outs, function(out) out$weights))
+    
     return(list(outcomes=outcomes,
                 weights=weights))
 }
@@ -125,7 +114,7 @@ eval_run_unit <- function(outcomes, metadata, trt_unit) {
 
     ## get the time of treatment
     t0 <- metadata$t_int
-    comb_out <- combine_methods(outcomes, metadata, trt_unit)
+    comb_out <- combine_methods(outcomes, metadata, trt_unit, methods)
     outcomes <- comb_out$outcomes
     weights <- comb_out$weights
 
