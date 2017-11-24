@@ -4,10 +4,10 @@
 library(alabama)
 
 
-fit_entropy_formatted <- function(data_out, lam) {
+fit_entropy_formatted <- function(data_out, lam=NULL) {
     #' Fit entropy regularized synthetic controls
     #' @param data_out fomratted data from format_entropy
-    #' @param lam regularization parameter, defaults to 1 / log(n)
+    #' @param lam regularization parameter, defaults to var(y) / log(n)
     #'
     #' @return synthetic control weights
 
@@ -32,14 +32,16 @@ fit_entropy_formatted <- function(data_out, lam) {
     heq <- function(w) return(sum(w) - 1)
     heq.jac <- function(w) return(rep(1, length(w)))
 
+    ## data for objective and gradient
+    y <- syn_data$Z1
+    x <- syn_data$Z0
+    
     ## set regualrization parameter to 1 / log(n) if it isn't set
     if(is.null(lam)) {
-        lam <- 1 / log(n)
+        lam <- as.numeric(var(y) / log(n))
     }
     
     ## objective function    
-    y <- syn_data$Z1
-    x <- syn_data$Z0
     obj <- function(w) {
         return(sum((y - x %*% w)^2) / (2 * n) +
                lam * sum(w * log(w)))

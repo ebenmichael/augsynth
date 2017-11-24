@@ -4,6 +4,7 @@
 library(tidyverse)
 #library(hitandrun)
 source("fit_synth.R")
+source("entropy.R")
 
 create_index <- function(outcomes, metadata, alpha) {
     #' Create an index of the outcomes with a weighted average
@@ -42,10 +43,11 @@ create_index <- function(outcomes, metadata, alpha) {
 }
 
 
-fit_separate <- function(outcomes, metadata, trt_unit=1) {
+fit_separate <- function(outcomes, metadata, syn_func, trt_unit=1) {
     #' Fit synthetic controls for multiple outcomes separately
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
+    #' @param syn_func Function to get synthetic controls
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #'
     #' @return both outcomes with additional synthetic controls added
@@ -53,7 +55,7 @@ fit_separate <- function(outcomes, metadata, trt_unit=1) {
 
     ## separately fit synthetic controls
     separate <- by(outcomes, outcomes$outcome_id,
-                   function(df) get_synth(df, metadata, trt_unit))
+                   function(df) syn_func(df, metadata, trt_unit))
 
     ## recombine the outcomes
     outcomes <- bind_rows(lapply(separate, function(x) x[[1]]))
@@ -64,6 +66,33 @@ fit_separate <- function(outcomes, metadata, trt_unit=1) {
 
     return(list(outcomes=outcomes,
                 weights=weights))
+}
+
+
+fit_separate_syn <- function(outcomes, metadata, trt_unit=1) {
+    #' Fit synthetic controls for multiple outcomes separately
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #'
+    #' @return both outcomes with additional synthetic controls added
+    #'         weights for both synthetic controls
+
+    return(fit_separate(outcomes, metadata, get_synth, trt_unit))
+}
+
+
+
+fit_separate_ent <- function(outcomes, metadata, trt_unit=1) {
+    #' Fit synthetic controls for multiple outcomes separately
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #'
+    #' @return both outcomes with additional synthetic controls added
+    #'         weights for both synthetic controls
+
+    return(fit_separate(outcomes, metadata, get_entropy, trt_unit))
 }
 
 
@@ -132,11 +161,12 @@ fit_random <- function(outcomes, metadata, trt_unit=1) {
 }
 
 
-fit_joint <- function(outcomes, metadata, trt_unit=1) {
+fit_joint <- function(outcomes, metadata, syn_func, trt_unit=1) {
     #' Fit synthetic controls for multiple outcomes with the same
     #' weights across different outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
+    #' @param syn_func Function to get synthetic controls    
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #'
     #' @return both outcomes with additional synthetic controls added
@@ -150,7 +180,7 @@ fit_joint <- function(outcomes, metadata, trt_unit=1) {
     data_out <- concat_synth_out(outcomes, metadata, trt_unit)
     
     ## fit the weights jointly
-    out <- fit_synth_formatted(data_out)
+    out <- syn_func(data_out)
 
     ## impute the controls
     imputed <- impute_controls(outcomes, out, trt_unit)
@@ -162,6 +192,34 @@ fit_joint <- function(outcomes, metadata, trt_unit=1) {
 
     return(list(outcomes=outcomes,
                 weights=weights))
+}
+
+
+fit_joint_syn <- function(outcomes, metadata, trt_unit=1) {
+    #' Fit synthetic controls for multiple outcomes with the same
+    #' weights across different outcomes
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #'
+    #' @return both outcomes with additional synthetic controls added
+    #'         weights for both synthetic controls
+
+    return(fit_joint(outcomes, metadata, fit_synth_formatted, trt_unit))
+}
+
+
+fit_joint_ent <- function(outcomes, metadata, trt_unit=1) {
+    #' Fit entropy regularized synthetic controls for multiple outcomes with
+    #' the same weights across different outcomes
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #'
+    #' @return both outcomes with additional synthetic controls added
+    #'         weights for both synthetic controls
+
+    return(fit_joint(outcomes, metadata, fit_entropy_formatted, trt_unit))
 }
 
 
