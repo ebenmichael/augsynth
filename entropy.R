@@ -1,7 +1,6 @@
 #############################################################
-## Entropy regualrized synthetic controls (experimental)
+## Entropy regularized synthetic controls (experimental)
 #############################################################
-
 
 fit_entropy_formatted <- function(data_out, alpha=NULL) {
     #' Fit entropy regularized synthetic controls
@@ -73,13 +72,13 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
 }
 
 
-fit_entropy <- function(outcomes, metadata, trt_unit=1, lam=NULL) {
+fit_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
     #' Fit entropy regularized synthetic controls on outcomes
     #' Wrapper around fit_synth_formatted
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param lam Regularization parameter, defaults to 1 / log(n)
+    #' @param alpha regularization parameter
     #'
     #' @return Weights for synthetic controls, control outcomes as matrix,
     #'         and whether the unit is actually treated
@@ -91,12 +90,12 @@ fit_entropy <- function(outcomes, metadata, trt_unit=1, lam=NULL) {
 }
 
 
-get_entropy <- function(outcomes, metadata, trt_unit=1, lam=NULL) {
+get_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
     #' Fit entropy regularized synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param lam Regularization parameter, defaults to 1 / log(n)
+    #' @param alpha regularization parameter
     #'
     #' @return outcomes with additional synthetic control added and weights
 
