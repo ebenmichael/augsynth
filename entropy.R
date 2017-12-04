@@ -1,70 +1,72 @@
 #############################################################
 ## Entropy regualrized synthetic controls (experimental)
 #############################################################
-library(alabama)
 
 
-fit_entropy_formatted <- function(data_out, lam=NULL) {
+fit_entropy_formatted <- function(data_out, alpha=NULL) {
     #' Fit entropy regularized synthetic controls
-    #' @param data_out fomratted data from format_entropy
-    #' @param lam regularization parameter, defaults to var(y) / log(n)
+    #' by solving the dual problem
+    #' @param data_out formatted data from format_entropy
+    #' @param alpha regularization parameter
     #'
     #' @return synthetic control weights
 
-
     syn_data <- data_out$synth_data
-    ## create simplex constraints
-    ## const %*% weights - val >= 0
-    n <- dim(syn_data$Z0)[2]
-    t <- dim(syn_data$Z0)[1]
-    ## non-negative constraint
-    const <- diag(rep(1, n))
-    val <- rep(0,n)
-    ## sum to one
-    const <- rbind(const, rep(-1, n), rep(1, n))
-    val <- c(val, -1.01, .99)
-
-    ## inequality constraint function
-    hin <- function(w) return(w)
-    hin.jac <- function(w) return(matrix(1, length(w), length(w)))
-
-    ## equality constraint function
-    heq <- function(w) return(sum(w) - 1)
-    heq.jac <- function(w) return(rep(1, length(w)))
 
     ## data for objective and gradient
     y <- syn_data$Z1
-    x <- syn_data$Z0
+    x <- t(syn_data$Z0)
+
+    n <- dim(x)[1]
+    t <- dim(x)[2]
+
+    ## set alpha to n / 100 
+    if(is.null(alpha)) {
+        alpha <- n / 100
+    }    
     
-    ## set regualrization parameter to 1 / log(n) if it isn't set
-    if(is.null(lam)) {
-        lam <- as.numeric(1 / log(n))
+    ## helper log sum exp function
+    logsumexp <- function(x0) {
+        m <- max(x0)
+        return(log(sum(exp(x0 - m))) + m)
     }
     
-    ## objective function    
-    obj <- function(w) {
-        return(sum((y - x %*% w)^2) / (2 * n) +
-               lam * sum(w * log(w)))
+    ## dual objective function
+    obj <- function(lam) {
+        obj1 <- logsumexp(-x %*% lam)
+        obj2 <- t(y) %*% lam
+        reg <- 1 / (4 * alpha) * sum(lam ^2) # regularization
+
+        return(obj1 + obj2 + reg)
     }
 
-    ## gradient
-    grad <- function(w) {
-        return(t(x) %*% (x %*% w - y) / n + lam * (log(w) + 1))
+    ## dual gradient
+    grad <- function(lam) {
+        eta <- x %*% lam
+        ## compute weights for each value
+        num <- colSums(as.numeric(exp(-eta)) * x)
+        denom <- sum(exp(-eta))
+
+        grad1 <- - num / denom
+        grad2 <- y
+        reg <- 1 / (2 * alpha) * lam #regularization
+
+        return(grad1 + grad2 + reg)
     }
 
+    ## initial value
+    lam0 <- numeric(t)
+    
+    ## solve the optimization problem to get the dual variables
+    out <- optim(lam0, obj, grad, method="L-BFGS-B")
+    lam <- out$par
 
-    ## initialize at unregularized synthetic control weights
-    syn_w <- fit_synth_formatted(data_out)$weights
-    init_w <- rep(1/n, n)
-
-    weights <- auglag(syn_w, obj, grad, hin, hin.jac, heq, heq.jac,
-                  control.outer=list(trace=FALSE, kkt2.check=FALSE))$par
-    ## solve the optimization problem
-    #out <- list()
-    #out$weights <- constrOptim(init_w, obj, grad, const, val, method="CG",
-    #                   control=list(trace=2))$par
+    ## get the primal weights from the dual variables
+    eta <- x %*% lam
+    weights <- exp(-eta) / sum(exp(-eta))
 
     return(list(weights=weights,
+                dual=lam,
                 controls=syn_data$Y0plot,
                 is_treated=data_out$is_treated))
     
@@ -85,7 +87,7 @@ fit_entropy <- function(outcomes, metadata, trt_unit=1, lam=NULL) {
     ## get the data into the right format
     data_out <- format_synth(outcomes, metadata, trt_unit)
 
-    return(fit_entropy_formatted(data_out, lam))
+    return(fit_entropy_formatted2(data_out, lam))
 }
 
 
@@ -99,7 +101,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, lam=NULL) {
     #' @return outcomes with additional synthetic control added and weights
 
     ## get the synthetic controls weights
-    out <- fit_entropy(outcomes, metadata, trt_unit, lam)
+    out <- fit_entropy2(outcomes, metadata, trt_unit, lam)
 
     return(impute_controls(outcomes, out, trt_unit))
 }
