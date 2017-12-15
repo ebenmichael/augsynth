@@ -29,9 +29,13 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
                                    c("TRUE.N.Y(1)"="Outcome Under Treatment",
                                      "TRUE.N.Y(0)"="Outcome Under Control",
                                      "FALSE.N.Y(0)"="Donor Pool",
-                                     "TRUE.Y.Y(0)"="Synthetic Control"
+                                     "TRUE.Y.Y(0)"="Synthetic Control",
+                                     "TRUE.DR.Y(0)"="Double Robust"
                                      )
-                                   )
+                                   ),
+               synthetic = ifelse(synthetic %in% c("Y", "DR"),
+                                  "Y",
+                                  "N")
                ) %>%                 
     # plot the outcomes
     ggplot() +
@@ -42,7 +46,8 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
         scale_color_manual(values=c("Donor Pool"="#888888",
                                     "Outcome Under Treatment"="#FDB515",
                                     "Synthetic Control"="#ED4E33",
-                                    "Outcome Under Control"="#3B7EA1")) +
+                                    "Outcome Under Control"="#3B7EA1",
+                                    "Double Robust"="#B9D3B6")) +
     scale_alpha_manual(values=c(0.05, 1)) +
         guides(alpha=FALSE, linetype=FALSE)
     if("syn_method" %in% names(outcomes)) {
