@@ -327,11 +327,14 @@ impute_dr <- function(outcomes, metadata, fit, trt_unit) {
     resid <- postC - fit$outparams %*% preC
     wresid <- resid %*% fit$weights
 
-    ## predict expected c ontrol outcome for treated
+    ## predict expected control outcome for treated
     mu0 <- fit$outparams %*% preT
 
+    ## combine into DR estimate
+    dr <- mu0 + wresid
+
     ## combine pre period with DR estimate into a "synthetic control"
-    dr_ctrl <- c(preT, mu0)
+    dr_ctrl <- c(preT, dr)
     
     ## replace true outcome with imputed value
     dr_outcomes <- outcomes %>%
