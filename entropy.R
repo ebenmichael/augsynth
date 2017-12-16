@@ -8,7 +8,17 @@ source("fit_synth.R")
 ## helper log sum exp function
 logsumexp <- function(x0) {
     m <- max(x0)
-    return(log(sum(exp(x0 - m))) + m)
+    val <- log(sum(exp(x0 - m))) + m
+    return(val)
+}
+
+## helper function for logsumexp gradient
+logsumexp_grad <- function(eta, x) {
+    m <- max(-eta)
+    num <- colSums(as.numeric(exp(-eta - m)) * x)
+    denom <- sum(exp(-eta - m))
+    return(-num / denom)
+
 }
 
 
@@ -45,15 +55,13 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
 
     ## dual gradient
     grad <- function(lam) {
+        ## numerically stable gradient of log sum exp
         eta <- x %*% lam
-        ## compute weights for each value
-        num <- colSums(as.numeric(exp(-eta)) * x)
-        denom <- sum(exp(-eta))
-
-        grad1 <- - num / denom
+        grad1 <- logsumexp_grad(eta, x)
+        
         grad2 <- y
+        
         reg <- alpha * lam #regularization
-
         return(grad1 + grad2 + reg)
     }
 
@@ -65,7 +73,8 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
 
     ## get the primal weights from the dual variables
     eta <- x %*% lam
-    weights <- exp(-eta) / sum(exp(-eta))
+    m <- max(-eta)
+    weights <- exp(-eta - m) / sum(exp(-eta - m))
 
     return(list(weights=weights,
                 dual=lam,

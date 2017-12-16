@@ -76,10 +76,12 @@ fit_synth_formatted <- function(data_out) {
                                              quadopt="LowRankQP"))
 
     weights <- synth_out$solution.w
+    loss <- synth_out$loss.w
 
     return(list(weights=weights,
                 controls=data_out$Y0plot,
-                is_treated=is_treated))
+                is_treated=is_treated,
+                loss=loss))
 }
 
 
