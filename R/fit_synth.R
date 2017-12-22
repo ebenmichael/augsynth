@@ -1,8 +1,7 @@
 #######################################################
 # Helper scripts to fit synthetic controls to simulations
 #######################################################
-library(tidyverse)
-library(LowRankQP)
+
 
 format_synth <- function(outcomes, metadata, trt_unit=1) {
     #' Get the outcomes data into the correct form for Synth::synth
@@ -124,6 +123,7 @@ impute_controls <- function(outcomes, fit, trt_unit) {
                 weights=fit$weights))    
 }
 
+
 get_synth <- function(outcomes, metadata, trt_unit=1) {
     #' Fit synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -131,6 +131,7 @@ get_synth <- function(outcomes, metadata, trt_unit=1) {
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #'
     #' @return outcomes with additional synthetic control added and weights
+    #' @export
 
     ## get the synthetic controls weights
     out <- fit_synth(outcomes, metadata, trt_unit)

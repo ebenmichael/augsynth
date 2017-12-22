@@ -1,9 +1,6 @@
 #############################################################
 ## Entropy regularized synthetic controls (experimental)
 #############################################################
-library(glmnet)
-library(apg)
-source("fit_synth.R")
 
 
 ## helper log sum exp function
@@ -121,6 +118,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
     #' @param alpha regularization parameter
     #'
     #' @return outcomes with additional synthetic control added and weights
+    #' @export
 
     ## get the synthetic controls weights
     out <- fit_entropy(outcomes, metadata, trt_unit, alpha)
@@ -183,7 +181,7 @@ fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
     lam0 <- numeric(t)
     ## solve the dual problem with prx gradient
     
-    out <- apg(grad, prox, t, list())
+    out <- apg::apg(grad, prox, t, list())
     lam <- out$x
 
     ## get the primal weights from the dual variables
@@ -220,7 +218,7 @@ fit_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
 }
 
 
-get_el2_ntropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
+get_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
     #' Fit l2_entropy regularized synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
@@ -228,6 +226,7 @@ get_el2_ntropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
     #' @param eps Bound on synthetic control differences
     #'
     #' @return outcomes with additional synthetic control added and weights
+    #' @export
 
     ## get the synthetic controls weights
     out <- fit_entropy(outcomes, metadata, trt_unit, eps)
@@ -327,6 +326,7 @@ get_l1_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
     #' @param eps width of error box around treated unit pre-treatment outcomes
     #'
     #' @return outcomes with additional synthetic control added and weights
+    #' @export
 
     ## get the synthetic controls weights
     out <- fit_l1_entropy(outcomes, metadata, trt_unit, eps)
@@ -354,7 +354,7 @@ fit_pscore_formatted <- function(data_out, alpha_w) {
     trt <- c(rep(0, n), 1)
 
     ## fit regression
-    fit <- glmnet(x, trt, family="binomial", alpha=0, lambda=alpha_w)
+    fit <- glmnet::glmnet(x, trt, family="binomial", alpha=0, lambda=alpha_w)
     
 }
 
@@ -389,7 +389,7 @@ fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
     ys <- t(syn_data$Y0[(t+1):dim(syn_data$Y0),])
     regweights <- apply(ys, 2,
                         function(y) {
-                            fit <- glmnet(x, y, alpha=0,
+                            fit <- glmnet::glmnet(x, y, alpha=0,
                                           lambda=alpha_o, intercept=FALSE)
                             return(coef(fit)[-1,])
                         }
@@ -427,6 +427,7 @@ fit_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
 }
 
 
+
 get_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
     #' Fit a regularized outcome model and synthetic controls
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -439,6 +440,7 @@ get_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
     #'         outcome regression parameters
     #'         control outcomes
     #'         boolean for treated
+    #' @export
     
     ## get the data into the right format
     data_out <- format_synth(outcomes, metadata, trt_unit)
@@ -462,6 +464,7 @@ impute_dr <- function(outcomes, metadata, fit, trt_unit) {
     #' @return outcomes with additional synthetic control added,
     #'         synth weights
     #'         outcome regression weights
+    
 
 
     ### weight the residuals
