@@ -2,6 +2,7 @@
 ## Entropy regularized synthetic controls (experimental)
 #############################################################
 library(glmnet)
+library(apg)
 source("fit_synth.R")
 
 
@@ -20,6 +21,13 @@ logsumexp_grad <- function(eta, x) {
     return(-num / denom)
 
 }
+
+## helper function for prox operator of lam * ||x||_2
+prox_l2 <- function(x, lam) {
+    shrink <- max(0, 1 - lam / norm(x, type="2"))
+    return(shrink * x)
+}
+
 
 
 fit_entropy_formatted <- function(data_out, alpha=NULL) {
@@ -64,7 +72,7 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
         reg <- alpha * lam #regularization
         return(grad1 + grad2 + reg)
     }
-
+    
     ## initial value
     lam0 <- numeric(t)
     ## solve the optimization problem to get the dual variables
@@ -76,10 +84,13 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
     m <- max(-eta)
     weights <- exp(-eta - m) / sum(exp(-eta - m))
 
+    ## compute primal objective value
+    primal_obj <- sum((t(x) %*% weights - y)^2)
     return(list(weights=weights,
                 dual=lam,
                 controls=syn_data$Y0plot,
-                is_treated=data_out$is_treated))
+                is_treated=data_out$is_treated,
+                primal_obj=primal_obj))
     
 }
 
@@ -113,9 +124,118 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
 
     ## get the synthetic controls weights
     out <- fit_entropy(outcomes, metadata, trt_unit, alpha)
-
-    return(impute_controls(outcomes, out, trt_unit))
+    ctrls <- impute_controls(outcomes, out, trt_unit)
+    ctrls$dual <- out$dual
+    return(ctrls)
 }
+
+fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
+    #' Fit l2 entropy regularized synthetic controls
+    #' by solving the dual problem
+    #' @param data_out formatted data from format_entropy
+    #' @param eps Bound on synthetic control differences
+    #'
+    #' @return synthetic control weights
+
+    syn_data <- data_out$synth_data
+
+    ## data for objective and gradient
+    y <- syn_data$Z1
+    x <- t(syn_data$Z0)
+    
+    n <- dim(x)[1]
+    t <- dim(x)[2]
+
+    ## set eps to t (1 error for each unit)
+    if(is.null(eps)) {
+        eps <- t
+    }
+
+    ## use prox gradient method to minimize f(x) + h(x)
+    
+    ## f(x)
+    obj <- function(lam, ..) {
+        obj1 <- logsumexp(-x %*% lam)
+        obj2 <- t(y) %*% lam
+
+        return(obj1 + obj2)
+    }
+
+    ## f'(x)
+    grad <- function(lam, ...) {
+        ## numerically stable gradient of log sum exp
+        eta <- x %*% lam
+        grad1 <- logsumexp_grad(eta, x)
+        
+        grad2 <- y
+        
+        return(grad1 + grad2)
+    }
+
+
+    ## prox_h
+    prox <- function(lam, step, ...) {
+        prox_l2(lam, step * eps)
+    }
+
+
+    ## initial value
+    lam0 <- numeric(t)
+    ## solve the dual problem with prx gradient
+    
+    out <- apg(grad, prox, t, list())
+    lam <- out$x
+
+    ## get the primal weights from the dual variables
+    eta <- x %*% lam
+    m <- max(-eta)
+    weights <- exp(-eta - m) / sum(exp(-eta - m))
+
+    ## compute primal objective value
+    primal_obj <- sum((t(x) %*% weights - y)^2)
+    return(list(weights=weights,
+                dual=lam,
+                controls=syn_data$Y0plot,
+                is_treated=data_out$is_treated,
+                primal_obj=primal_obj))
+    
+}
+
+
+fit_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
+    #' Fit l2 entropy regularized synthetic controls on outcomes
+    #' Wrapper around fit_l2_entropy_formatted
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param eps Bound on synthetic control differences
+    #'
+    #' @return Weights for synthetic controls, control outcomes as matrix,
+    #'         and whether the unit is actually treated
+
+    ## get the data into the right format
+    data_out <- format_synth(outcomes, metadata, trt_unit)
+
+    return(fit_l2_entropy_formatted(data_out, eps))
+}
+
+
+get_el2_ntropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
+    #' Fit l2_entropy regularized synthetic controls on outcomes
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param eps Bound on synthetic control differences
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+
+    ## get the synthetic controls weights
+    out <- fit_entropy(outcomes, metadata, trt_unit, eps)
+    ctrls <- impute_controls(outcomes, out, trt_unit)
+    ctrls$dual <- out$dual
+    return(ctrls)
+}
+
 
 
 fit_l1_entropy_formatted <- function(data_out, eps=NULL) {
@@ -218,12 +338,34 @@ get_l1_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
 
 ### double robust estimation with synth weights
 
-fit_dr_formatted <- function(data_out, alpha_w, alpha_o) {
+fit_pscore_formatted <- function(data_out, alpha_w) {
+    #' Fit IPW weights with a logit propensity score model
+    #' @param data_out formatted data from format_entropy
+    #' @param alpha_w regularization parameter for weights
+    syn_data <- data_out$synth_data
+    ## get data into the right form
+    x0 <- t(syn_data$Z0) # controls
+    x1 <- t(syn_data$Z1) # treated
+    x <- rbind(x0, x1)
+    n <- dim(x0)[1]
+    t <- dim(x0)[2]
+
+    ## treatment indicator
+    trt <- c(rep(0, n), 1)
+
+    ## fit regression
+    fit <- glmnet(x, trt, family="binomial", alpha=0, lambda=alpha_w)
+    
+}
+
+
+fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
     #' Fit a regularized outcome model and synthetic controls
     #' for a double robust estimator
     #' @param data_out formatted data from format_entropy
     #' @param alpha_w regularization parameter for weights
     #' @param alpha_o regularization parameter for outcome model
+    #' @param syn whether to use synthetic control weights in DR estimate
     #'
     #' @return synthetic control weights,
     #'         outcome regression parameters
@@ -233,8 +375,12 @@ fit_dr_formatted <- function(data_out, alpha_w, alpha_o) {
 
     syn_data <- data_out$synth_data
 
-    ## fit entropy regularized synthetic control weights
-    ent <- fit_entropy_formatted(data_out, alpha_w)
+    if(syn) {
+        ## fit entropy regularized synthetic control weights
+        ws <- fit_entropy_formatted(data_out, alpha_w)
+    } else {
+        ws <- fit_pscore_formatted(data_out, alpha_w)
+    }
 
     ## fit regularized regression for outcomes for each post period
     x <- t(syn_data$Z0)
@@ -249,7 +395,8 @@ fit_dr_formatted <- function(data_out, alpha_w, alpha_o) {
                         }
                         )
 
-    return(list(weights=ent$weights,
+    return(list(weights=ws$weights,
+                dual=ws$dual,
                 outparams=t(regweights),
                 controls=syn_data$Y0plot,
                 treated=syn_data$Y1plot,
@@ -366,16 +513,66 @@ impute_dr <- function(outcomes, metadata, fit, trt_unit) {
 
     return(list(outcomes=rbind(outcomes, dr_outcomes, syn_outcomes),
                 weights=fit$weights,
+                dual=fit$dual,
                 outparams=fit$outparams))
 }
 
 
-##### Cross validation
-#predfun <- function(Xtrain, Ytrain, Xtest, Ytest, ...) {
+#### Choosing alpha
+
+choosealpha <- function(outcomes, metadata, trt_unit=1, alphas) {
+    #' Pick the hyperparameter which gives the best pre-period fit
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param alphas regularization parameters to pick from
+    #'
+    #' @return Best alpha
+
+    losses <- sapply(alphas,
+                     function(alpha) fit_entropy(outcomes,
+                                                 metadata,
+                                                 trt_unit,
+                                                 alpha)$primal_obj)
+    return(alphas[which.min(losses)])
+}
+
+alphaloss <- function(outcomes, metadata, trt_unit, alpha) {
+    #' compute the synthetic controls loss
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param alphas regularization parameter
+    if(alpha >=0) {
+        return(fit_entropy(outcomes, metadata, trt_unit, alpha)$primal_obj)
+    } else {
+        return(Inf)
+    }
+}
+
+
+genoud_alpha <- function(outcomes, metadata, trt_unit, ...) {
+    #' Find the best regularization parameter with genetic optimization
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression)
+    #'
+    #' Best alpha
+
+    ## loss function
+    loss <- function(alpha) alphaloss(outcomes, metadata, trt_unit, abs(alpha))
+
+    opt <- genoud(loss, nvars=1, ...)
+    return(opt$par)
+
+}
+
+
+#predfun <- function(Xtrain, Ytrain, Xtest, Ytest, alphas) {
 #    ## package train data into right format
 #    data_out <- list(synth_data=list(Z0=Xtrain, Z1=Ytrain))
 #    out <- fit_entropy_formatted(data_out, ...)
-#
+
 #    print(length(out$weights))
 #    print(length(out$dual))
 #    ## predict
