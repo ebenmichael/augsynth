@@ -22,12 +22,11 @@ sim_factor_model(n_units, t_total, t_int, d, lambda, corr = 0,
 
 \item{fac_size}{Dimension of hidden factors}
 
+\item{effect_type}{Type of effect}
+
 \item{sim_num}{Simulation number, defaults to 1}
 
 \item{frac_same}{Fraction of units that are similar to the treated unit}
-
-\item{effect_type=c("constant", "linear")}{Type of effect,
-default: constant}
 }
 \value{
 \itemize{

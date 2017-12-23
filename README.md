@@ -1,7 +1,10 @@
-# `ents`: Maximum entropy synthetic controls
+# ents
+[![Build Status](https://travis-ci.org/ebenmichael/ents.svg?branch=master)](https://travis-ci.org/ebenmichael/ents)
 
+## Overview
 This package implements methods for maximum entropy synthetic controls using multiple outcomes.
 
+## Installation
 To install this package, first ensure that `devtools` is installed with
 
 ```

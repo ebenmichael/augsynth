@@ -13,8 +13,7 @@ sim_factor_model<- function(n_units, t_total, t_int, d, lambda, corr=0, fac_size
     #' @param lambda Effect size
     #' @param corr Correlation between outcomes
     #' @param fac_size Dimension of hidden factors
-    #' @param effect_type=c("constant","linear") Type of effect,
-    #'                                           default: constant
+    #' @param effect_type Type of effect
     #' @param sim_num Simulation number, defaults to 1
     #' @param frac_same Fraction of units that are similar to the treated unit
     #'
