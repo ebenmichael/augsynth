@@ -10,4 +10,5 @@
 #' @import dplyr
 #' @import LowRankQP
 #' @import ggplot2
+#' @import tidyr
 NULL

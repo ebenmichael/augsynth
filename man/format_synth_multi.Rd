@@ -4,12 +4,14 @@
 \alias{format_synth_multi}
 \title{Get multiple outcomes data as matrices}
 \usage{
-format_synth_multi(outcomes, metadata, trt_unit = 1)
+format_synth_multi(outcomes, metadata, outcome_col, trt_unit = 1)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
 
 \item{metadata}{Dataframe of metadata}
+
+\item{outcome_col}{Column name which identifies outcomes}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 }
