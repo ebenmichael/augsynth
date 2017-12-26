@@ -2,16 +2,19 @@
 ## Entropy regularized synthetic controls (experimental)
 #############################################################
 
+### helper functions
 
-## helper log sum exp function
 logsumexp <- function(x0) {
+    #' Compute numerically stable logsumexp
     m <- max(x0)
     val <- log(sum(exp(x0 - m))) + m
     return(val)
 }
 
-## helper function for logsumexp gradient
+
 logsumexp_grad <- function(eta, x) {
+    #' Compute numerically stable logsumexp gradient with natural param eta
+    #' and data x
     m <- max(-eta)
     num <- colSums(as.numeric(exp(-eta - m)) * x)
     denom <- sum(exp(-eta - m))
@@ -19,11 +22,15 @@ logsumexp_grad <- function(eta, x) {
 
 }
 
-## helper function for prox operator of lam * ||x||_2
+
 prox_l2 <- function(x, lam) {
+    #' prox operator of lam * ||x||_2
     shrink <- max(0, 1 - lam / norm(x, type="2"))
     return(shrink * x)
 }
+
+
+
 
 
 fit_entropy_formatted <- function(data_out, alpha=NULL) {
