@@ -26,7 +26,6 @@ prox_l2 <- function(x, lam) {
 }
 
 
-
 fit_entropy_formatted <- function(data_out, alpha=NULL) {
     #' Fit entropy regularized synthetic controls
     #' by solving the dual problem
@@ -539,48 +538,3 @@ choosealpha <- function(outcomes, metadata, trt_unit=1, alphas) {
                                                  alpha)$primal_obj)
     return(alphas[which.min(losses)])
 }
-
-alphaloss <- function(outcomes, metadata, trt_unit, alpha) {
-    #' compute the synthetic controls loss
-    #' @param outcomes Tidy dataframe with the outcomes and meta data
-    #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param alphas regularization parameter
-    if(alpha >=0) {
-        return(fit_entropy(outcomes, metadata, trt_unit, alpha)$primal_obj)
-    } else {
-        return(Inf)
-    }
-}
-
-
-genoud_alpha <- function(outcomes, metadata, trt_unit, ...) {
-    #' Find the best regularization parameter with genetic optimization
-    #' @param outcomes Tidy dataframe with the outcomes and meta data
-    #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression)
-    #'
-    #' Best alpha
-
-    ## loss function
-    loss <- function(alpha) alphaloss(outcomes, metadata, trt_unit, abs(alpha))
-
-    opt <- genoud(loss, nvars=1, ...)
-    return(opt$par)
-
-}
-
-
-#predfun <- function(Xtrain, Ytrain, Xtest, Ytest, alphas) {
-#    ## package train data into right format
-#    data_out <- list(synth_data=list(Z0=Xtrain, Z1=Ytrain))
-#    out <- fit_entropy_formatted(data_out, ...)
-
-#    print(length(out$weights))
-#    print(length(out$dual))
-#    ## predict
-#    print(dim(Xtest))
-#    print(dim(matrix(out$weights)))
-#    pred <- Xtest %*% matrix(out$weights, ncol=1)
-#    return(sum((Ytest - pred)^2))
-#}
