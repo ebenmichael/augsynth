@@ -21,6 +21,7 @@ sim_factor_model<- function(n_units, t_total, t_int, d, lambda, corr=0, fac_size
     #'           \item{outcomes}{Tidy dataframe of outcomes}
     #'           \item{metadata}{Metadata about the simulation}
     #'         }
+    #' @export
 
     ## size of treated unit "cluster"
     n_clus <- floor(frac_same * n_units)

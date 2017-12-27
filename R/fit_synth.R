@@ -2,61 +2,6 @@
 # Helper scripts to fit synthetic controls to simulations
 #######################################################
 
-
-format_synth <- function(outcomes, metadata, trt_unit=1) {
-    #' Get the outcomes data into the correct form for Synth::synth
-    #' @param outcomes Tidy dataframe with the outcomes and meta data
-    #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #'
-    #' @return List of data to use as an argument for Synth::synth,
-    #'         whether the unit was actually treated
-
-    ## check if the unit is *actually* treated
-    is_treated <- outcomes %>%
-        filter(unit==trt_unit) %>%
-        distinct(treated) %>%
-        as.logical()
-    if(is_treated) {
-        ## filter out the counterfactual
-        outcomes <- outcomes %>% filter(!((potential_outcome == "Y(0)") &
-                                          (unit == trt_unit)))
-    } else {
-        ## filter out the actually treated unit
-        outcomes <- outcomes %>% filter(!treated)
-    }
-    ## get the number of the treated unit
-    distinct_units <- outcomes %>% distinct(unit, .keep_all=TRUE)
-    ctrl_units <- distinct_units %>% filter(unit != trt_unit) %>%
-        select(unit) %>% as.matrix() %>% as.vector()
-    ## get the pre treatment times
-    t0 <- metadata$t_int
-    times <- outcomes %>% distinct(time)
-    pre_trt <- times  %>%
-        filter(time < t0) %>% as.matrix() %>% as.vector()
-
-    ## Add fake predictor to make the function go through
-    ## no option for no predictors
-    synth_data <- outcomes %>%
-        mutate(pred1=1)
-    ## fit synthetic controls weights
-    synth_data <-
-        Synth::dataprep(foo=synth_data,
-                        predictors=c("pred1"),
-                        dependent="outcome",
-                        unit.variable="unit",
-                        time.variable="time",
-                        treatment.identifier=trt_unit,
-                        controls.identifier=ctrl_units,
-                        time.predictors.prior=pre_trt,
-                        time.optimize.ssr=pre_trt,
-                        time.plot=as.matrix(times)
-                        )
-    return(list(synth_data=synth_data,
-                is_treated=is_treated))    
-    }
-
-
 fit_synth_formatted <- function(data_out) {
     #' Fit synthetic controls on outcomes after formatting data
     #' @param data_out Panel data formatted by Synth::dataprep

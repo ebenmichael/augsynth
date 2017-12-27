@@ -2,16 +2,19 @@
 ## Entropy regularized synthetic controls (experimental)
 #############################################################
 
+### helper functions
 
-## helper log sum exp function
 logsumexp <- function(x0) {
+    #' Compute numerically stable logsumexp
     m <- max(x0)
     val <- log(sum(exp(x0 - m))) + m
     return(val)
 }
 
-## helper function for logsumexp gradient
+
 logsumexp_grad <- function(eta, x) {
+    #' Compute numerically stable logsumexp gradient with natural param eta
+    #' and data x
     m <- max(-eta)
     num <- colSums(as.numeric(exp(-eta - m)) * x)
     denom <- sum(exp(-eta - m))
@@ -19,10 +22,31 @@ logsumexp_grad <- function(eta, x) {
 
 }
 
-## helper function for prox operator of lam * ||x||_2
+
 prox_l2 <- function(x, lam) {
+    #' prox operator of lam * ||x||_2
     shrink <- max(0, 1 - lam / norm(x, type="2"))
     return(shrink * x)
+}
+
+
+
+prox_group <- function(x, lams, groups) {
+    #' prox operator for group LASSO (generalization of prox_l2)
+    #' @param x Vector to prox
+    #' @param lams List of prox scalings for each group
+    #' @param list of group indices
+
+    ## initialize value
+    proxx <- numeric(length(x))
+
+    ## go through each group and shrink it
+    for(i in 1:length(groups)) {
+        g <- groups[[i]]
+        gname <- names(groups)[i]
+        proxx[g] <- prox_l2(x[g], lams[[gname]])
+    }
+    return(proxx)
 }
 
 
@@ -126,11 +150,12 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
     return(ctrls)
 }
 
-fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
+fit_l2_entropy_formatted <- function(data_out, eps) {
     #' Fit l2 entropy regularized synthetic controls
     #' by solving the dual problem
     #' @param data_out formatted data from format_entropy
-    #' @param eps Bound on synthetic control differences
+    #' @param eps List of bounds on synthetic control differences for each
+    #'            outcome, if only one outcome type then a scalar
     #'
     #' @return synthetic control weights
 
@@ -142,11 +167,6 @@ fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
     
     n <- dim(x)[1]
     t <- dim(x)[2]
-
-    ## set eps to t (1 error for each unit)
-    if(is.null(eps)) {
-        eps <- t
-    }
 
     ## use prox gradient method to minimize f(x) + h(x)
     
@@ -171,8 +191,22 @@ fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
 
 
     ## prox_h
+    ## if there is no "groups" field in data_out, assume everything is in one
+    if(is.null(data_out$groups)) {
+        groups <- list()
+        groups$"1" <- 1:t
+        epslist <- list()
+        if(typeof(eps) == "list") {
+            epslist$"1" <- eps[[1]]
+        } else {
+            epslist$"1" <- eps
+        }
+    } else {
+        groups <- data_out$groups
+        epslist <- eps
+    } 
     prox <- function(lam, step, ...) {
-        prox_l2(lam, step * eps)
+        prox_group(lam, lapply(epslist, "*", step), groups)
     }
 
 
@@ -187,50 +221,65 @@ fit_l2_entropy_formatted <- function(data_out, eps=NULL) {
     eta <- x %*% lam
     m <- max(-eta)
     weights <- exp(-eta - m) / sum(exp(-eta - m))
-
     ## compute primal objective value
-    primal_obj <- sum((t(x) %*% weights - y)^2)
+    primal_obj <- lapply(groups,
+                         function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
     return(list(weights=weights,
                 dual=lam,
                 controls=syn_data$Y0plot,
                 is_treated=data_out$is_treated,
-                primal_obj=primal_obj))
+                primal_obj=primal_obj,
+                groups=groups))
     
 }
 
 
-fit_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
+fit_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
+                           outcome_col=NULL) {
     #' Fit l2 entropy regularized synthetic controls on outcomes
     #' Wrapper around fit_l2_entropy_formatted
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param eps Bound on synthetic control differences
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
     #'
     #' @return Weights for synthetic controls, control outcomes as matrix,
     #'         and whether the unit is actually treated
 
     ## get the data into the right format
-    data_out <- format_synth(outcomes, metadata, trt_unit)
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
 
     return(fit_l2_entropy_formatted(data_out, eps))
 }
 
 
-get_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
+get_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
+                           outcome_col=NULL) {
     #' Fit l2_entropy regularized synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param eps Bound on synthetic control differences
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
     ## get the synthetic controls weights
-    out <- fit_entropy(outcomes, metadata, trt_unit, eps)
+    out <- fit_l2_entropy(outcomes, metadata, trt_unit, eps, outcome_col)
+
+    ## match outcome types to synthetic controls
+    if(!is.null(outcome_col)) {
+        outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
+                                          levels = names(out$groups))
+        outcomes <- outcomes %>% dplyr::arrange_(outcome_col)
+    }
     ctrls <- impute_controls(outcomes, out, trt_unit)
     ctrls$dual <- out$dual
+    ctrls$primal_obj <- out$primal_obj
     return(ctrls)
 }
 
