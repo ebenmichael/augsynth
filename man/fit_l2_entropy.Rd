@@ -5,7 +5,8 @@
 \title{Fit l2 entropy regularized synthetic controls on outcomes
 Wrapper around fit_l2_entropy_formatted}
 \usage{
-fit_l2_entropy(outcomes, metadata, trt_unit = 1, eps = NULL)
+fit_l2_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
+  outcome_col = NULL)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -15,6 +16,9 @@ fit_l2_entropy(outcomes, metadata, trt_unit = 1, eps = NULL)
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
 \item{eps}{Bound on synthetic control differences}
+
+\item{outcome_col}{Column name which identifies outcomes, if NULL then
+assume only one outcome}
 }
 \value{
 Weights for synthetic controls, control outcomes as matrix,

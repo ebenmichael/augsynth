@@ -89,10 +89,34 @@ format_synth_multi <- function(outcomes, metadata, outcome_col, trt_unit=1) {
     ## keep track of if simulation or not
     data_out$is_treated <- data_outs[[1]]$is_treated
 
-    ## keep track of outcome names/lengths
-    out_lens <- lapply(data_outs,
-                       function(x) dim(x$synth_data$Z0)[1])
-    names(out_lens) <- names(data_outs)
-    data_out$out_lens <- out_lens
+    ## keep track of outcome names and locations in vector
+    groups <- list()
+    curridx <- 1
+    for(i in 1:length(data_outs)) {
+        len <- dim(data_outs[[i]]$synth_data$Z0)[1]
+        vals <- curridx:(curridx + len - 1)
+        groups[[names(data_outs)[i]]] <- vals
+        curridx <- curridx + vals[len]
+    }
+    data_out$groups <- groups
     return(data_out)
+}
+
+
+format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
+    #' Format "long" panel data into "wide" matrices to fit synthetic controls
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param outcome_col Column name which identifies outcomes,
+    #'                    if NULL then only one outcome is assumed
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #'
+    #' @return List of data to use as an argument for Synth::synth,
+    #'         whether the unit was actually treated
+
+    if(is.null(outcome_col)) {
+        return(format_synth(outcomes, metadata, trt_unit))
+    } else {
+        return(format_synth_multi(outcomes, metadata, outcome_col, trt_unit))
+    }
 }

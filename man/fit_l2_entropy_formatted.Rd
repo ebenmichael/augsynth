@@ -5,12 +5,13 @@
 \title{Fit l2 entropy regularized synthetic controls
 by solving the dual problem}
 \usage{
-fit_l2_entropy_formatted(data_out, eps = NULL)
+fit_l2_entropy_formatted(data_out, eps)
 }
 \arguments{
 \item{data_out}{formatted data from format_entropy}
 
-\item{eps}{Bound on synthetic control differences}
+\item{eps}{List of bounds on synthetic control differences for each
+outcome, if only one outcome type then a scalar}
 }
 \value{
 synthetic control weights
