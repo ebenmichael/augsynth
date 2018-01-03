@@ -5,6 +5,7 @@
 
 clean_basque <- function(df, sim_num=-1) {
     #' Clean up the basque data that comes from the Synth package
+    #' @export
     cleaned <- df %>%
         select(regionno, year, gdpcap) %>%
         rename(unit=regionno, outcome=gdpcap, time=year) %>%
