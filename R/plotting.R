@@ -9,6 +9,7 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
     #' @param metadata Dataframe with info about the simulation
     #' @param trt_unit Unit to count as treated, defaults to using
     #'                 the treated column
+    #' @export
     
     if(!is.null(trt_unit)) {
         outcomes <- outcomes %>% 
