@@ -11,4 +11,5 @@
 #' @import LowRankQP
 #' @import ggplot2
 #' @import tidyr
+#' @import LiblineaR
 NULL

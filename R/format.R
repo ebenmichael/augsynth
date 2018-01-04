@@ -113,6 +113,7 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
     #'
     #' @return List of data to use as an argument for Synth::synth,
     #'         whether the unit was actually treated
+    #' @export
 
     if(is.null(outcome_col)) {
         return(format_synth(outcomes, metadata, trt_unit))

@@ -386,10 +386,17 @@ get_l1_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL) {
 
 ### double robust estimation with synth weights
 
-fit_pscore_formatted <- function(data_out, alpha_w) {
+fit_ipw_formatted <- function(data_out, alpha_w) {
     #' Fit IPW weights with a logit propensity score model
     #' @param data_out formatted data from format_entropy
     #' @param alpha_w regularization parameter for weights
+    #'
+    #' @return inverse of predicted propensity scores
+    #'         outcome regression parameters
+    #'         control outcomes
+    #'         treated outcomes
+    #'         boolean for treated 
+    
     syn_data <- data_out$synth_data
     ## get data into the right form
     x0 <- t(syn_data$Z0) # controls
@@ -402,9 +409,61 @@ fit_pscore_formatted <- function(data_out, alpha_w) {
     trt <- c(rep(0, n), 1)
 
     ## fit regression
-    fit <- glmnet::glmnet(x, trt, family="binomial", alpha=0, lambda=alpha_w)
+    fit <- LiblineaR::LiblineaR(x, trt, 7, cost=alpha_w, bias=0)
+
+    ## get predicted probabilities P(W=1|X)
+    weights <- 1/predict(fit, x, proba=TRUE)$probabilities[1:n,2]
+    weights <- weights / sum(weights)
+    primal_obj <- sum((weights %*% x0 - x1)^2)
     
+    return(list(weights=weights,
+                outparams=t(fit$W),
+                controls=syn_data$Y0plot,
+                treated=syn_data$Y1plot,
+                primal_obj=primal_obj,
+                is_treated=data_out$is_treated))
 }
+
+
+fit_ipw <- function(outcomes, metadata, trt_unit=1, alpha_w) {
+    #' Fit IPW weights with a logit propensity score model
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param alpha_w regularization parameter for weights
+    #'
+    #' @return inverse of predicted propensity scores
+    #'         outcome regression parameters
+    #'         control outcomes
+    #'         treated outcomes
+    #'         boolean for treated 
+
+    ## format data
+    data_out <- format_data(outcomes, metadata, trt_unit)
+
+    ## get weights
+    return(fit_ipw_formatted(data_out, alpha_w))
+}
+
+get_ipw <- function(outcomes, metadata, trt_unit=1, alpha_w=1) {
+    #' Fit IPW weights with a logit propensity score model
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param alpha_w regularization parameter for weights
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## get the synthetic controls weights
+    out <- fit_ipw(outcomes, metadata, trt_unit, alpha_w)
+
+    ctrls <- impute_controls(outcomes, out, trt_unit)
+    ctrls$outparams <- out$outparams
+    ctrls$primal_obj <- out$primal_obj
+    return(ctrls)
+}
+
 
 
 fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
