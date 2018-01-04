@@ -15,7 +15,8 @@ Imports:
     Synth,
     apg,
     glmnet,
-    plyr
+    plyr,
+    LiblineaR
 Remotes:
     jpvert/apg
 License: What license is it under?
