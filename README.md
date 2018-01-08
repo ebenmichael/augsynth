@@ -33,7 +33,7 @@ and a data frame `metadata` which at a minimum has the following columns:
 
 Four methods of imputing a synthetic control are implemented:
 
-- `get_synth`: The Abadie, Diamond, Hainmueller (2010) synthetic controls estimator, fit using [https://cran.r-project.org/web/packages/Synth/Synth.pdf](Synth)
+- `get_synth`: The Abadie, Diamond, Hainmueller (2010) synthetic controls estimator, fit using [`Synth`](https://cran.r-project.org/web/packages/Synth/Synth.pdf)
 - `get_l2_entropy`: The maximum entropy synthetic controls estimator
 - `get_dr`: The maximum entropy synthetic controls estimator augmented with a linear outcome model
 - `get_ipw`: An IPW estimator fit with regularized logistic regression
