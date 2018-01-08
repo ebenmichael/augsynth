@@ -34,9 +34,7 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
                                      "TRUE.DR.Y(0)"="Double Robust"
                                      )
                                    ),
-               synthetic = ifelse(synthetic %in% c("Y", "DR"),
-                                  "Y",
-                                  "N")
+               synthetic = ifelse(synthetic == "N", "N", "Y")
                ) %>%                 
     # plot the outcomes
     ggplot() +
@@ -92,14 +90,24 @@ plot_att <- function(outcomes, metadata, trt_unit=NULL) {
                                      )
                                    ),
                ) %>%
-        filter(treated==TRUE) %>%
-        select(-label, -grouping, -potential_outcome) %>%
+        filter(treated==TRUE, label != "Outcome Under Control") %>%
+        select(outcome_id, unit, time, t_int, synthetic, outcome) %>%
         spread(synthetic, outcome) %>%
-        mutate(att=N-Y) %>%
+        gather(syntype, est, -unit, -time, -outcome_id,
+               -t_int, -N) %>%
+        mutate(syntype= plyr::revalue(syntype,
+                                      c("DR"="Adjusted",
+                                        "Y"="SC"))) %>%
+        mutate(att=N-est) %>%
     # plot the outcomes
     ggplot() +
-        geom_line(aes(x=time, y=att), size=2, color="#B9D3B6") + 
-        geom_vline(aes(xintercept=t_int))
+        geom_line(aes(x=time, y=att, color=syntype, linetype=syntype), size=2) + 
+    geom_vline(aes(xintercept=t_int)) +
+        geom_hline(yintercept=0, linetype="dashed") +
+        scale_color_manual(values=c("Adjusted"="#B9D3B6",
+                                    "SC"="#ED4E33"),
+                           name="Method") +
+        guides(alpha=FALSE, linetype=FALSE)
     if("syn_method" %in% names(outcomes)) {
         p <- p + facet_grid(syn_method ~ outcome_id)
     } else {

@@ -105,7 +105,7 @@ fit_entropy_formatted <- function(data_out, alpha=NULL) {
     weights <- exp(-eta - m) / sum(exp(-eta - m))
 
     ## compute primal objective value
-    primal_obj <- sum((t(x) %*% weights - y)^2)
+    primal_obj <- sqrt(sum((t(x) %*% weights - y)^2))
     return(list(weights=weights,
                 dual=lam,
                 controls=syn_data$Y0plot,
@@ -147,6 +147,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, alpha=NULL) {
     out <- fit_entropy(outcomes, metadata, trt_unit, alpha)
     ctrls <- impute_controls(outcomes, out, trt_unit)
     ctrls$dual <- out$dual
+    ctrls$primal_obj <- out$primal_obj
     return(ctrls)
 }
 
@@ -172,8 +173,8 @@ fit_l2_entropy_formatted <- function(data_out, eps) {
     
     ## f(x)
     obj <- function(lam, ..) {
-        obj1 <- logsumexp(-x %*% lam)
-        obj2 <- t(y) %*% lam
+        obj1 <- logsumexp(x %*% lam)
+        obj2 <- -t(y) %*% lam
 
         return(obj1 + obj2)
     }
@@ -181,10 +182,10 @@ fit_l2_entropy_formatted <- function(data_out, eps) {
     ## f'(x)
     grad <- function(lam, ...) {
         ## numerically stable gradient of log sum exp
-        eta <- x %*% lam
-        grad1 <- logsumexp_grad(eta, x)
+        eta <- -x %*% lam
+        grad1 <- -logsumexp_grad(eta, x)
         
-        grad2 <- y
+        grad2 <- -y
         
         return(grad1 + grad2)
     }
@@ -219,17 +220,22 @@ fit_l2_entropy_formatted <- function(data_out, eps) {
 
     ## get the primal weights from the dual variables
     eta <- x %*% lam
-    m <- max(-eta)
-    weights <- exp(-eta - m) / sum(exp(-eta - m))
+    m <- max(eta)
+    weights <- exp(eta - m) / sum(exp(eta - m))
     ## compute primal objective value
     primal_obj <- lapply(groups,
                          function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
+
+    ## compute propensity scores
+    pscores <- 1 / (1 + exp(-eta))
     return(list(weights=weights,
                 dual=lam,
                 controls=syn_data$Y0plot,
                 is_treated=data_out$is_treated,
                 primal_obj=primal_obj,
-                groups=groups))
+                groups=groups,
+                pscores=pscores,
+                eta=eta))
     
 }
 
@@ -280,6 +286,8 @@ get_l2_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     ctrls <- impute_controls(outcomes, out, trt_unit)
     ctrls$dual <- out$dual
     ctrls$primal_obj <- out$primal_obj
+    ctrls$pscores <- out$pscores
+    ctrls$eta <- out$eta
     return(ctrls)
 }
 
@@ -412,16 +420,20 @@ fit_ipw_formatted <- function(data_out, alpha_w) {
     fit <- LiblineaR::LiblineaR(x, trt, 7, cost=alpha_w, bias=0)
 
     ## get predicted probabilities P(W=1|X)
-    weights <- 1/predict(fit, x, proba=TRUE)$probabilities[1:n,2]
+    pscores <- predict(fit, x, proba=TRUE)$probabilities[1:n,2]
+    weights <- pscores / (1-pscores)
     weights <- weights / sum(weights)
     primal_obj <- sum((weights %*% x0 - x1)^2)
+
     
     return(list(weights=weights,
                 outparams=t(fit$W),
                 controls=syn_data$Y0plot,
                 treated=syn_data$Y1plot,
                 primal_obj=primal_obj,
-                is_treated=data_out$is_treated))
+                is_treated=data_out$is_treated,
+                dual=fit$W,
+                pscores=pscores))
 }
 
 
@@ -461,17 +473,20 @@ get_ipw <- function(outcomes, metadata, trt_unit=1, alpha_w=1) {
     ctrls <- impute_controls(outcomes, out, trt_unit)
     ctrls$outparams <- out$outparams
     ctrls$primal_obj <- out$primal_obj
+    ctrls$pscores <- out$pscores
+    ctrls$dual <- out$dual
     return(ctrls)
 }
 
 
 
-fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
+fit_dr_formatted <- function(data_out, eps_w, alpha_o=NULL, syn=TRUE) {
     #' Fit a regularized outcome model and synthetic controls
     #' for a double robust estimator
     #' @param data_out formatted data from format_entropy
-    #' @param alpha_w regularization parameter for weights
-    #' @param alpha_o regularization parameter for outcome model
+    #' @param eps_w List of bounds on synthetic control differences for each
+    #'            outcome, if only one outcome type then a scalar
+    #' @param alpha_o regularization parameter for outcome model, if NULL use CV
     #' @param syn whether to use synthetic control weights in DR estimate
     #'
     #' @return synthetic control weights,
@@ -484,7 +499,7 @@ fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
 
     if(syn) {
         ## fit entropy regularized synthetic control weights
-        ws <- fit_entropy_formatted(data_out, alpha_w)
+        ws <- fit_l2_entropy_formatted(data_out, eps_w)
     } else {
         ws <- fit_pscore_formatted(data_out, alpha_w)
     }
@@ -494,32 +509,45 @@ fit_dr_formatted <- function(data_out, alpha_w, alpha_o, syn=TRUE) {
     n <- dim(x)[1]
     t <- dim(x)[2]
     ys <- t(syn_data$Y0[(t+1):dim(syn_data$Y0),])
-    regweights <- apply(ys, 2,
-                        function(y) {
-                            fit <- glmnet::glmnet(x, y, alpha=0,
-                                          lambda=alpha_o, intercept=FALSE)
-                            return(coef(fit)[-1,])
-                        }
-                        )
+    if(!is.null(alpha_o)) {
+        outfit <- function(y) {
+            fit <- glmnet::glmnet(x, y, alpha=0,
+                                  lambda=alpha_o,
+                                  intercept=FALSE)
+            return(coef(fit)[-1,])
+        }
+    } else {
+        outfit <- function(y) {
+            alpha_o <- glmnet::cv.glmnet(x, y, alpha=0, intercept=FALSE)$lambda.min
+            fit <- glmnet::glmnet(x, y, alpha=0,
+                                  lambda=alpha_o,
+                                  intercept=FALSE)
+            return(coef(fit)[-1,])
+        }
+    }
+    regweights <- apply(ys, 2,outfit)
 
     return(list(weights=ws$weights,
                 dual=ws$dual,
                 outparams=t(regweights),
                 controls=syn_data$Y0plot,
                 treated=syn_data$Y1plot,
-                is_treated=data_out$is_treated))
+                is_treated=data_out$is_treated,
+                primal_obj=ws$primal_obj,
+                pscores=ws$pscores))
     
     }
 
 
 
-fit_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
+fit_dr <- function(outcomes, metadata, trt_unit=1, eps_w, alpha_o=NULL) {
     #' Fit a regularized outcome model and synthetic controls
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param alpha_w regularization parameter for weights
-    #' @param alpha_o regularization parameter for outcome model
+    #' @param eps_w List of bounds on synthetic control differences for each
+    #'            outcome, if only one outcome type then a scalar
+    #' @param alpha_o regularization parameter for outcome model, if NULL use CV
     #'
     #' @return synthetic control weights,
     #'         outcome regression parameters
@@ -529,19 +557,20 @@ fit_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
     ## get the data into the right format
     data_out <- format_synth(outcomes, metadata, trt_unit)
 
-    return(fit_dr_formatted(data_out, alpha_w, alpha_o))
+    return(fit_dr_formatted(data_out, eps_w, alpha_o))
     
 }
 
 
 
-get_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
+get_dr <- function(outcomes, metadata, trt_unit=1, eps_w, alpha_o=NULL) {
     #' Fit a regularized outcome model and synthetic controls
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param alpha_w regularization parameter for weights
-    #' @param alpha_o regularization parameter for outcome model
+    #' @param eps_w List of bounds on synthetic control differences for each
+    #'            outcome, if only one outcome type then a scalar
+    #' @param alpha_o regularization parameter for outcome model, if NULL use CV
     #'
     #' @return synthetic control weights,
     #'         outcome regression parameters
@@ -553,10 +582,15 @@ get_dr <- function(outcomes, metadata, trt_unit=1, alpha_w, alpha_o) {
     data_out <- format_synth(outcomes, metadata, trt_unit)
 
     ## fit outcome regression and weights
-    fit <- fit_dr(outcomes, metadata, trt_unit, alpha_w, alpha_o)
-
+    fit <- fit_dr(outcomes, metadata, trt_unit, eps_w, alpha_o)
+    
     ## compute the DR estimate to "impute" the controls
-    return(impute_dr(outcomes, metadata, fit, trt_unit))
+    ctrls <- impute_dr(outcomes, metadata, fit, trt_unit) 
+    ctrls$dual <- fit$dual
+    ctrls$primal_obj <- fit$primal_obj
+    ctrls$pscores <- fit$pscores
+    
+    return(ctrls)
 }
 
 

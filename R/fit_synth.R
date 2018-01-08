@@ -21,11 +21,12 @@ fit_synth_formatted <- function(data_out) {
 
     weights <- synth_out$solution.w
     loss <- synth_out$loss.w
-
+    primal_obj <- sqrt(sum((data_out$Z0 %*% weights - data_out$Z1)^2))
+    
     return(list(weights=weights,
                 controls=data_out$Y0plot,
                 is_treated=is_treated,
-                loss=loss))
+                primal_obj=primal_obj))
 }
 
 
@@ -81,5 +82,7 @@ get_synth <- function(outcomes, metadata, trt_unit=1) {
     ## get the synthetic controls weights
     out <- fit_synth(outcomes, metadata, trt_unit)
 
-    return(impute_controls(outcomes, out, trt_unit))
+    ctrls <- impute_controls(outcomes, out, trt_unit)
+    ctrls$primal_obj <- out$primal_obj
+    return(ctrls)
 }

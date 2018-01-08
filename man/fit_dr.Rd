@@ -4,7 +4,7 @@
 \alias{fit_dr}
 \title{Fit a regularized outcome model and synthetic controls}
 \usage{
-fit_dr(outcomes, metadata, trt_unit = 1, alpha_w, alpha_o)
+fit_dr(outcomes, metadata, trt_unit = 1, eps_w, alpha_o = NULL)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -13,9 +13,10 @@ fit_dr(outcomes, metadata, trt_unit = 1, alpha_w, alpha_o)
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
-\item{alpha_w}{regularization parameter for weights}
+\item{eps_w}{List of bounds on synthetic control differences for each
+outcome, if only one outcome type then a scalar}
 
-\item{alpha_o}{regularization parameter for outcome model}
+\item{alpha_o}{regularization parameter for outcome model, if NULL use CV}
 }
 \value{
 synthetic control weights,

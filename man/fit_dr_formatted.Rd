@@ -5,14 +5,15 @@
 \title{Fit a regularized outcome model and synthetic controls
 for a double robust estimator}
 \usage{
-fit_dr_formatted(data_out, alpha_w, alpha_o, syn = TRUE)
+fit_dr_formatted(data_out, eps_w, alpha_o = NULL, syn = TRUE)
 }
 \arguments{
 \item{data_out}{formatted data from format_entropy}
 
-\item{alpha_w}{regularization parameter for weights}
+\item{eps_w}{List of bounds on synthetic control differences for each
+outcome, if only one outcome type then a scalar}
 
-\item{alpha_o}{regularization parameter for outcome model}
+\item{alpha_o}{regularization parameter for outcome model, if NULL use CV}
 
 \item{syn}{whether to use synthetic control weights in DR estimate}
 }

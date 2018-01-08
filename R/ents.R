@@ -12,4 +12,5 @@
 #' @import ggplot2
 #' @import tidyr
 #' @import LiblineaR
+#' @import glmnet
 NULL
