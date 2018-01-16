@@ -79,6 +79,7 @@ format_synth_multi <- function(outcomes, metadata, outcome_col, trt_unit=1) {
                               function(x) x$synth_data[[name]]))
     }
 
+
     ## combine all matrices
     data_out <- list()
     data_out$synth_data$Z0 <- cat_mat("Z0")
@@ -94,9 +95,10 @@ format_synth_multi <- function(outcomes, metadata, outcome_col, trt_unit=1) {
     curridx <- 1
     for(i in 1:length(data_outs)) {
         len <- dim(data_outs[[i]]$synth_data$Z0)[1]
-        vals <- curridx:(curridx + len - 1)
+        if(is.null(len)) len <- 0
+        vals <- seq(curridx, curridx + len - 1)
         groups[[names(data_outs)[i]]] <- vals
-        curridx <- curridx + vals[len]
+        curridx <- curridx + len
     }
     data_out$groups <- groups
     return(data_out)

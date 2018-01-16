@@ -76,7 +76,7 @@ plot_att <- function(outcomes, metadata, trt_unit=NULL) {
     }
 
     # join outcomes with metadata on sim number
-    p <- outcomes %>%
+    tmpdf <- outcomes %>%
         inner_join(metadata) %>%
         ## create interaction variables for grouping and coloring
         mutate(grouping=interaction(treated, synthetic, unit, potential_outcome),
@@ -90,29 +90,40 @@ plot_att <- function(outcomes, metadata, trt_unit=NULL) {
                                      )
                                    ),
                ) %>%
-        filter(treated==TRUE, label != "Outcome Under Control") %>%
-        select(outcome_id, unit, time, t_int, synthetic, outcome) %>%
-        spread(synthetic, outcome) %>%
-        gather(syntype, est, -unit, -time, -outcome_id,
-               -t_int, -N) %>%
+        filter(treated==TRUE, label != "Outcome Under Control")
+
+    if("syn_method" %in% names(outcomes)) {
+        tmpdf  <- tmpdf %>% select(outcome_id, unit, time, t_int,
+                                   synthetic, outcome, syn_method)  %>%
+            spread(synthetic, outcome) %>%
+            gather(syntype, est, -unit, -time, -outcome_id,
+                   -t_int, -N, -syn_method)
+    } else {
+        tmpdf <- tmpdf %>% select(outcome_id, unit, time,
+                                  t_int, synthetic, outcome) %>%
+            spread(synthetic, outcome) %>%
+            gather(syntype, est, -unit, -time, -outcome_id,
+                   -t_int, -N)
+    }
+    
+    tmpdf <- tmpdf %>%
         mutate(syntype= plyr::revalue(syntype,
                                       c("DR"="Adjusted",
-                                        "Y"="SC"))) %>%
-        mutate(att=N-est) %>%
+                                        "Y"="SC")))
+    tmpdf <- tmpdf %>%
+        mutate(att=N-est)
+
+    if("syn_method" %in% names(outcomes)) {
+        tmpdf <- tmpdf %>% mutate(syntype = paste(syntype, syn_method, sep="-"))
+    }
+    p <- tmpdf %>%
     # plot the outcomes
     ggplot() +
-        geom_line(aes(x=time, y=att, color=syntype, linetype=syntype), size=2) + 
+        geom_line(aes(x=time, y=att, color=syntype), size=2) + 
     geom_vline(aes(xintercept=t_int)) +
         geom_hline(yintercept=0, linetype="dashed") +
-        scale_color_manual(values=c("Adjusted"="#B9D3B6",
-                                    "SC"="#ED4E33"),
-                           name="Method") +
         guides(alpha=FALSE, linetype=FALSE)
-    if("syn_method" %in% names(outcomes)) {
-        p <- p + facet_grid(syn_method ~ outcome_id)
-    } else {
-        p <- p + facet_wrap( ~outcome_id)
-    }
+
     p <- p + ggtitle("ATT Estimate") + theme_bw()
     return(p)
     }

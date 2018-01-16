@@ -2,9 +2,10 @@
 % Please edit documentation in R/entropy.R
 \name{get_entropy}
 \alias{get_entropy}
-\title{Fit entropy regularized synthetic controls on outcomes}
+\title{Fit l2_entropy regularized synthetic controls on outcomes}
 \usage{
-get_entropy(outcomes, metadata, trt_unit = 1, alpha = NULL)
+get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
+  outcome_col = NULL)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -13,11 +14,14 @@ get_entropy(outcomes, metadata, trt_unit = 1, alpha = NULL)
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
-\item{alpha}{regularization parameter}
+\item{eps}{Bound on synthetic control differences}
+
+\item{outcome_col}{Column name which identifies outcomes, if NULL then
+assume only one outcome}
 }
 \value{
 outcomes with additional synthetic control added and weights
 }
 \description{
-Fit entropy regularized synthetic controls on outcomes
+Fit l2_entropy regularized synthetic controls on outcomes
 }
