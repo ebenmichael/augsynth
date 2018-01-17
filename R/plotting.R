@@ -58,8 +58,9 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
     return(p)
 }
 
-plot_att <- function(outcomes, metadata, trt_unit=NULL) {
-    #' Plot the estimate of the att
+
+compute_att <- function(outcomes, metadata, trt_unit=NULL) {
+    #' Compute the ATT in the post-period
     #' @param outcomes Tidy dataframe with the outcomes
     #' @param metadata Dataframe with info about the simulation
     #' @param trt_unit Unit to count as treated, defaults to using
@@ -116,6 +117,20 @@ plot_att <- function(outcomes, metadata, trt_unit=NULL) {
     if("syn_method" %in% names(outcomes)) {
         tmpdf <- tmpdf %>% mutate(syntype = paste(syntype, syn_method, sep="-"))
     }
+    return(tmpdf)
+}
+
+
+plot_att <- function(outcomes, metadata, trt_unit=NULL) {
+    #' Plot the estimate of the att
+    #' @param outcomes Tidy dataframe with the outcomes
+    #' @param metadata Dataframe with info about the simulation
+    #' @param trt_unit Unit to count as treated, defaults to using
+    #'                 the treated column
+    #' @export
+
+    tmpdf <- compute_att(outcomes, metadata, trt_unit)
+    
     p <- tmpdf %>%
     # plot the outcomes
     ggplot() +
