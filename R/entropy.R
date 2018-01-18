@@ -114,7 +114,7 @@ fit_entropy_formatted <- function(data_out, eps) {
     lam0 <- numeric(t)
     ## solve the dual problem with prx gradient
     
-    out <- apg::apg(grad, prox, t, list())
+    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=5000))
     lam <- out$x
 
     ## get the primal weights from the dual variables
@@ -124,7 +124,6 @@ fit_entropy_formatted <- function(data_out, eps) {
     ## compute primal objective value
     primal_obj <- lapply(groups,
                          function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
-
     ## compute propensity scores
     pscores <- 1 / (1 + exp(-eta))
     return(list(weights=weights,
@@ -187,6 +186,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     ctrls$primal_obj <- out$primal_obj
     ctrls$pscores <- out$pscores
     ctrls$eta <- out$eta
+    ctrls$groups <- out$groups
     return(ctrls)
 }
 
