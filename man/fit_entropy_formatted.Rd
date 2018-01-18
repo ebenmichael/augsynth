@@ -2,20 +2,21 @@
 % Please edit documentation in R/entropy.R
 \name{fit_entropy_formatted}
 \alias{fit_entropy_formatted}
-\title{Fit entropy regularized synthetic controls
+\title{Fit l2 entropy regularized synthetic controls
 by solving the dual problem}
 \usage{
-fit_entropy_formatted(data_out, alpha = NULL)
+fit_entropy_formatted(data_out, eps)
 }
 \arguments{
 \item{data_out}{formatted data from format_entropy}
 
-\item{alpha}{regularization parameter}
+\item{eps}{List of bounds on synthetic control differences for each
+outcome, if only one outcome type then a scalar}
 }
 \value{
 synthetic control weights
 }
 \description{
-Fit entropy regularized synthetic controls
+Fit l2 entropy regularized synthetic controls
 by solving the dual problem
 }
