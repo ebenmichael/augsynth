@@ -91,7 +91,7 @@ fit_entropy_formatted <- function(data_out, eps) {
 
 
     ## prox_h
-    ## if there is no "groups" field in data_out, assume everything is in one
+    ## if there is no "groups" field in data_out, assume everything is in one group
     if(is.null(data_out$groups)) {
         groups <- list()
         groups$"1" <- 1:t
@@ -102,9 +102,16 @@ fit_entropy_formatted <- function(data_out, eps) {
             epslist$"1" <- eps
         }
     } else {
+        ## get the groups
         groups <- data_out$groups
-        epslist <- eps
-    } 
+        ## if eps is a scalar, then assume the same eps for each group
+        if(length(eps) == 1) {
+            epslist <- lapply(groups, function(x) eps)
+        } else {
+            epslist <- eps
+        }
+        groups <- groups[names(epslist)]
+    }
     prox <- function(lam, step, ...) {
         prox_group(lam, lapply(epslist, "*", step), groups)
     }
@@ -124,8 +131,24 @@ fit_entropy_formatted <- function(data_out, eps) {
     ## compute primal objective value
     primal_obj <- lapply(groups,
                          function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
+    ## reorder objective list
+    ##primal_obj <- primal_obj[names(epslist)]
     ## compute propensity scores
     pscores <- 1 / (1 + exp(-eta))
+
+    ## get magnitude of vectors
+    mags <- lapply(groups, function(g) sqrt(sum(y[g,]^2)))
+    ## check for equality within 10^-3 * magnitude
+    tol <- 10^-4
+    equalfeasible <- mapply(function(ep, ob, mag)
+        isTRUE(all.equal(ep, ob, tol * mag)),
+        epslist, primal_obj, mags)
+    lessfeasible <- mapply(function(ep, ob)
+        ob < ep, 
+        epslist, primal_obj)
+    feasible <- mapply(function(a,b) a || b, equalfeasible, lessfeasible)
+    feasible <- all(feasible)
+    
     return(list(weights=weights,
                 dual=lam,
                 controls=syn_data$Y0plot,
@@ -133,7 +156,8 @@ fit_entropy_formatted <- function(data_out, eps) {
                 primal_obj=primal_obj,
                 groups=groups,
                 pscores=pscores,
-                eta=eta))
+                eta=eta,
+                feasible=feasible))
     
 }
 
@@ -187,6 +211,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     ctrls$pscores <- out$pscores
     ctrls$eta <- out$eta
     ctrls$groups <- out$groups
+    ctrls$feasible <- out$feasible
     return(ctrls)
 }
 
