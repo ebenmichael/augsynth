@@ -1,5 +1,5 @@
 #############################################################
-## Entropy regularized synthetic controls (experimental)
+## Entropy regularized synthetic controls
 #############################################################
 
 ### helper functions
@@ -110,7 +110,8 @@ fit_entropy_formatted <- function(data_out, eps) {
         } else {
             epslist <- eps
         }
-        groups <- groups[names(epslist)]
+        ##groups <- groups[names(epslist)]
+        epslist <- epslist[names(groups)]
     }
     prox <- function(lam, step, ...) {
         prox_group(lam, lapply(epslist, "*", step), groups)
@@ -128,11 +129,17 @@ fit_entropy_formatted <- function(data_out, eps) {
     eta <- x %*% lam
     m <- max(eta)
     weights <- exp(eta - m) / sum(exp(eta - m))
+    
     ## compute primal objective value
-    primal_obj <- lapply(groups,
-                         function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
-    ## reorder objective list
-    ##primal_obj <- primal_obj[names(epslist)]
+    primal_obj <- sqrt(sum((t(x) %*% weights - y)^2))
+    
+    ## primal objective value scaled by least squares difference for mean
+    unif_primal_obj <- sqrt(sum((t(x) %*% rep(1/dim(x)[1], dim(x)[1]) - y)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj
+
+    ## compute l2 error per group
+    primal_group_obj <- lapply(groups,
+                               function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
     ## compute propensity scores
     pscores <- 1 / (1 + exp(-eta))
 
@@ -142,10 +149,10 @@ fit_entropy_formatted <- function(data_out, eps) {
     tol <- 10^-4
     equalfeasible <- mapply(function(ep, ob, mag)
         isTRUE(all.equal(ep, ob, tol * mag)),
-        epslist, primal_obj, mags)
+        epslist, primal_group_obj, mags)
     lessfeasible <- mapply(function(ep, ob)
         ob < ep, 
-        epslist, primal_obj)
+        epslist, primal_group_obj)
     feasible <- mapply(function(a,b) a || b, equalfeasible, lessfeasible)
     feasible <- all(feasible)
     
@@ -154,6 +161,8 @@ fit_entropy_formatted <- function(data_out, eps) {
                 controls=syn_data$Y0plot,
                 is_treated=data_out$is_treated,
                 primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj,
+                primal_group_obj=primal_group_obj,
                 groups=groups,
                 pscores=pscores,
                 eta=eta,
@@ -212,6 +221,8 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     ctrls$eta <- out$eta
     ctrls$groups <- out$groups
     ctrls$feasible <- out$feasible
+    ctrls$primal_group_obj <- out$primal_group_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
     return(ctrls)
 }
 

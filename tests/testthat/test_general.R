@@ -31,15 +31,14 @@ test_that("No errors in fitting a multi outcome model", {
 
 test_that("get_entropy says when problem is infeasible", {
 
-    run_multi <- function() {
-        set.seed(12345)
-        ## simulate data
-        mo <- sim_factor_model(10, 50, 40, 10, 1)
-        ## fit synthetic controls for one outcome
-        out <- get_entropy(mo$outcomes,
-                           mo$metadata,
-                           eps=0,
-                           outcome_col="outcome_id")
-    }
+    set.seed(12345)
+    ## simulate data
+    mo <- sim_factor_model(10, 50, 40, 10, 1)
+    ## fit synthetic controls for one outcome
+    out <- get_entropy(mo$outcomes,
+                       mo$metadata,
+                       eps=0,
+                       outcome_col="outcome_id")
+  
     expect_true(!out$feasible)
     })

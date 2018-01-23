@@ -18,15 +18,19 @@ fit_synth_formatted <- function(data_out) {
     capture.output(synth_out <- Synth::synth(data_out,
                                              custom.v=custom.v,
                                              quadopt="LowRankQP"))
-
     weights <- synth_out$solution.w
     loss <- synth_out$loss.w
     primal_obj <- sqrt(sum((data_out$Z0 %*% weights - data_out$Z1)^2))
-    
+    ## primal objective value scaled by least squares difference for mean
+    x <- t(data_out$Z0)
+    y <- data_out$Z1
+    unif_primal_obj <- sqrt(sum((t(x) %*% rep(1/dim(x)[1], dim(x)[1]) - y)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj    
     return(list(weights=weights,
                 controls=data_out$Y0plot,
                 is_treated=is_treated,
-                primal_obj=primal_obj))
+                primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj))
 }
 
 
@@ -84,5 +88,7 @@ get_synth <- function(outcomes, metadata, trt_unit=1) {
 
     ctrls <- impute_controls(outcomes, out, trt_unit)
     ctrls$primal_obj <- out$primal_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
+    
     return(ctrls)
 }
