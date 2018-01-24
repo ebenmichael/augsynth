@@ -60,20 +60,19 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
     ## just format data once
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
 
-    ## get the standard devations for the controls in each group
+    ## get the magnitdues for the controls in each group
     syn_data <- data_out$synth_data
     x <- syn_data$Z0
     groups <- data_out$groups
-    sds <- lapply(groups, function(g) sd(x[g,]))
+    mags <- lapply(groups, function(g) sqrt(sum((x[g,] - mean(x[g,]))^2)))
 
     ## reorder
-    sds <- sds[grp_order]
+    mags <- mags[grp_order]
 
     ## set original epsilon to infinity
-    epslist <- lapply(grp_order, function(g) 10^20 * sds[[g]])
+    epslist <- lapply(grp_order, function(g) 10^20 * mags[[g]])
     names(epslist) <- grp_order
 
-    
     ## iterate over groups, finding the lowest feasible tolerance
     for(g in grp_order) {
         ## create the feasibility function by keeping other tolerances fixed
@@ -83,7 +82,7 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
         }
         
         ## find the best epsilon
-        minep <- bin_search(0, 4 * sds[[g]], by * 4 * sds[[g]], feasfunc)
+        minep <- bin_search(0, mags[[g]], by * mags[[g]], feasfunc)
 
         ## if it failed, then stop everything
         if(minep < 0) {

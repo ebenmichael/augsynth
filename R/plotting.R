@@ -21,7 +21,7 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
     }
 
     # join outcomes with metadata on sim number
-    p <- outcomes %>%
+    tmpdf <- outcomes %>%
         inner_join(metadata) %>%
         ## create interaction variables for grouping and coloring
         mutate(grouping=interaction(treated, synthetic, unit, potential_outcome),
@@ -35,9 +35,11 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
                                      )
                                    ),
                synthetic = ifelse(synthetic == "N", "N", "Y")
-               ) %>%                 
-    # plot the outcomes
-    ggplot() +
+               )
+    #return(tmpdf)
+    p <- tmpdf %>%                 
+        ## plot the outcomes
+        ggplot() +
         geom_line(aes(x=time, y=outcome, # plot outcomes vs time
                       group = grouping, color=label,
                       alpha=treated, linetype=synthetic), size=2) +
@@ -49,10 +51,12 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
                                     "Double Robust"="#B9D3B6")) +
     scale_alpha_manual(values=c(0.05, 1)) +
         guides(alpha=FALSE, linetype=FALSE)
-    if("syn_method" %in% names(outcomes)) {
+    if("syn_method" %in% names(outcomes) & "outcome_id" %in% names(outcomes)) {
         p <- p + facet_grid(syn_method ~ outcome_id)
-    } else {
+    } else if("outcome_id" %in% names(outcomes)){
         p <- p + facet_wrap( ~outcome_id)
+    } else if("syn_method" %in% names(outcomes)) {
+        p <- p + facet_wrap( ~syn_method)
     }
     p <- p + theme_bw()
     return(p)
