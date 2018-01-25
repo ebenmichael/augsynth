@@ -192,40 +192,6 @@ get_joint_ent <- function(outcomes, metadata, trt_unit=1) {
 }
 
 
-get_uniform <- function(outcomes, metadata, trt_unit=1) {
-    #' Fit synthetic controls for multiple outcomes with uniform weights
-    #' @param outcomes Tidy dataframe with the outcomes and meta data
-    #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 1
-    #'
-    #' @return both outcomes with additional synthetic controls added
-    #'         weights for both synthetic controls
-
-    ## concatenate all the outcomes into one
-    data_out <- concat_synth_out(outcomes, metadata, trt_unit)
-
-    ## sample a random weight from the simplex and impute a syntehtic control
-    controls <- data_out$synth_data$Y0plot
-    n_c <- dim(controls)[2]
-    weights <- rep(1/n_c, times=n_c)
-
-    ## package into input for impute_controls
-    out <- list()
-    out$weights <- weights
-    out$controls <- controls
-
-    ## impute the controls
-    imputed <- impute_controls(outcomes, out, trt_unit)
-
-    ## finalize output
-    outcomes <- imputed$outcomes
-    outcomes$syn_method = "uniform"
-    weights <- imputed$weights
-
-    return(list(outcomes=outcomes,
-                weights=weights))
-}
-
 
 get_index <- function(outcomes, metadata, syn_func, name,
                       trt_unit=1, alpha=NULL) {
