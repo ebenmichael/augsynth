@@ -2,7 +2,7 @@
 % Please edit documentation in R/selection.R
 \name{sep_lasso_}
 \alias{sep_lasso_}
-\title{Internal function that does the wrok of sep_lasso}
+\title{Internal function that does the work of sep_lasso}
 \usage{
 sep_lasso_(outcomes, metadata, trt_unit, outcome_col, by)
 }
@@ -21,5 +21,5 @@ sep_lasso_(outcomes, metadata, trt_unit, outcome_col, by)
 List with lowest tolerances in units of standard deviation
 }
 \description{
-Internal function that does the wrok of sep_lasso
+Internal function that does the work of sep_lasso
 }

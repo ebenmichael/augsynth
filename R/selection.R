@@ -109,7 +109,7 @@ lexical_time <- function(outcomes, metadata, trt_unit=1, by=.1) {
 
     ## get the times
     t_int <- metadata$t_int
-    times <- rev(paste((lin$outcomes %>% filter(time < t_int) %>%
+    times <- rev(paste((outcomes %>% filter(time < t_int) %>%
                     distinct(time) %>% select(time))$time))
 
     ## add a second time column to selection
@@ -159,7 +159,7 @@ recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1) {
 
 
 sep_lasso_ <- function(outcomes, metadata, trt_unit, outcome_col, by) {
-    #' Internal function that does the wrok of sep_lasso
+    #' Internal function that does the work of sep_lasso
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression)
