@@ -44,7 +44,7 @@ fit_synth <- function(outcomes, metadata, trt_unit=1) {
     #'         and whether the unit is actually treated
 
     ## get the data into the right format
-    data_out <- format_synth(outcomes, metadata, trt_unit)
+    data_out <- format_data(outcomes, metadata, trt_unit)
 
     return(fit_synth_formatted(data_out))
 }

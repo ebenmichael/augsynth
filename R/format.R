@@ -117,6 +117,28 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
     #'         whether the unit was actually treated
     #' @export
 
+    ## count number of treated units
+    n_t <- outcomes %>% distinct(unit, treated) %>%
+        filter(treated) %>%
+        count() %>%
+        as.numeric()
+    print(n_t)
+    ## if there is more than one treated unit, average them together
+    if(n_t > 1) {
+        print("GREATER")
+        trtavg <- outcomes %>% filter(treated) %>%
+            group_by(time, treated, outcome_id,
+                     sim_num, potential_outcome,
+                     synthetic) %>%
+            summarise(outcome = mean(outcome)) %>%
+            mutate(unit=1) %>% 
+            data.frame()
+        ctrls <- outcomes %>% filter(!treated)
+        outcomes <- rbind(trtavg, ctrls)
+        trt_unit <- 1
+    }
+
+    
     if(is.null(outcome_col)) {
         return(format_synth(outcomes, metadata, trt_unit))
     } else {
