@@ -23,11 +23,11 @@ test_that("format_synth creates matrices of the right dimensions", {
 test_that("format_synth and format_synth_multi have the same output with one outcome", {
     ## simulate data
     mo <- sim_factor_model(20, 25, 15, 10, 1)
-    data_out1 <- format_synth(mo$outcomes %>% filter(outcome_id == 1),
+    data_out1 <- format_data(mo$outcomes %>% filter(outcome_id == 1),
                               mo$metadata)
-    data_out2 <- format_synth_multi(mo$outcomes %>% filter(outcome_id == 1),
+    data_out2 <- format_data(mo$outcomes %>% filter(outcome_id == 1),
                                     mo$metadata,
-                                    "outcome_id")
+                                    outcome_col = "outcome_id")
 
     expect_equivalent(data_out1$synth_data$Z0, data_out2$synth_data$Z0)
     expect_equivalent(data_out1$synth_data$Z1, data_out2$synth_data$Z1)

@@ -206,7 +206,8 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     #' @export
 
     ## get the synthetic controls weights
-    out <- fit_entropy(outcomes, metadata, trt_unit, eps, outcome_col)
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
+    out <- fit_entropy_formatted(data_out, eps)
 
     ## match outcome types to synthetic controls
     if(!is.null(outcome_col)) {
@@ -214,7 +215,8 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
                                           levels = names(out$groups))
         outcomes <- outcomes %>% dplyr::arrange_(outcome_col)
     }
-    ctrls <- impute_controls(outcomes, out, trt_unit)
+    
+    ctrls <- impute_controls(data_out$outcomes, out, data_out$trt_unit)
     ctrls$dual <- out$dual
     ctrls$primal_obj <- out$primal_obj
     ctrls$pscores <- out$pscores

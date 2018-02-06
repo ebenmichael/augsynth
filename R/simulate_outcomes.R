@@ -102,27 +102,30 @@ sim_factor_model<- function(n_units, t_total, t_int, d, lambda, corr=0, fac_size
                                               rep(TRUE, 1), # treatment indicator
                                               rep(FALSE, n_units-1)),
                                     # Is this Y_jt(0) or Y_jt(1)
-                                    potential_outcome= rep("Y(0)", 2 * n_units),
+                                    potential_outcome= c(rep("Y(1)", 1), # treatment indicator
+                                              rep("Y(0)", n_units-1),
+                                              rep("Y(1)", 1), # treatment indicator
+                                              rep("Y(0)", n_units-1)),
                                     # is this a synthetic control
                                     synthetic="N"
                                     )
 
-    ## add in the treatment effect
-    trt_outcomes <- data.frame(
-        do.call(rbind,
-                lapply(1:2, function(i) y[1,,i] + effect)))
-    names(trt_outcomes) <- 1:t_total
-    trt_outcomes <- trt_outcomes %>% mutate(outcome_id=1:2,
-                                            unit=rep(1,2), # number the units (0=trt)
-                                            sim_num=sim_num, # keep simulation number
-                                            treated=rep(TRUE, 2),
-                                        # Is this Y_jt(0) or Y_jt(1)
-                                            potential_outcome= rep("Y(1)", 2),
-                                        # is this a synthetic control
-                                            synthetic="N"
-                                    )
+    ## ## add in the treatment effect
+    ## trt_outcomes <- data.frame(
+    ##     do.call(rbind,
+    ##             lapply(1:2, function(i) y[1,,i] + effect)))
+    ## names(trt_outcomes) <- 1:t_total
+    ## trt_outcomes <- trt_outcomes %>% mutate(outcome_id=1:2,
+    ##                                         unit=rep(1,2), # number the units (0=trt)
+    ##                                         sim_num=sim_num, # keep simulation number
+    ##                                         treated=rep(TRUE, 2),
+    ##                                     # Is this Y_jt(0) or Y_jt(1)
+    ##                                         potential_outcome= rep("Y(1)", 2),
+    ##                                     # is this a synthetic control
+    ##                                         synthetic="N"
+    ##                                 )
 
-    outcomes <- rbind(outcomes, trt_outcomes)
+    ## outcomes <- rbind(outcomes, trt_outcomes)
     # melt the data frame to use with tidyverse
     outcomes <- outcomes %>% gather(time, outcome, 1:t_total) %>%
         mutate(time=as.integer(time))

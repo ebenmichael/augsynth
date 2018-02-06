@@ -58,7 +58,7 @@ impute_controls <- function(outcomes, fit, trt_unit) {
     #'
     #' @return outcomes with additional synthetic control added and weights
 
-
+    print(trt_unit)
     ## impute the controls
     syn_ctrl <- fit$controls %*% fit$weights
     ## replace true outcome with synthetic control
@@ -84,9 +84,10 @@ get_synth <- function(outcomes, metadata, trt_unit=1) {
     #' @export
 
     ## get the synthetic controls weights
-    out <- fit_synth(outcomes, metadata, trt_unit)
+    data_out <- format_data(outcomes, metadata, trt_unit)
+    out <- fit_synth_formatted(data_out)
 
-    ctrls <- impute_controls(outcomes, out, trt_unit)
+    ctrls <- impute_controls(data_out$outcomes, out, data_out$trt_unit)
     ctrls$primal_obj <- out$primal_obj
     ctrls$scaled_primal_obj <- out$scaled_primal_obj
     
