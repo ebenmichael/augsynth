@@ -12,7 +12,7 @@ get_ebal(outcomes, metadata)
 \item{metadata}{Dataframe of metadata}
 }
 \value{
-outcomes with additional synthetic control added and weights
+outcomes with imputed control values, weights, dual variables
 }
 \description{
 Fit entropy balancing weights

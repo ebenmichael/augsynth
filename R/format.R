@@ -112,10 +112,12 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
 
     ## if there is more than one treated unit, average them together
     if(n_t > 1) {
+        cols <- c("time", "treated",
+                  "sim_num", "potential_outcome", paste(outcome_col),
+                  "synthetic")
         trtavg <- outcomes %>% filter(treated) %>%
-            group_by(time, treated, outcome_id,
-                     sim_num, potential_outcome,
-                     synthetic) %>%
+            group_by_at(setdiff(names(outcomes), c("outcome", "unit")))
+        trtavg <- trtavg %>%
             summarise(outcome = mean(outcome)) %>%
             mutate(unit=-1) %>% 
             data.frame()

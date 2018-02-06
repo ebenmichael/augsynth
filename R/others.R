@@ -24,7 +24,7 @@ fit_ipw_formatted <- function(data_out, alpha_w=NULL) {
                                      alpha=0, intercept=FALSE)$lambda.min
         
     }
-    print(alpha_w)
+
     fit <- glmnet::glmnet(x, trt, family="binomial",
                           alpha=0,
                           lambda=alpha_w, intercept=FALSE)
@@ -36,12 +36,17 @@ fit_ipw_formatted <- function(data_out, alpha_w=NULL) {
     x1 <- apply(x[trt == 1,], 2, mean)
     primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
 
+    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
+                                 rep(1/dim(x[trt == 0,])[1],
+                                     dim(x[trt == 0,])[1]) - x1)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj
     
     return(list(weights=as.numeric(weights),
                 controls=cbind(x[trt == 0,],y[trt == 0,]),
                 treated=cbind(x[trt == 1,],y[trt == 1,]),
                 trt=trt,
                 primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj,
                 is_treated=data_out$is_treated,
                 dual=fit$beta,
                 pscores=pscores))
@@ -85,6 +90,7 @@ get_ipw <- function(outcomes, metadata, alpha_w=NULL) {
     ctrls <- impute_dr(data_out$outcomes, metadata, out)
     ctrls$outparams <- out$outparams
     ctrls$primal_obj <- out$primal_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
     ctrls$pscores <- out$pscores
     ctrls$dual <- out$dual
     return(ctrls)
@@ -138,6 +144,7 @@ fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL) {
                 treated=cbind(x[trt == 1,],ys[trt == 1,]),
                 is_treated=data_out$is_treated,
                 primal_obj=ws$primal_obj,
+                scaled_primal_obj=ws$scaled_primal_obj,
                 pscores=ws$pscores))
     
     }
@@ -190,6 +197,7 @@ get_dr <- function(outcomes, metadata, alpha_w=NULL, alpha_o=NULL) {
     ctrls <- impute_dr(data_out$outcomes, metadata, fit) 
     ctrls$dual <- fit$dual
     ctrls$primal_obj <- fit$primal_obj
+    ctrls$scaled_primal_obj <- fit$scaled_primal_obj
     ctrls$pscores <- fit$pscores
     
     return(ctrls)
@@ -286,12 +294,17 @@ fit_ebal_formatted <- function(data_out) {
     x1 <- apply(x[trt == 1,], 2, mean)
     primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
 
+    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
+                                 rep(1/dim(x[trt == 0,])[1],
+                                     dim(x[trt == 0,])[1]) - x1)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj
     
     return(list(weights=as.numeric(weights),
                 controls=cbind(x[trt == 0,],y[trt == 0,]),
                 treated=cbind(x[trt == 1,],y[trt == 1,]),
                 trt=trt,
                 primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj,
                 is_treated=data_out$is_treated,
                 dual=bal$coef,
                 pscores=pscores))
@@ -304,7 +317,7 @@ get_ebal <- function(outcomes, metadata) {
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #'
-    #' @return outcomes with additional synthetic control added and weights
+    #' @return outcomes with imputed control values, weights, dual variables
     #' @export
 
     ## get the synthetic controls weights
@@ -314,7 +327,62 @@ get_ebal <- function(outcomes, metadata) {
     ctrls <- impute_dr(data_out$outcomes, metadata, out)
     ctrls$outparams <- out$outparams
     ctrls$primal_obj <- out$primal_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
     ctrls$pscores <- out$pscores
     ctrls$dual <- out$dual
+    return(ctrls)
+}
+
+
+fit_uniform_formatted <- function(data_out) {
+    #' Use difference in means
+    #' @param data_out Output of format_ipw
+    #'
+    #' @return uniform weights
+    #' @export
+
+    ## get covariates and treatment indicator
+    x <- data_out$X
+    trt <- data_out$trt
+    y <- data_out$y
+
+
+    ## get predicted probabilities P(W=1|X)
+    weights <- rep(1/dim(x[trt==0,])[1], dim(x[trt == 0,])[1])
+    x1 <- apply(x[trt == 1,], 2, mean)
+    primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
+
+    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
+                                 rep(1/dim(x[trt == 0,])[1],
+                                     dim(x[trt == 0,])[1]) - x1)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj
+    
+    return(list(weights=as.numeric(weights),
+                controls=cbind(x[trt == 0,],y[trt == 0,]),
+                treated=cbind(x[trt == 1,],y[trt == 1,]),
+                trt=trt,
+                primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj,
+                is_treated=data_out$is_treated)
+           )
+}
+
+
+get_uniform <- function(outcomes, metadata) {
+    #' Use difference in means
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #'
+    #' @return outcomes with imputed control values, weights, dual variables
+    #' @export
+
+    ## get the synthetic controls weights
+    data_out <- format_ipw(outcomes, metadata)
+    out <- fit_uniform_formatted(data_out)
+
+    ctrls <- impute_dr(data_out$outcomes, metadata, out)
+    ctrls$outparams <- out$outparams
+    ctrls$primal_obj <- out$primal_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
     return(ctrls)
 }

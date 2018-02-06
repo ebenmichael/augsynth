@@ -2,6 +2,7 @@
 
 export(clean_basque)
 export(compute_att)
+export(fit_uniform_formatted)
 export(format_data)
 export(format_ipw)
 export(get_dr)
