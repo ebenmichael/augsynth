@@ -58,7 +58,6 @@ impute_controls <- function(outcomes, fit, trt_unit) {
     #'
     #' @return outcomes with additional synthetic control added and weights
 
-    print(trt_unit)
     ## impute the controls
     syn_ctrl <- fit$controls %*% fit$weights
     ## replace true outcome with synthetic control
