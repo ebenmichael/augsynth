@@ -137,22 +137,25 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
 }
 
 
-format_ipw <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
+format_ipw <- function(outcomes, metadata, outcome_col=NULL) {
     #' Format "long" panel data into "wide" matrices to fit IPW
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param outcome_col Column name which identifies outcomes,
     #'                    if NULL then only one outcome is assumed
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
     #'
-    #' @return List of data to use as an argument for Synth::synth,
-    #'         whether the unit was actually treated
+    #' @return List of pre and post period outcomes, and treatment indicator
     #' @export
 
     ## get data into wide form
     wide <- outcomes %>%
-        filter(time < metadata$t_int) %>%
-        mutate(cov = interaction(time, outcome_id)) %>%
+        filter(time < metadata$t_int)
+    if(!is.null(outcome_col)) {
+        wide$cov <- interaction(wide$time, wide[[outcome_col]])
+    } else {
+        wide$cov <- wide$time
+    }
+    wide <- wide %>%
         select(unit, cov, outcome, potential_outcome, treated) %>%
         spread(cov, outcome) %>%
         select(-potential_outcome, -unit) %>%
@@ -162,6 +165,34 @@ format_ipw <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
     X <- wide[,-1]
     trt <- wide[,1]
 
-    return(list(X=X, trt=trt))
+    ## get post-period outcomes
+    post <- outcomes %>%
+        filter(time >= metadata$t_int)
+    if(!is.null(outcome_col)) {
+        post$cov <- interaction(post$time, post[[outcome_col]])
+    } else {
+        post$cov <- post$time
+    }
+    post <- post %>%
+        select(unit, cov, outcome, potential_outcome, treated) %>%
+        spread(cov, outcome) %>%
+        select(-potential_outcome, -unit) %>%
+        as.matrix()
+
+    y <- post[,-1]
+
+    ## average together treated units
+    trtavg <- outcomes %>% filter(treated) %>%
+        group_by(time, treated, outcome_id,
+                 sim_num, potential_outcome,
+                 synthetic) %>%
+        summarise(outcome = mean(outcome)) %>%
+        mutate(unit=-1) %>% 
+        data.frame()
+    ctrls <- outcomes %>% filter(!treated)
+    outcomes <- rbind(trtavg, ctrls)
+    trt_unit <- -1
+    
+    return(list(X=X, trt=trt, y=y, outcomes=outcomes))
 }
 

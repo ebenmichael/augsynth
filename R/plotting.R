@@ -110,7 +110,6 @@ compute_att <- function(outcomes, metadata, trt_unit=NULL) {
             gather(syntype, est, -unit, -time, -outcome_id,
                    -t_int, -N)
     }
-    
     tmpdf <- tmpdf %>%
         mutate(syntype= plyr::revalue(syntype,
                                       c("DR"="Adjusted",

@@ -4,21 +4,18 @@
 \alias{format_ipw}
 \title{Format "long" panel data into "wide" matrices to fit IPW}
 \usage{
-format_ipw(outcomes, metadata, trt_unit = 1, outcome_col = NULL)
+format_ipw(outcomes, metadata, outcome_col = NULL)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
 
 \item{metadata}{Dataframe of metadata}
 
-\item{trt_unit}{Unit that is treated (target for regression), default: 0}
-
 \item{outcome_col}{Column name which identifies outcomes,
 if NULL then only one outcome is assumed}
 }
 \value{
-List of data to use as an argument for Synth::synth,
-        whether the unit was actually treated
+List of pre and post period outcomes, and treatment indicator
 }
 \description{
 Format "long" panel data into "wide" matrices to fit IPW
