@@ -55,6 +55,7 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
     #'
     #' @return List with lowest tolerances lexically
+    #' @export
 
     ## just format data once
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
