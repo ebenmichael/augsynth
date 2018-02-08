@@ -29,6 +29,12 @@ prox_l2 <- function(x, lam) {
     return(shrink * x)
 }
 
+prox_l1 <- function(x, lam) {
+    #' prox operator of sum(lam * abs(x))
+    out <- (x - lam) * (x > lam) + (x + lam) * (x < -lam)
+    return(out)
+}
+
 
 
 prox_group <- function(x, lams, groups) {
@@ -40,22 +46,30 @@ prox_group <- function(x, lams, groups) {
     ## initialize value
     proxx <- numeric(length(x))
 
-    ## go through each group and shrink it
-    for(i in 1:length(groups)) {
-        g <- groups[[i]]
-        gname <- names(groups)[i]
-        proxx[g] <- prox_l2(x[g], lams[[gname]])
-    }
+    ## ## go through each group and shrink it
+    ## for(i in 1:length(groups)) {
+    ##     g <- groups[[i]]
+    ##     gname <- names(groups)[i]
+    ##     proxx[g] <- prox_l2(x[g], lams[[gname]])
+    ## }
+
+    proxvals <- purrr::map2(groups, lams,
+                            function(g, lam) {
+                                px <- prox_l2(x[g], lam)
+                                px
+                            })
+    proxx[unlist(groups)] <- unlist(proxvals)
     return(proxx)
 }
 
 
-fit_entropy_formatted <- function(data_out, eps) {
+fit_entropy_formatted <- function(data_out, eps, lasso=FALSE) {
     #' Fit l2 entropy regularized synthetic controls
     #' by solving the dual problem
     #' @param data_out formatted data from format_entropy
     #' @param eps List of bounds on synthetic control differences for each
     #'            outcome, if only one outcome type then a scalar
+    #' @param lasso Whether to do lasso (every covariate is separate)
     #'
     #' @return synthetic control weights
 
@@ -91,15 +105,28 @@ fit_entropy_formatted <- function(data_out, eps) {
 
 
     ## prox_h
-    ## if there is no "groups" field in data_out, assume everything is in one group
     if(is.null(data_out$groups)) {
-        groups <- list()
-        groups$"1" <- 1:t
-        epslist <- list()
-        if(typeof(eps) == "list") {
-            epslist$"1" <- eps[[1]]
-        } else {
-            epslist$"1" <- eps
+        ## if doing lasso then set the groups to be every covariate
+        if(lasso) {
+            groups <- as.list(seq(1, dim(x)[2]))
+            names(groups) <- paste(seq(1, dim(x)[2]))
+            if(length(eps) == 1) {
+                epslist <- lapply(groups, function(x) eps)
+            } else {
+                epslist <- as.list(eps)
+                names(epslist) <- names(groups)
+            }
+        }
+        else {
+            ## if there is no "groups" field in data_out, assume everything is in one group
+            groups <- list()
+            groups$"1" <- 1:t
+            epslist <- list()
+            if(typeof(eps) == "list") {
+                epslist$"1" <- eps[[1]]
+            } else {
+                epslist$"1" <- eps
+            }
         }
     } else {
         ## get the groups
@@ -113,6 +140,15 @@ fit_entropy_formatted <- function(data_out, eps) {
         ##groups <- groups[names(epslist)]
         epslist <- epslist[names(groups)]
     }
+
+    ## if lasso (every group is separate)
+    if(all(sapply(groups, function(g) length(g) == 1))) {
+        epsvec <- unlist(epslist)
+        prox <- function(lam, step, ...) {
+            prox_l1(lam, epsvec * step)
+        }
+    }
+
     prox <- function(lam, step, ...) {
         prox_group(lam, lapply(epslist, "*", step), groups)
     }
@@ -122,7 +158,7 @@ fit_entropy_formatted <- function(data_out, eps) {
     lam0 <- numeric(t)
     ## solve the dual problem with prx gradient
     
-    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=5000))
+    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=1000))
     lam <- out$x
 
     ## get the primal weights from the dual variables
@@ -146,9 +182,9 @@ fit_entropy_formatted <- function(data_out, eps) {
     ## get magnitude of vectors
     mags <- lapply(groups, function(g) sqrt(sum(y[g,]^2)))
     ## check for equality within 10^-3 * magnitude
-    tol <- 10^-4
+    tol <- 10^-3
     equalfeasible <- mapply(function(ep, ob, mag)
-        isTRUE(all.equal(ep, ob, tol * mag)),
+        abs(ep - ob) / ep < tol,
         epslist, primal_group_obj, mags)
     lessfeasible <- mapply(function(ep, ob)
         ob < ep, 
@@ -172,7 +208,7 @@ fit_entropy_formatted <- function(data_out, eps) {
 
 
 fit_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
-                           outcome_col=NULL) {
+                           outcome_col=NULL, lasso=FALSE) {
     #' Fit l2 entropy regularized synthetic controls on outcomes
     #' Wrapper around fit_l2_entropy_formatted
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -181,6 +217,7 @@ fit_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     #' @param eps Bound on synthetic control differences
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
+    #' @param lasso Whether to do lasso (every covariate is separate)
     #'
     #' @return Weights for synthetic controls, control outcomes as matrix,
     #'         and whether the unit is actually treated
@@ -188,12 +225,12 @@ fit_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     ## get the data into the right format
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
 
-    return(fit_entropy_formatted(data_out, eps))
+    return(fit_entropy_formatted(data_out, eps, lasso))
 }
 
 
 get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
-                           outcome_col=NULL) {
+                           outcome_col=NULL, lasso=FALSE) {
     #' Fit l2_entropy regularized synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
@@ -201,13 +238,14 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     #' @param eps Bound on synthetic control differences
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
+    #' @param lasso Whether to do lasso (every covariate is separate)
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
     ## get the synthetic controls weights
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
-    out <- fit_entropy_formatted(data_out, eps)
+    out <- fit_entropy_formatted(data_out, eps, lasso)
 
     ## match outcome types to synthetic controls
     if(!is.null(outcome_col)) {

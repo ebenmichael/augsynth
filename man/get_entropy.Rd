@@ -5,7 +5,7 @@
 \title{Fit l2_entropy regularized synthetic controls on outcomes}
 \usage{
 get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
-  outcome_col = NULL)
+  outcome_col = NULL, lasso = FALSE)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -18,6 +18,8 @@ get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
 
 \item{outcome_col}{Column name which identifies outcomes, if NULL then
 assume only one outcome}
+
+\item{lasso}{Whether to do lasso (every covariate is separate)}
 }
 \value{
 outcomes with additional synthetic control added and weights

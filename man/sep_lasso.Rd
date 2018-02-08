@@ -5,7 +5,7 @@
 \title{Finds the lowest feasible tolerance in units of standard deviation for
 all time periods and covariates}
 \usage{
-sep_lasso(outcomes, metadata, trt_unit = 1, outcome_col = NULL, by = 0.1)
+sep_lasso(outcomes, metadata, trt_unit = 1, by = 0.1)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -13,9 +13,6 @@ sep_lasso(outcomes, metadata, trt_unit = 1, outcome_col = NULL, by = 0.1)
 \item{metadata}{Dataframe of metadata}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
-
-\item{outcome_col}{Column name which identifies outcomes, if NULL then
-assume only one outcome}
 
 \item{by}{Step size for tolerances to dry, default: 0.1 * magnitude}
 }

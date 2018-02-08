@@ -4,7 +4,7 @@
 \alias{sep_lasso_}
 \title{Internal function that does the work of sep_lasso}
 \usage{
-sep_lasso_(outcomes, metadata, trt_unit, outcome_col, by)
+sep_lasso_(outcomes, metadata, trt_unit, by)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -12,8 +12,6 @@ sep_lasso_(outcomes, metadata, trt_unit, outcome_col, by)
 \item{metadata}{Dataframe of metadata}
 
 \item{trt_unit}{Unit that is treated (target for regression)}
-
-\item{outcome_col}{Column name which identifies outcomes}
 
 \item{by}{Step size for tolerances to try}
 }

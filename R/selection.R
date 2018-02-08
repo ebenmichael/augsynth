@@ -20,7 +20,6 @@ bin_search_ <- function(eps, feasfunc) {
         ## check feasibility of middle point (rounded down)
         mid <- floor(length(eps) / 2)
         isfeas <- feasfunc(eps[mid])
-
         if(isfeas) {
             ## if feasible, try lower half
             return(bin_search_(eps[1:mid], feasfunc))
@@ -158,32 +157,30 @@ recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1) {
 }
 
 
-sep_lasso_ <- function(outcomes, metadata, trt_unit, outcome_col, by) {
+sep_lasso_ <- function(outcomes, metadata, trt_unit, by) {
     #' Internal function that does the work of sep_lasso
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression)
-    #' @param outcome_col Column name which identifies outcomes
     #' @param by Step size for tolerances to try
     #'
     #' @return List with lowest tolerances in units of standard deviation
     
     ## just format data once
-    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
+    data_out <- format_data(outcomes, metadata, trt_unit)
 
     ## get the standard deviations of controls for each group
     syn_data <- data_out$synth_data
     x <- syn_data$Z0
-    groups <- data_out$groups
-    sds <- lapply(groups, function(g) sd(x[g,]))
-
+    sds <- apply(x, 1, sd)
     ## set original epsilon to infinity
-    epslist <- lapply(groups, function(g) 10^20 * sds[[g]])
+    epslist <- sapply(sds, function(sd) 10^20 * sd)
     
     ## create the feasibility function by changing the tolerance in units of sd
     feasfunc <- function(ep) {
-        epslist <- lapply(sds, function(sd) ep * sd)
-        return(suppressMessages(fit_entropy_formatted(data_out, epslist)$feasible))
+        epslist <- sapply(sds, function(sd) ep * sd)
+        feas <- suppressMessages(fit_entropy_formatted(data_out, epslist, lasso=TRUE)$feasible)
+        return(feas)
     }
     
     ## find the best epsilon
@@ -200,42 +197,21 @@ sep_lasso_ <- function(outcomes, metadata, trt_unit, outcome_col, by) {
     }
 
 
-sep_lasso <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL, by=.1) {
+sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1) {
     #' Finds the lowest feasible tolerance in units of standard deviation for
     #' all time periods and covariates
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param outcome_col Column name which identifies outcomes, if NULL then
-    #'                    assume only one outcome
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
     #'
     #' @return max ent SC fit with lowest imbalance tolerance
     #' @export
-    
-    ## get the times
-    t_int <- metadata$t_int
-
-    ## add a second time column to selection
-    newout <- outcomes %>%
-        mutate(time2=ifelse(time < (t_int-1), paste(time), paste(t_int-1)))
-
-    ## if outcome_col is provided, interact with time
-    if(!is.null(outcome_col)) {
-        newout$new_col <- interaction(newout$time2, newout[[outcome_col]])
-    } else {
-        ## if no outcome_col, then just do time
-        newout$new_col <- newout$time2
-    }
 
     ## get the lowest global imbalance
-    epslist <- sep_lasso_(newout, metadata, trt_unit, "new_col", by)
-
+    epslist <- sep_lasso_(outcomes, metadata, trt_unit, by)
     ## fit the SC
-    lasso_sc <- get_entropy(newout, metadata, trt_unit, epslist, "new_col")
-
-    ## get rid of temporary columns
-    lasso_sc$outcomes <- lasso_sc$outcomes %>% select(-time2, -new_col)
+    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist, lasso=TRUE)
 
     return(lasso_sc)
 }
