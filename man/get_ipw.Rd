@@ -4,7 +4,7 @@
 \alias{get_ipw}
 \title{Fit IPW weights with a logit propensity score model}
 \usage{
-get_ipw(outcomes, metadata, alpha_w = NULL)
+get_ipw(outcomes, metadata, alpha_w = NULL, net_param = 1)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -12,6 +12,8 @@ get_ipw(outcomes, metadata, alpha_w = NULL)
 \item{metadata}{Dataframe of metadata}
 
 \item{alpha_w}{regularization parameter for weights}
+
+\item{net_param}{elastic net parameter, 1: lasso, 0: ridge, default: 1}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 }

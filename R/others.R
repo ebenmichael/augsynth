@@ -3,10 +3,11 @@
 ################################################################################
 
 
-fit_ipw_formatted <- function(data_out, alpha_w=NULL) {
+fit_ipw_formatted <- function(data_out, alpha_w=NULL, net_param=1) {
     #' Fit IPW weights with a logit propensity score model
     #' @param data_out formatted data from format_ipw
     #' @param alpha_w regularization parameter for weights
+    #' @param net_param elastic net parameter, 1: lasso, 0: ridge, default: 1
     #'
     #' @return inverse of predicted propensity scores
     #'         outcome regression parameters
@@ -20,13 +21,15 @@ fit_ipw_formatted <- function(data_out, alpha_w=NULL) {
     y <- data_out$y
 
     if(is.null(alpha_w)){
-        alpha_w <- glmnet::cv.glmnet(x, trt, family="binomial",
-                                     alpha=0, intercept=FALSE)$lambda.min
+        cv <- glmnet::cv.glmnet(x, trt, family="binomial",
+                                alpha=net_param,
+                                intercept=FALSE)
+        alpha_w <- cv$lambda.min
         
     }
 
     fit <- glmnet::glmnet(x, trt, family="binomial",
-                          alpha=0,
+                          alpha=net_param,
                           lambda=alpha_w, intercept=FALSE)
 
     ## get predicted probabilities P(W=1|X)
@@ -49,7 +52,9 @@ fit_ipw_formatted <- function(data_out, alpha_w=NULL) {
                 scaled_primal_obj=scaled_primal_obj,
                 is_treated=data_out$is_treated,
                 dual=fit$beta,
-                pscores=pscores))
+                pscores=pscores,
+                reg_param=alpha_w,
+                net_param=net_param))
 }
 
 
@@ -73,19 +78,20 @@ fit_ipw <- function(outcomes, metadata, trt_unit=1, alpha_w) {
     return(fit_ipw_formatted(data_out, alpha_w))
 }
 
-get_ipw <- function(outcomes, metadata, alpha_w=NULL) {
+get_ipw <- function(outcomes, metadata, alpha_w=NULL, net_param=1) {
     #' Fit IPW weights with a logit propensity score model
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param alpha_w regularization parameter for weights
+    #' @param net_param elastic net parameter, 1: lasso, 0: ridge, default: 1
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
     ## get the synthetic controls weights
     data_out <- format_ipw(outcomes, metadata)
-    out <- fit_ipw_formatted(data_out, alpha_w)
+    out <- fit_ipw_formatted(data_out, alpha_w, net_param)
 
     ctrls <- impute_dr(data_out$outcomes, metadata, out)
     ctrls$outparams <- out$outparams
@@ -93,17 +99,20 @@ get_ipw <- function(outcomes, metadata, alpha_w=NULL) {
     ctrls$scaled_primal_obj <- out$scaled_primal_obj
     ctrls$pscores <- out$pscores
     ctrls$dual <- out$dual
+    ctrls$reg_param <- out$reg_param
+    ctrls$net_param <- out$net_param
     return(ctrls)
 }
 
 
 
-fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL) {
+fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL, net_param=1) {
     #' Fit a regularized outcome model and synthetic controls
     #' for a double robust estimator
     #' @param data_out formatted data from format_ipw
     #' @param alpha_w regularization parameter for p score, if NULL use CV
     #' @param alpha_o regularization parameter for outcome model, if NULL use CV
+    #' @param net_param elastic net parameter, 1: lasso, 0: ridge, default: 1
     #'
     #' @return synthetic control weights,
     #'         outcome regression parameters
@@ -112,7 +121,7 @@ fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL) {
     #'         boolean for treated 
 
 
-    ws <- fit_ipw_formatted(data_out, alpha_w)
+    ws <- fit_ipw_formatted(data_out, alpha_w, net_param)
 
     ## fit regularized regression for outcomes for each post period
     x <- data_out$X
@@ -121,14 +130,15 @@ fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL) {
     
     if(!is.null(alpha_o)) {
         outfit <- function(y) {
-            fit <- glmnet::glmnet(x, y, alpha=0,
+            fit <- glmnet::glmnet(x, y, alpha=net_param,
                                   lambda=alpha_o,
                                   intercept=FALSE)
             return(coef(fit)[-1,])
         }
     } else {
         outfit <- function(y) {
-            alpha_o <- glmnet::cv.glmnet(x, y, alpha=0, intercept=FALSE)$lambda.min
+            alpha_o <- glmnet::cv.glmnet(x, y, alpha=net_param,
+                                         intercept=FALSE)$lambda.min
             fit <- glmnet::glmnet(x, y, alpha=0,
                                   lambda=alpha_o,
                                   intercept=FALSE)
@@ -145,7 +155,10 @@ fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL) {
                 is_treated=data_out$is_treated,
                 primal_obj=ws$primal_obj,
                 scaled_primal_obj=ws$scaled_primal_obj,
-                pscores=ws$pscores))
+                pscores=ws$pscores,
+                p_reg_param=ws$reg_param,
+                o_reg_param=alpha_o,
+                net_param=net_param))
     
     }
 
@@ -173,13 +186,15 @@ fit_dr <- function(outcomes, metadata, trt_unit=1, alpha_w=NULL, alpha_o=NULL) {
 
 
 
-get_dr <- function(outcomes, metadata, alpha_w=NULL, alpha_o=NULL) {
+get_dr <- function(outcomes, metadata, alpha_w=NULL, alpha_o=NULL,
+                   net_param=1) {
     #' Fit a regularized outcome model and synthetic controls
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param alpha_w regularization parameter for p score, if NULL use CV
     #' @param alpha_o regularization parameter for outcome model, if NULL use CV
+    #' @param net_param elastic net parameter, 1: lasso, 0: ridge, default: 1
     #'
     #' @return synthetic control weights,
     #'         outcome regression parameters
@@ -191,7 +206,7 @@ get_dr <- function(outcomes, metadata, alpha_w=NULL, alpha_o=NULL) {
     data_out <- format_ipw(outcomes, metadata)
 
     ## fit outcome regression and weights
-    fit <- fit_dr_formatted(data_out, alpha_w, alpha_o)
+    fit <- fit_dr_formatted(data_out, alpha_w, alpha_o, net_param)
     
     ## compute the DR estimate to "impute" the controls
     ctrls <- impute_dr(data_out$outcomes, metadata, fit) 
@@ -199,6 +214,9 @@ get_dr <- function(outcomes, metadata, alpha_w=NULL, alpha_o=NULL) {
     ctrls$primal_obj <- fit$primal_obj
     ctrls$scaled_primal_obj <- fit$scaled_primal_obj
     ctrls$pscores <- fit$pscores
+    ctrls$p_reg_param <- fit$p_reg_param
+    ctrls$o_reg_param <- fit$o_reg_param
+    ctrls$net_param <- fit$net_param
     
     return(ctrls)
 }

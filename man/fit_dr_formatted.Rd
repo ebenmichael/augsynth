@@ -5,7 +5,7 @@
 \title{Fit a regularized outcome model and synthetic controls
 for a double robust estimator}
 \usage{
-fit_dr_formatted(data_out, alpha_w = NULL, alpha_o = NULL)
+fit_dr_formatted(data_out, alpha_w = NULL, alpha_o = NULL, net_param = 1)
 }
 \arguments{
 \item{data_out}{formatted data from format_ipw}
@@ -13,6 +13,8 @@ fit_dr_formatted(data_out, alpha_w = NULL, alpha_o = NULL)
 \item{alpha_w}{regularization parameter for p score, if NULL use CV}
 
 \item{alpha_o}{regularization parameter for outcome model, if NULL use CV}
+
+\item{net_param}{elastic net parameter, 1: lasso, 0: ridge, default: 1}
 }
 \value{
 synthetic control weights,

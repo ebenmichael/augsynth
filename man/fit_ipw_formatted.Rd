@@ -4,12 +4,14 @@
 \alias{fit_ipw_formatted}
 \title{Fit IPW weights with a logit propensity score model}
 \usage{
-fit_ipw_formatted(data_out, alpha_w = NULL)
+fit_ipw_formatted(data_out, alpha_w = NULL, net_param = 1)
 }
 \arguments{
 \item{data_out}{formatted data from format_ipw}
 
 \item{alpha_w}{regularization parameter for weights}
+
+\item{net_param}{elastic net parameter, 1: lasso, 0: ridge, default: 1}
 }
 \value{
 inverse of predicted propensity scores

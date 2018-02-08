@@ -4,7 +4,7 @@
 \alias{get_dr}
 \title{Fit a regularized outcome model and synthetic controls}
 \usage{
-get_dr(outcomes, metadata, alpha_w = NULL, alpha_o = NULL)
+get_dr(outcomes, metadata, alpha_w = NULL, alpha_o = NULL, net_param = 1)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -14,6 +14,8 @@ get_dr(outcomes, metadata, alpha_w = NULL, alpha_o = NULL)
 \item{alpha_w}{regularization parameter for p score, if NULL use CV}
 
 \item{alpha_o}{regularization parameter for outcome model, if NULL use CV}
+
+\item{net_param}{elastic net parameter, 1: lasso, 0: ridge, default: 1}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 }
