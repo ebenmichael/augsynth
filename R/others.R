@@ -33,20 +33,20 @@ fit_ipw_formatted <- function(data_out, alpha_w=NULL, net_param=1) {
                           lambda=alpha_w, intercept=FALSE)
 
     ## get predicted probabilities P(W=1|X)
-    pscores <- predict(fit, x[trt==0,], type="response")
+    pscores <- predict(fit, x[trt==0,,drop=FALSE], type="response")
     weights <- pscores / (1-pscores)
     weights <- weights / sum(weights)
-    x1 <- apply(x[trt == 1,], 2, mean)
-    primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
+    x1 <- apply(x[trt == 1,,drop=FALSE], 2, mean)
+    primal_obj <- sum((t(weights) %*% x[trt==0,,drop=FALSE] - x1)^2)
 
-    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
-                                 rep(1/dim(x[trt == 0,])[1],
-                                     dim(x[trt == 0,])[1]) - x1)^2))
+    unif_primal_obj <- sqrt(sum((t(x[trt==0,,drop=FALSE]) %*%
+                                 rep(1/dim(x[trt==0,,drop=FALSE])[1],
+                                     dim(x[trt==0,,drop=FALSE])[1]) - x1)^2))
     scaled_primal_obj <- primal_obj / unif_primal_obj
     
     return(list(weights=as.numeric(weights),
-                controls=cbind(x[trt == 0,],y[trt == 0,]),
-                treated=cbind(x[trt == 1,],y[trt == 1,]),
+                controls=cbind(x[trt==0,,drop=FALSE],y[trt == 0,,drop=FALSE]),
+                treated=cbind(x[trt == 1,,drop=FALSE],y[trt == 1,,drop=FALSE]),
                 trt=trt,
                 primal_obj=primal_obj,
                 scaled_primal_obj=scaled_primal_obj,
@@ -150,8 +150,8 @@ fit_dr_formatted <- function(data_out, alpha_w=NULL, alpha_o=NULL, net_param=1) 
     return(list(weights=ws$weights,
                 dual=ws$dual,
                 outparams=regweights,
-                controls=cbind(x[trt == 0,],ys[trt == 0,]),
-                treated=cbind(x[trt == 1,],ys[trt == 1,]),
+                controls=cbind(x[trt==0,,drop=FALSE],ys[trt == 0,,drop=FALSE]),
+                treated=cbind(x[trt == 1,,drop=FALSE],ys[trt == 1,,drop=FALSE]),
                 is_treated=data_out$is_treated,
                 primal_obj=ws$primal_obj,
                 scaled_primal_obj=ws$scaled_primal_obj,
@@ -239,14 +239,14 @@ impute_dr <- function(outcomes, metadata, fit) {
     t <- dim(fit$controls)[2]
     ## separate out pre and post period controls
     
-    t_int <- metadata$t_int
+    t_int <- (metadata$t_int - min(outcomes$time) + 1)
 
     preC <- fit$controls[,1:(t_int-1)]
-    postC <- fit$control[,(t_int):t]
+    postC <- fit$controls[,(t_int):t]
 
     ## and pre and post period treated
-    preT <- fit$treated[,1:(t_int-1)]
-    postT <- fit$treated[,(t_int):t]
+    preT <- fit$treated[,1:(t_int-1), drop=FALSE]
+    postT <- fit$treated[,(t_int):t, drop=FALSE]
 
     ## find the residuals and weight them by synth weights
     if(is.null(fit$outparams)) {
@@ -254,7 +254,6 @@ impute_dr <- function(outcomes, metadata, fit) {
     } else {
         outparams <- fit$outparams
     }
-
 
     resid <- postC - preC %*% outparams
 
@@ -266,9 +265,15 @@ impute_dr <- function(outcomes, metadata, fit) {
     ## combine into DR estimate
     dr <- mu0 + wresid
 
-    ## combine pre period with DR estimate into a "synthetic control"
-    dr_ctrl <- c(colMeans(preT), dr)
+    if(is.null(fit$outparams)) {
+        ## if no outcome regression combine with weighted avg of pre-period
+        dr_ctrl <- c(t(preC) %*% fit$weights, wresid)
+    } else{
+        ## combine pre period with DR estimate into a "synthetic control"
+        dr_ctrl <- c(colMeans(preT), dr)
+    }
 
+    dr_ctrl <- c(t(preC) %*% fit$weights, wresid)
     ## replace true outcome with imputed value
     dr_outcomes <- outcomes %>%
         filter(unit == -1) %>%
@@ -309,17 +314,17 @@ fit_ebal_formatted <- function(data_out) {
     ## get predicted probabilities P(W=1|X)
     pscores <- bal$w / (1 + bal$w)
     weights <- bal$w / sum(bal$w)
-    x1 <- apply(x[trt == 1,], 2, mean)
-    primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
+    x1 <- apply(x[trt == 1,,drop=FALSE], 2, mean)
+    primal_obj <- sum((t(weights) %*% x[trt==0,,drop=FALSE] - x1)^2)
 
-    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
-                                 rep(1/dim(x[trt == 0,])[1],
-                                     dim(x[trt == 0,])[1]) - x1)^2))
+    unif_primal_obj <- sqrt(sum((t(x[trt==0,,drop=FALSE]) %*%
+                                 rep(1/dim(x[trt==0,,drop=FALSE])[1],
+                                     dim(x[trt==0,,drop=FALSE])[1]) - x1)^2))
     scaled_primal_obj <- primal_obj / unif_primal_obj
     
     return(list(weights=as.numeric(weights),
-                controls=cbind(x[trt == 0,],y[trt == 0,]),
-                treated=cbind(x[trt == 1,],y[trt == 1,]),
+                controls=cbind(x[trt==0,,drop=FALSE],y[trt == 0,,drop=FALSE]),
+                treated=cbind(x[trt == 1,,drop=FALSE],y[trt == 1,,drop=FALSE]),
                 trt=trt,
                 primal_obj=primal_obj,
                 scaled_primal_obj=scaled_primal_obj,
@@ -366,18 +371,18 @@ fit_uniform_formatted <- function(data_out) {
 
 
     ## get predicted probabilities P(W=1|X)
-    weights <- rep(1/dim(x[trt==0,])[1], dim(x[trt == 0,])[1])
-    x1 <- apply(x[trt == 1,], 2, mean)
-    primal_obj <- sum((t(weights) %*% x[trt == 0,] - x1)^2)
+    weights <- rep(1/dim(x[trt==0,,drop=FALSE])[1], dim(x[trt==0,,drop=FALSE])[1])
+    x1 <- apply(x[trt == 1,,drop=FALSE], 2, mean)
+    primal_obj <- sum((t(weights) %*% x[trt==0,,drop=FALSE] - x1)^2)
 
-    unif_primal_obj <- sqrt(sum((t(x[trt == 0, ]) %*%
-                                 rep(1/dim(x[trt == 0,])[1],
-                                     dim(x[trt == 0,])[1]) - x1)^2))
+    unif_primal_obj <- sqrt(sum((t(x[trt==0,,drop=FALSE]) %*%
+                                 rep(1/dim(x[trt==0,,drop=FALSE])[1],
+                                     dim(x[trt==0,,drop=FALSE])[1]) - x1)^2))
     scaled_primal_obj <- primal_obj / unif_primal_obj
     
     return(list(weights=as.numeric(weights),
-                controls=cbind(x[trt == 0,],y[trt == 0,]),
-                treated=cbind(x[trt == 1,],y[trt == 1,]),
+                controls=cbind(x[trt==0,,drop=FALSE],y[trt == 0,,drop=FALSE]),
+                treated=cbind(x[trt == 1,,drop=FALSE],y[trt == 1,,drop=FALSE]),
                 trt=trt,
                 primal_obj=primal_obj,
                 scaled_primal_obj=scaled_primal_obj,

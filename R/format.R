@@ -185,9 +185,7 @@ format_ipw <- function(outcomes, metadata, outcome_col=NULL) {
 
     ## average together treated units
     trtavg <- outcomes %>% filter(treated) %>%
-        group_by(time, treated, outcome_id,
-                 sim_num, potential_outcome,
-                 synthetic) %>%
+        group_by_at(setdiff(names(outcomes), c("outcome", "unit"))) %>%
         summarise(outcome = mean(outcome)) %>%
         mutate(unit=-1) %>% 
         data.frame()
