@@ -43,7 +43,7 @@ bin_search <- function(start, end, by, feasfunc) {
 }
 
 
-lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.1) {
+lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.1, maxep=1) {
     #' Finds the lowest feasible tolerance in each group, holding
     #' the previous groups fixed
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -52,7 +52,8 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
     #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
+    #' @param by Step size for tolerances to dry, default: 0.1
+    #' @param maxep Maximum tolerance to consider
     #'
     #' @return List with lowest tolerances lexically
     #' @export
@@ -75,14 +76,16 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
 
     ## iterate over groups, finding the lowest feasible tolerance
     for(g in grp_order) {
+
         ## create the feasibility function by keeping other tolerances fixed
         feasfunc <- function(ep) {
             epslist[[g]] <- ep
-            return(suppressMessages(fit_entropy_formatted(data_out, epslist)$feasible))
+            feas <- suppressMessages(fit_entropy_formatted(data_out, epslist)$feasible)
+            return(feas)
         }
         
         ## find the best epsilon
-        minep <- bin_search(0, mags[[g]], by * mags[[g]], feasfunc)
+        minep <- bin_search(0, maxep, by, feasfunc)
 
         ## if it failed, then stop everything
         if(minep < 0) {
@@ -130,13 +133,14 @@ lexical_time <- function(outcomes, metadata, trt_unit=1, by=.1) {
 
 
 
-recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1) {
+recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1, maxep=1) {
     #' Lexically minimizes the imbalance in two groups, recent and old
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param t_past Number of recent time periods to balance especially
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
+    #' @param maxep Maximum tolerance to consider
     #'
     #' @return Fitted SC with lexically minimized imbalance in time groups
     #' @export
@@ -146,8 +150,8 @@ recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1) {
         mutate(recent=ifelse(time < t_past, "Old", "Recent"))
 
     ## get the lowest feasible tolerances
-    time_eps <- lexical(timeout, metadata, c("Recent", "Old"), "recent", trt_unit, by)
-
+    time_eps <- lexical(timeout, metadata, c("Recent", "Old"), "recent", trt_unit, by, maxep)
+    
     ## fit the control
     lex <- get_entropy(timeout, metadata, trt_unit, time_eps, "recent")
 

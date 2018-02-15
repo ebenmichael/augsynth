@@ -176,15 +176,20 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE) {
     ## compute l2 error per group
     primal_group_obj <- lapply(groups,
                                function(g) sqrt(sum((t(x[,g]) %*% weights - y[g,])^2)))
+
     ## compute propensity scores
     pscores <- 1 / (1 + exp(-eta))
 
     ## get magnitude of vectors
     mags <- lapply(groups, function(g) sqrt(sum(y[g,]^2)))
     ## check for equality within 10^-3 * magnitude
-    tol <- 10^-3
+    tol <- 1e-1
     equalfeasible <- mapply(function(ep, ob, mag)
-        abs(ep - ob) / ep < tol,
+        if(ep > 0) {
+            abs(ep - ob) / ep < tol
+        } else {
+            abs(ep - ob) < tol^3
+        },
         epslist, primal_group_obj, mags)
     lessfeasible <- mapply(function(ep, ob)
         ob < ep, 

@@ -5,7 +5,8 @@
 \title{Finds the lowest feasible tolerance in each group, holding
 the previous groups fixed}
 \usage{
-lexical(outcomes, metadata, grp_order, outcome_col, trt_unit = 1, by = 0.1)
+lexical(outcomes, metadata, grp_order, outcome_col, trt_unit = 1, by = 0.1,
+  maxep = 1)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -19,7 +20,9 @@ assume only one outcome}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
-\item{by}{Step size for tolerances to dry, default: 0.1 * magnitude}
+\item{by}{Step size for tolerances to dry, default: 0.1}
+
+\item{maxep}{Maximum tolerance to consider}
 }
 \value{
 List with lowest tolerances lexically
