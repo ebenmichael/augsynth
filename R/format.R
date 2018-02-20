@@ -11,10 +11,14 @@ format_synth <- function(outcomes, metadata, trt_unit=1) {
     #' @return List of data to use as an argument for Synth::synth,
     #'         whether the unit was actually treated
 
+
     ## get the number of the treated unit
-    distinct_units <- outcomes %>% distinct(unit, .keep_all=TRUE)
-    ctrl_units <- distinct_units %>% filter(unit != trt_unit) %>%
-        select(unit) %>% as.matrix() %>% as.vector()
+    ctrl_units <- outcomes %>%
+        distinct(unit, .keep_all=TRUE) %>%
+        filter(unit != trt_unit) %>%
+        select(unit) %>%
+        as.matrix() %>%
+        as.vector()
     ## get the pre treatment times
     t0 <- metadata$t_int
     times <- outcomes %>% distinct(time)
@@ -92,17 +96,29 @@ format_synth_multi <- function(outcomes, metadata, outcome_col, trt_unit=1) {
 }
 
 
-format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
+format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL,
+                        cols=list(unit="unit", time="time",
+                                  outcome="outcome", treated="treated")) {
     #' Format "long" panel data into "wide" matrices to fit synthetic controls
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 1
     #' @param outcome_col Column name which identifies outcomes,
     #'                    if NULL then only one outcome is assumed
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return List of data to use as an argument for Synth::synth,
     #'         whether the unit was actually treated
     #' @export
+
+
+    ## create new dataframe with renamed columns
+    newdf <- outcomes %>%
+        rename_(.dots=cols) %>%
+        mutate(synthetic="N",
+               "potential_outcome"=ifelse(treated,"Y(1)", "Y(0)"))
+                                        # add in extra columns
 
     ## count number of treated units
     n_t <- outcomes %>% distinct(unit, treated) %>%
@@ -112,45 +128,58 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL) {
 
     ## if there is more than one treated unit, average them together
     if(n_t > 1) {
-        cols <- c("time", "treated",
-                  "sim_num", "potential_outcome", paste(outcome_col),
-                  "synthetic")
-        trtavg <- outcomes %>% filter(treated) %>%
-            group_by_at(setdiff(names(outcomes), c("outcome", "unit")))
+        trtavg <- newdf %>% filter(treated) %>%
+            group_by_at(setdiff(names(outcomes), c(outcome, unit)))
         trtavg <- trtavg %>%
             summarise(outcome = mean(outcome)) %>%
             mutate(unit=-1) %>% 
             data.frame()
-        ctrls <- outcomes %>% filter(!treated)
-        outcomes <- rbind(trtavg, ctrls)
+        ctrls <- newdf %>% filter(!treated)
+        newdf <- rbind(trtavg, ctrls)
         trt_unit <- -1
     }
 
     
     if(is.null(outcome_col)) {
-        out <- format_synth(outcomes, metadata, trt_unit)
+        out <- format_synth(newdf, metadata, trt_unit)
     } else {
-        out <- format_synth_multi(outcomes, metadata, outcome_col, trt_unit)
+        out <- format_synth_multi(newdf, metadata, outcome_col, trt_unit)
     }
+    
     ## include averaged outcomes
-    out$outcomes <- outcomes
+    out$outcomes <- newdf
     out$trt_unit <- trt_unit
+
+    ## include mapping back to original names
+    oldcols <- lapply(1:length(cols), function(i) names(cols)[i])
+    names(oldcols) <- sapply(1:length(cols), function(i) cols[[i]])
+    out$oldcols <- oldcols
     return(out)
 }
 
 
-format_ipw <- function(outcomes, metadata, outcome_col=NULL) {
+format_ipw <- function(outcomes, metadata, outcome_col=NULL,
+                       cols=list(unit="unit", time="time",
+                                 outcome="outcome", treated="treated")) {
     #' Format "long" panel data into "wide" matrices to fit IPW
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param outcome_col Column name which identifies outcomes,
     #'                    if NULL then only one outcome is assumed
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return List of pre and post period outcomes, and treatment indicator
     #' @export
 
+    newdf <- outcomes %>%
+        rename_(.dots=cols) %>%
+        mutate(synthetic="N",
+               "potential_outcome"=ifelse(treated,"Y(1)", "Y(0)"))
+                                        # add in extra columns
+
     ## get data into wide form
-    wide <- outcomes %>%
+    wide <- newdf %>%
         filter(time < metadata$t_int)
     if(!is.null(outcome_col)) {
         wide$cov <- interaction(wide$time, wide[[outcome_col]])
@@ -168,7 +197,7 @@ format_ipw <- function(outcomes, metadata, outcome_col=NULL) {
     trt <- wide[,1]
 
     ## get post-period outcomes
-    post <- outcomes %>%
+    post <- newdf %>%
         filter(time >= metadata$t_int)
     if(!is.null(outcome_col)) {
         post$cov <- interaction(post$time, post[[outcome_col]])
@@ -184,15 +213,15 @@ format_ipw <- function(outcomes, metadata, outcome_col=NULL) {
     y <- post[,-1]
 
     ## average together treated units
-    trtavg <- outcomes %>% filter(treated) %>%
-        group_by_at(setdiff(names(outcomes), c("outcome", "unit"))) %>%
+    trtavg <- newdf %>% filter(treated) %>%
+        group_by_at(setdiff(names(newdf), c("outcome", "unit"))) %>%
         summarise(outcome = mean(outcome)) %>%
         mutate(unit=-1) %>% 
         data.frame()
-    ctrls <- outcomes %>% filter(!treated)
+    ctrls <- newdf %>% filter(!treated)
     outcomes <- rbind(trtavg, ctrls)
     trt_unit <- -1
     
-    return(list(X=X, trt=trt, y=y, outcomes=outcomes))
+    return(list(X=X, trt=trt, y=y, outcomes=newdf))
 }
 

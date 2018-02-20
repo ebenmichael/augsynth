@@ -52,11 +52,11 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
     scale_alpha_manual(values=c(0.05, 1)) +
         guides(alpha=FALSE, linetype=FALSE)
     if("syn_method" %in% names(outcomes) & "outcome_id" %in% names(outcomes)) {
-        p <- p + facet_grid(syn_method ~ outcome_id)
+        p <- p + facet_grid(syn_method ~ outcome_id, scales="free")
     } else if("outcome_id" %in% names(outcomes)){
-        p <- p + facet_wrap( ~outcome_id)
+        p <- p + facet_wrap( ~outcome_id, scales="free")
     } else if("syn_method" %in% names(outcomes)) {
-        p <- p + facet_wrap( ~syn_method)
+        p <- p + facet_wrap( ~syn_method, scales="free")
     }
     p <- p + theme_bw()
     return(p)
@@ -80,6 +80,10 @@ compute_att <- function(outcomes, metadata, trt_unit=NULL) {
                    )
     }
 
+    if(is.null(trt_unit)) {
+        trt_unit <- (outcomes %>% filter(treated == TRUE) %>% distinct(unit))$unit
+    }
+
     # join outcomes with metadata on sim number
     tmpdf <- outcomes %>%
         inner_join(metadata) %>%
@@ -95,7 +99,7 @@ compute_att <- function(outcomes, metadata, trt_unit=NULL) {
                                      )
                                    ),
                ) %>%
-        filter(treated==TRUE, label != "Outcome Under Control")
+        filter(unit == trt_unit)
 
     if("syn_method" %in% names(outcomes)) {
         tmpdf  <- tmpdf %>% select(outcome_id, unit, time, t_int,
@@ -118,7 +122,7 @@ compute_att <- function(outcomes, metadata, trt_unit=NULL) {
         mutate(att=N-est)
 
     if("syn_method" %in% names(outcomes)) {
-        tmpdf <- tmpdf %>% mutate(syntype = paste(syntype, syn_method, sep="-"))
+        tmpdf <- tmpdf %>% mutate(syntype = syn_method)
     }
     return(tmpdf)
 }
