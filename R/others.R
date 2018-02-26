@@ -273,7 +273,6 @@ impute_dr <- function(outcomes, metadata, fit) {
         dr_ctrl <- c(colMeans(preT), dr)
     }
 
-    dr_ctrl <- c(t(preC) %*% fit$weights, wresid)
     ## replace true outcome with imputed value
     dr_outcomes <- outcomes %>%
         filter(unit == -1) %>%
