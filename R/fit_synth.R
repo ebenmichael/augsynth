@@ -58,6 +58,7 @@ impute_controls <- function(outcomes, fit, trt_unit) {
     #' @param trt_unit Unit that is treated (target for regression)
     #'
     #' @return outcomes with additional synthetic control added and weights
+    #' @export
 
     ## impute the controls
     syn_ctrl <- fit$controls %*% fit$weights
