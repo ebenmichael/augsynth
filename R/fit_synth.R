@@ -5,7 +5,8 @@
 fit_synth_formatted <- function(data_out) {
     #' Fit synthetic controls on outcomes after formatting data
     #' @param data_out Panel data formatted by Synth::dataprep
-    #' 
+    #'
+    #' @export
     is_treated <- data_out$is_treated
     data_out <- data_out$synth_data
     ## change the "predictors" to be the pre period outcomes
