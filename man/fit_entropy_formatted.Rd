@@ -5,7 +5,7 @@
 \title{Fit l2 entropy regularized synthetic controls
 by solving the dual problem}
 \usage{
-fit_entropy_formatted(data_out, eps, lasso = FALSE)
+fit_entropy_formatted(data_out, eps, lasso = FALSE, max_iters = 1000)
 }
 \arguments{
 \item{data_out}{formatted data from format_entropy}
@@ -14,6 +14,8 @@ fit_entropy_formatted(data_out, eps, lasso = FALSE)
 outcome, if only one outcome type then a scalar}
 
 \item{lasso}{Whether to do lasso (every covariate is separate)}
+
+\item{max_iters}{Maximum number of iterations}
 }
 \value{
 synthetic control weights

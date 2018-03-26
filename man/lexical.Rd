@@ -6,7 +6,8 @@
 the previous groups fixed}
 \usage{
 lexical(outcomes, metadata, grp_order, outcome_col, trt_unit = 1, by = 0.1,
-  maxep = 1)
+  maxep = 1, cols = list(unit = "unit", time = "time", outcome = "outcome",
+  treated = "treated"), lowerep = 0)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -23,6 +24,9 @@ assume only one outcome}
 \item{by}{Step size for tolerances to dry, default: 0.1}
 
 \item{maxep}{Maximum tolerance to consider}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 List with lowest tolerances lexically

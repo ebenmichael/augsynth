@@ -5,7 +5,8 @@
 \title{Fit l2_entropy regularized synthetic controls on outcomes}
 \usage{
 get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
-  outcome_col = NULL, lasso = FALSE)
+  outcome_col = NULL, lasso = FALSE, cols = list(unit = "unit", time =
+  "time", outcome = "outcome", treated = "treated"), max_iters = 1000)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -20,6 +21,11 @@ get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
 assume only one outcome}
 
 \item{lasso}{Whether to do lasso (every covariate is separate)}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
+
+\item{max_iters}{Maximum number of iterations}
 }
 \value{
 outcomes with additional synthetic control added and weights

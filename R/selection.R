@@ -37,13 +37,18 @@ bin_search <- function(start, end, by, feasfunc) {
     #' @param end Ending value of tolerances
     #' @param by Step size of tolerances
     #' @param feasfunc Function which returns True if feasible
+    #' @export
 
     eps <- seq(start, end, by)
     return(bin_search_(eps, feasfunc))
 }
 
 
-lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.1, maxep=1) {
+lexical <- function(outcomes, metadata, grp_order, outcome_col,
+                    trt_unit=1, by=.1, maxep=1, 
+                    cols=list(unit="unit", time="time",
+                              outcome="outcome", treated="treated"),
+                    lowerep=0) {
     #' Finds the lowest feasible tolerance in each group, holding
     #' the previous groups fixed
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -54,12 +59,14 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1
     #' @param maxep Maximum tolerance to consider
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return List with lowest tolerances lexically
     #' @export
 
     ## just format data once
-    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col)
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols=cols)
 
     ## get the magnitdues for the controls in each group
     syn_data <- data_out$synth_data
@@ -85,7 +92,11 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
         }
         
         ## find the best epsilon
-        minep <- bin_search(0, maxep, by, feasfunc)
+        if(g %in% names(lowerep)) {
+            minep <- bin_search(lowerep[[g]], maxep, by, feasfunc)
+        } else {
+            minep <- bin_search(lowerep, maxep, by, feasfunc)
+        }
 
         ## if it failed, then stop everything
         if(minep < 0) {
@@ -99,24 +110,34 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col, trt_unit=1, by=.
 }
 
 
-lexical_time <- function(outcomes, metadata, trt_unit=1, by=.1) {
+lexical_time <- function(outcomes, metadata, trt_unit=1, by=.1,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated")) {
     #' Finds the lowest feasible tolerance in each time period from
     #' most recent to oldest, holding the previous times fixed
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return List with lowest tolerances lexically
     #' @export
 
+    ## rename columns
+    newdf <- outcomes %>%
+        rename_(.dots=cols) %>%
+        mutate(synthetic="N",
+               "potential_outcome"=ifelse(treated,"Y(1)", "Y(0)"))
+                                        # add in extra columns
     ## get the times
     t_int <- metadata$t_int
-    times <- rev(paste((outcomes %>% filter(time < t_int) %>%
+    times <- rev(paste((newdf %>% filter(time < t_int) %>%
                     distinct(time) %>% select(time))$time))
 
     ## add a second time column to selection
-    timeout <- outcomes %>%
+    timeout <- newdf %>%
         mutate(time2=ifelse(time < (t_int-1), paste(time), paste(t_int-1)))
 
     ## get the lowest feasible tolerances
@@ -133,7 +154,10 @@ lexical_time <- function(outcomes, metadata, trt_unit=1, by=.1) {
 
 
 
-recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1, maxep=1) {
+recent_group <- function(outcomes, metadata, t_past,
+                         trt_unit=1, by=.1, maxep=1,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated")) {
     #' Lexically minimizes the imbalance in two groups, recent and old
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
@@ -141,12 +165,21 @@ recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1, maxep=1)
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
     #' @param maxep Maximum tolerance to consider
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return Fitted SC with lexically minimized imbalance in time groups
     #' @export
-
+    
+    ## rename columns
+    newdf <- outcomes %>%
+        rename_(.dots=cols) %>%
+        mutate(synthetic="N",
+               "potential_outcome"=ifelse(treated,"Y(1)", "Y(0)"))
+                                        # add in extra columns
+    
     ## add a column indicating before or after "most recent period"
-    timeout <- outcomes %>%
+    timeout <- newdf %>%
         mutate(recent=ifelse(time < t_past, "Old", "Recent"))
 
     ## get the lowest feasible tolerances
@@ -162,17 +195,21 @@ recent_group <- function(outcomes, metadata, t_past, trt_unit=1, by=.1, maxep=1)
 }
 
 
-sep_lasso_ <- function(outcomes, metadata, trt_unit, by) {
+sep_lasso_ <- function(outcomes, metadata, trt_unit, by,
+                       cols=list(unit="unit", time="time",
+                                 outcome="outcome", treated="treated")) {
     #' Internal function that does the work of sep_lasso
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression)
     #' @param by Step size for tolerances to try
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return List with lowest tolerances in units of standard deviation
-    
+
     ## just format data once
-    data_out <- format_data(outcomes, metadata, trt_unit)
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
 
     ## get the standard deviations of controls for each group
     syn_data <- data_out$synth_data
@@ -202,21 +239,25 @@ sep_lasso_ <- function(outcomes, metadata, trt_unit, by) {
     }
 
 
-sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1) {
+sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
+                      cols=list(unit="unit", time="time",
+                                outcome="outcome", treated="treated")) {
     #' Finds the lowest feasible tolerance in units of standard deviation for
     #' all time periods and covariates
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return max ent SC fit with lowest imbalance tolerance
     #' @export
 
     ## get the lowest global imbalance
-    epslist <- sep_lasso_(outcomes, metadata, trt_unit, by)
+    epslist <- sep_lasso_(outcomes, metadata, trt_unit, by, cols=cols)
     ## fit the SC
-    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist, lasso=TRUE)
+    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist, lasso=TRUE, cols=cols)
 
     return(lasso_sc)
 }

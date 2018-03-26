@@ -73,17 +73,21 @@ impute_controls <- function(outcomes, fit, trt_unit) {
 }
 
 
-get_synth <- function(outcomes, metadata, trt_unit=1) {
+get_synth <- function(outcomes, metadata, trt_unit=1,
+                      cols=list(unit="unit", time="time",
+                                outcome="outcome", treated="treated")) {
     #' Fit synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
     ## get the synthetic controls weights
-    data_out <- format_data(outcomes, metadata, trt_unit)
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
     out <- fit_synth_formatted(data_out)
 
     ctrls <- impute_controls(data_out$outcomes, out, data_out$trt_unit)

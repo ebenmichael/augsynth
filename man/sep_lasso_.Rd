@@ -4,7 +4,8 @@
 \alias{sep_lasso_}
 \title{Internal function that does the work of sep_lasso}
 \usage{
-sep_lasso_(outcomes, metadata, trt_unit, by)
+sep_lasso_(outcomes, metadata, trt_unit, by, cols = list(unit = "unit", time =
+  "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -14,6 +15,9 @@ sep_lasso_(outcomes, metadata, trt_unit, by)
 \item{trt_unit}{Unit that is treated (target for regression)}
 
 \item{by}{Step size for tolerances to try}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 List with lowest tolerances in units of standard deviation

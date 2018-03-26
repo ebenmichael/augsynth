@@ -4,7 +4,8 @@
 \alias{format_ipw}
 \title{Format "long" panel data into "wide" matrices to fit IPW}
 \usage{
-format_ipw(outcomes, metadata, outcome_col = NULL)
+format_ipw(outcomes, metadata, outcome_col = NULL, cols = list(unit =
+  "unit", time = "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -13,6 +14,9 @@ format_ipw(outcomes, metadata, outcome_col = NULL)
 
 \item{outcome_col}{Column name which identifies outcomes,
 if NULL then only one outcome is assumed}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 List of pre and post period outcomes, and treatment indicator
