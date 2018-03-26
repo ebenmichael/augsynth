@@ -4,7 +4,8 @@
 \alias{get_synth}
 \title{Fit synthetic controls on outcomes}
 \usage{
-get_synth(outcomes, metadata, trt_unit = 1)
+get_synth(outcomes, metadata, trt_unit = 1, cols = list(unit = "unit", time
+  = "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -12,6 +13,9 @@ get_synth(outcomes, metadata, trt_unit = 1)
 \item{metadata}{Dataframe of metadata}
 
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 outcomes with additional synthetic control added and weights

@@ -37,6 +37,7 @@ bin_search <- function(start, end, by, feasfunc) {
     #' @param end Ending value of tolerances
     #' @param by Step size of tolerances
     #' @param feasfunc Function which returns True if feasible
+    #' @export
 
     eps <- seq(start, end, by)
     return(bin_search_(eps, feasfunc))
@@ -44,9 +45,10 @@ bin_search <- function(start, end, by, feasfunc) {
 
 
 lexical <- function(outcomes, metadata, grp_order, outcome_col,
-                    trt_unit=1, by=.1, maxep=1,
+                    trt_unit=1, by=.1, maxep=1, 
                     cols=list(unit="unit", time="time",
-                              outcome="outcome", treated="treated")) {
+                              outcome="outcome", treated="treated"),
+                    lowerep=0) {
     #' Finds the lowest feasible tolerance in each group, holding
     #' the previous groups fixed
     #' @param outcomes Tidy dataframe with the outcomes and meta data
@@ -90,7 +92,11 @@ lexical <- function(outcomes, metadata, grp_order, outcome_col,
         }
         
         ## find the best epsilon
-        minep <- bin_search(0, maxep, by, feasfunc)
+        if(g %in% names(lowerep)) {
+            minep <- bin_search(lowerep[[g]], maxep, by, feasfunc)
+        } else {
+            minep <- bin_search(lowerep, maxep, by, feasfunc)
+        }
 
         ## if it failed, then stop everything
         if(minep < 0) {

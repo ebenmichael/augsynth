@@ -5,7 +5,8 @@
 \title{Lexically minimizes the imbalance in two groups, recent and old}
 \usage{
 recent_group(outcomes, metadata, t_past, trt_unit = 1, by = 0.1,
-  maxep = 1)
+  maxep = 1, cols = list(unit = "unit", time = "time", outcome = "outcome",
+  treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -19,6 +20,9 @@ recent_group(outcomes, metadata, t_past, trt_unit = 1, by = 0.1,
 \item{by}{Step size for tolerances to dry, default: 0.1 * magnitude}
 
 \item{maxep}{Maximum tolerance to consider}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 Fitted SC with lexically minimized imbalance in time groups

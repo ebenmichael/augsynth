@@ -19,6 +19,7 @@ format_synth <- function(outcomes, metadata, trt_unit=1) {
         select(unit) %>%
         as.matrix() %>%
         as.vector()
+
     ## get the pre treatment times
     t0 <- metadata$t_int
     times <- outcomes %>% distinct(time)
@@ -29,6 +30,7 @@ format_synth <- function(outcomes, metadata, trt_unit=1) {
     ## no option for no predictors
     synth_data <- outcomes %>%
         mutate(pred1=1)
+
     ## fit synthetic controls weights
     synth_data <-
         Synth::dataprep(foo=synth_data,

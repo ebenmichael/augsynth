@@ -5,7 +5,8 @@
 \title{Finds the lowest feasible tolerance in units of standard deviation for
 all time periods and covariates}
 \usage{
-sep_lasso(outcomes, metadata, trt_unit = 1, by = 0.1)
+sep_lasso(outcomes, metadata, trt_unit = 1, by = 0.1, cols = list(unit =
+  "unit", time = "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -15,6 +16,9 @@ sep_lasso(outcomes, metadata, trt_unit = 1, by = 0.1)
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
 \item{by}{Step size for tolerances to dry, default: 0.1 * magnitude}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 max ent SC fit with lowest imbalance tolerance
