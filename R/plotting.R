@@ -41,16 +41,12 @@ plot_outcomes <- function(outcomes, metadata, trt_unit=NULL) {
         ## plot the outcomes
         ggplot() +
         geom_line(aes(x=time, y=outcome, # plot outcomes vs time
-                      group = grouping, color=label,
+                      group = grouping, color=treated,
                       alpha=treated, linetype=synthetic), size=2) +
         geom_vline(aes(xintercept=t_int)) + 
-        scale_color_manual(values=c("Donor Pool"="#888888",
-                                    "Outcome Under Treatment"="#FDB515",
-                                    "Synthetic Control"="#ED4E33",
-                                    "Outcome Under Control"="#3B7EA1",
-                                    "Double Robust"="#B9D3B6")) +
+        scale_color_manual(values=c("#888888","#2b2b2b"))  +
     scale_alpha_manual(values=c(0.05, 1)) +
-        guides(alpha=FALSE, linetype=FALSE)
+        guides(linetype=FALSE, alpha=FALSE)
     if("syn_method" %in% names(outcomes) & "outcome_id" %in% names(outcomes)) {
         p <- p + facet_grid(syn_method ~ outcome_id, scales="free")
     } else if("outcome_id" %in% names(outcomes)){
