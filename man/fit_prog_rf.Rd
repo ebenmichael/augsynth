@@ -5,7 +5,7 @@
 \title{Use a separate random forest regression for each post period
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_rf(X, y, trt, opts = NULL)
+fit_prog_rf(X, y, trt, opts = list(avg = FALSE))
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -14,7 +14,8 @@ fit_prog_rf(X, y, trt, opts = NULL)
 
 \item{trt}{Vector of treatment indicator}
 
-\item{opts}{List of options for randomForest}
+\item{opts}{List of options for randomForest
+\itemize{\item{avg }{Fit the average post-period rather than time periods separately}}}
 }
 \value{
 \itemize{

@@ -7,14 +7,17 @@
 
 #### Fitting and balancing the prognostic score
 
-fit_prog_reg <- function(X, y, trt, opts=list(alpha=1)) {
+fit_prog_reg <- function(X, y, trt, opts=list(alpha=1, avg=FALSE)) {
     #' Use a separate regularized regression for each post period
     #' to fit E[Y(0)|X]
     #'
     #' @param X Matrix of covariates/lagged outcomes
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
-    #' @param opts List of options for glmnet; choice of alpha, default: 1
+    #' @param opts List of options for glmnet:
+    #'             \itemize{\item{alpha }{Mixing between L1 and L2, default: 1 (LASSO)}
+    #'                      \item{avg }{Fit the average post-period rather than time periods separately}}
+    #'
     #'
     #'
     #' @return \itemize{
@@ -28,11 +31,22 @@ fit_prog_reg <- function(X, y, trt, opts=list(alpha=1)) {
                                   lambda=lam)
             return(as.matrix(coef(fit)))
     }
-    
-    ## fit regressions
-    regweights <- apply(y, 2,
-                        function(yt) outfit(X[trt==0,],
-                                            yt[trt==0]))
+
+    if(opts$avg) {
+        ## if fitting the average post period value, stack post periods together
+        stacky <- c(y)
+        stackx <- do.call(rbind,
+                          lapply(1:dim(y)[2],
+                                 function(x) X))
+        stacktrt <- rep(trt, dim(y)[2])
+        regweights <- outfit(stackx[stacktrt==0,],
+                             stacky[stacktrt==0])
+    } else {
+        ## fit separate regressions for each post period
+        regweights <- apply(y, 2,
+                            function(yt) outfit(X[trt==0,],
+                                                yt[trt==0]))
+    }
     
     ## Get predicted values
     y0hat <- cbind(rep(1, dim(X)[1]),
@@ -45,7 +59,8 @@ fit_prog_reg <- function(X, y, trt, opts=list(alpha=1)) {
 
 
 
-fit_prog_rf <- function(X, y, trt, opts=NULL) {
+
+fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
     #' Use a separate random forest regression for each post period
     #' to fit E[Y(0)|X]
     #'
@@ -53,7 +68,7 @@ fit_prog_rf <- function(X, y, trt, opts=NULL) {
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
     #' @param opts List of options for randomForest
-    #'
+    #'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}}
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -64,24 +79,45 @@ fit_prog_rf <- function(X, y, trt, opts=NULL) {
             fit <- randomForest::randomForest(x, y)
             return(fit)
     }
-    
-    ## fit regressions
-    fits <- apply(y, 2,
-                  function(yt) outfit(X[trt==0,],
-                                      yt[trt==0]))
 
 
-    ## fit synth with predicted values
-    y0hat <- lapply(fits, function(fit) predict(fit,
-                                                X)) %>%
-        bind_rows() %>%
-        as.matrix()
+    if(opts$avg) {
+        ## if fitting the average post period value, stack post periods together
+        stacky <- c(y)
+        stackx <- do.call(rbind,
+                          lapply(1:dim(y)[2],
+                                 function(x) X))
+        stacktrt <- rep(trt, dim(y)[2])
+        fit <- outfit(stackx[stacktrt==0,],
+                      stacky[stacktrt==0])
 
+        ## predict outcome
+        y0hat <- matrix(predict(fit, X), ncol=1)
 
-    ## keep feature importances
-    imports <- lapply(fits, function(fit) importance(fit)) %>%
-        bind_rows() %>%
-        as.matrix()
+        
+        ## keep feature importances
+        imports <- importance(fit)
+
+        
+    } else {
+        ## fit separate regressions for each post period
+        fits <- apply(y, 2,
+                      function(yt) outfit(X[trt==0,],
+                                          yt[trt==0]))
+
+        ## predict outcome
+        y0hat <- lapply(fits, function(fit) predict(fit,X)) %>%
+            bind_rows() %>%
+            as.matrix()
+
+        
+        ## keep feature importances
+        imports <- lapply(fits, function(fit) importance(fit)) %>%
+            bind_rows() %>%
+            as.matrix()
+
+    }
+
 
     return(list(y0hat=y0hat,
                 params=imports))
