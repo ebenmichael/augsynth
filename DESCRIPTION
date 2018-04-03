@@ -16,9 +16,11 @@ Imports:
     apg,
     glmnet,
     plyr,
-    LiblineaR
+    LiblineaR,
+    randomForest
 Remotes:
-    jpvert/apg
+    jpvert/apg,
+    xuyiqing/gsynth
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
