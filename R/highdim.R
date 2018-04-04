@@ -161,6 +161,9 @@ fit_prog_gsynth <- function(X, y, trt, opts=NULL) {
     y0hat[trt==0,]  <- t(gsyn$est.co$residuals[(t0+1):t_final,] + gsyn$Y.co[(t0+1):t_final, ])
     y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
 
+    ## add treated prediction for whole pre-period
+    gsyn$est.co$Y.ct <- gsyn$Y.ct
+    
     return(list(y0hat=y0hat,
                 params=gsyn$est.co))
     
@@ -367,11 +370,11 @@ double_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE, by=1)) {
 
     
     ## find the best epsilon
-    minep <- bin_search(0, max(ipw_format$X), opts$by, feasfunc)
+    minep <- bin_search(0, 2 * max(ipw_format$X), opts$by, feasfunc)
 
     ## if it failed, then stop everything
     if(minep < 0) {
-        stop("Failed to find a synthetic control with balance better than 4 std deviations")
+        stop("Failed to find a synthetic control with good enough balance")
     }
 
     ## fit with minep
@@ -540,6 +543,8 @@ fit_augsyn_formatted <- function(ipw_format, syn_format,
         fitout <- fit_progscore(ipw_format$X, ipw_format$y, ipw_format$trt, opts.prog)
     }
 
+    
+
     y0hat <- fitout$y0hat
     
     ## fit synth/maxent weights
@@ -576,28 +581,12 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     #' @return outcomes with additional synthetic control added,
     #'         synth weights
     #'         outcome regression weights
-    
 
-
-    ### weight the residuals
-    t_final <- dim(fit$controls)[2]
-    ## separate out pre and post period controls
-    
-    t_int <- (metadata$t_int - min(outcomes$time) + 1)
-
-    preC <- fit$controls[,1:(t_int-1)]
-    postC <- fit$controls[,(t_int):t_final]
-
-    ## and pre and post period treated
-    preT <- fit$treated[,1:(t_int-1), drop=FALSE]
-    postT <- fit$treated[,(t_int):t_final, drop=FALSE]
-
-    ## get control residuals
-
+    ## weight control residuals
     wresid <- t(fit$resid) %*% fit$weights
 
     ## combine weighted residuals and predicted value into DR estimate
-    dr <- fit$y0hat_t - wresid
+    dr <- fit$y0hat_t + wresid
 
 
     ## combine pre period with DR estimate into a "synthetic control"
@@ -662,7 +651,11 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     if(weightfunc == "SC") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "ENT") {
-        weightf <- fit_entropy_formatted
+        if(!is.null(opts.weights)) {
+            weightf <- function(x) fit_entropy_formatted(x, eps=opts.weights$eps)
+        } else {
+            weightf <- fit_entropy_formatted
+        }
     }
     
     ## format data
@@ -684,6 +677,189 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
 
 
     ctrls <- impute_synaug(syn_format$outcomes, metadata, out, trt_unit)
+
+    ## outcome model estimate
+    ctrls$outest <- out$tauhat
+    ctrls$params <- out$params
+    ctrls$dual <- out$dual
+    ctrls$primal_obj <- out$primal_obj
+    ctrls$pscores <- out$pscores
+    ctrls$eta <- out$eta
+    ctrls$groups <- out$groups
+    ctrls$feasible <- out$feasible
+    ctrls$primal_group_obj <- out$primal_group_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
+    ctrls$controls <- out$controls
+    
+    return(ctrls)
+}
+
+
+### Combine synth and gsynth by balancing pre-period residuals
+
+
+fit_gsynaug_formatted <- function(ipw_format, syn_format,
+                                    fit_weights,
+                                    opts.gsyn=NULL, opts.weights=NULL) {
+    #' Fit E[Y(0)|X] and for each post-period and balance pre-period
+    #'
+    #' @param ipw_format Output of `format_ipw`
+    #' @param syn_format Output of `syn_format`
+    #' @param fit_weights Function to fit synth weights
+    #' @param opts.gsyn Optional options for gsynth
+    #' @param opts.weights Optional options for fitting synth weights
+    #' 
+    #' @return inverse of predicted propensity scores
+    #'         outcome regression parameters
+    #'         control outcomes
+    #'         treated outcomes
+    #'         boolean for treated
+
+    X <- ipw_format$X
+    y <- ipw_format$y
+    trt <- ipw_format$trt
+    
+    ## fit prognostic scores
+    if(is.null(opts.gsyn)) {
+        fitout <- fit_prog_gsynth(ipw_format$X, ipw_format$y, ipw_format$trt)
+    } else {
+        fitout <- fit_prog_gsynth(ipw_format$X, ipw_format$y, ipw_format$trt, opts.gsyn)
+    }
+
+    y0hat <- fitout$y0hat
+
+    ## get residuals
+    ctrl_resids <- gsyn$params$residuals
+    trt_resids <- c(X[trt==1,], y[trt==1,]) - c(gsyn$params$Y.ct)
+    
+    ## replace outcomes with gsynth pre-period residuals
+    t0 <- dim(X)[2]
+    syn_format$synth_data$Z0 <- ctrl_resids[1:t0, ]
+    syn_format$synth_data$Z1 <- as.matrix(trt_resids[1:t0])
+
+    ## fit synth/maxent weights
+    syn <- fit_weights(syn_format)
+
+    syn$params <- fitout$params    
+
+    ## return predicted values for treatment and control
+    syn$y0hat_c <- y0hat[ipw_format$trt == 0,]
+    syn$y0hat_t <- y0hat[ipw_format$trt == 1,]
+
+    ## residuals for controls
+    
+    ## difference between observed treated and predicted control
+    syn$tauhat <- trt_resids
+
+    ## and treated pre outcomes
+    syn$treatout <- c(X[trt==1,], y[trt==1,])
+
+    
+    return(syn)
+}
+
+
+
+impute_gsynaug <- function(outcomes, metadata, fit, trt_unit) {
+    #' Impute the controls after fitting gynsth and reweighting residuals
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe with metadata, in particular a t_int column
+    #' @param fit Output of fit_gsynaug_formatted
+    #'
+    #' @return outcomes with additional synthetic control added,
+    #'         synth weights
+    #'         outcome regression weights
+
+    ## reweight residuals
+    wresid <- fit$params$residuals %*% fit$weights
+
+    ## combine weighted residuals and predicted value into augmented estimate
+    aug_ctrl <- fit$params$Y.ct + wresid
+
+    ## keep track of difference
+    tauhat <- fit$treatout - aug_ctrl
+
+    ## replace true outcome with imputed value
+    aug_outcomes <- outcomes %>%
+        filter(unit == trt_unit) %>%
+        mutate(outcome = aug_ctrl,
+               synthetic = "Y",
+               potential_outcome = "Y(0)") %>% data.frame()
+
+    ctrls <- outcomes %>% filter(!treated) %>% data.frame()
+    avgs <- outcomes %>% filter(unit == trt_unit) %>% data.frame()
+
+    finalout <- bind_rows(ctrls, avgs, aug_outcomes)
+    #finalout$outcome <- c(ctrls$outcome, avgs$outcome, dr_outcomes$outcome)
+    return(list(outcomes=finalout,
+                weights=fit$weights,
+                dual=fit$dual,
+                outparams=fit$params,
+                tauhat_aug=tauhat))
+}
+
+
+
+get_gsynaug <- function(outcomes, metadata, trt_unit=1,
+                        weightfunc=c("SC","ENT","NONE"),
+                        opts.gsyn = NULL,
+                        opts.weights = NULL,
+                        outcome_col=NULL,
+                        cols=list(unit="unit", time="time",
+                                  outcome="outcome", treated="treated")) {
+    #' Fit gsynth and balance residuals
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param weightfunc What function to use to fit weights
+    #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
+    #'                   NONE=No reweighting, just gsynth
+    #' @param opts.gsyn Optional options for gsynth
+    #' @param opts.weights Optional options for fitting synth weights    
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## weight function to use
+    if(weightfunc == "SC") {
+        weightf <- fit_synth_formatted
+    } else if(weightfunc == "ENT") {
+        weightf <- fit_entropy_formatted
+    } else if(weightfunc == "NONE") {
+        ## still fit synth even if none
+        ## TODO: This is a dumb wasteful hack
+        weightf <- fit_synth_formatted
+    } else {
+        stop("weightfunc must be one of 'SC', 'ENT', 'NONE'")
+    }
+    
+    ## format data
+    ipw_format <- format_ipw(outcomes, metadata, outcome_col, cols)
+    syn_format <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+
+    ## fit outcomes and weights
+    out <- fit_gsynaug_formatted(ipw_format, syn_format,
+                                 weightf,
+                                 opts.gsyn, opt.weights)
+                                 
+
+    ## match outcome types to synthetic controls
+    if(!is.null(outcome_col)) {
+        data_out$outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
+                                          levels = names(out$groups))
+        data_out$outcomes <- data_out$outcomes %>% dplyr::arrange_(outcome_col)
+    }
+
+    ## if no weighting, set weights to 0
+    if(weightfunc == "NONE") {
+        out$weights <- rep(0, length(out$weights))
+    }
+    
+    ctrls <- impute_gsynaug(syn_format$outcomes, metadata, out, trt_unit)
 
     ## outcome model estimate
     ctrls$outest <- out$tauhat
