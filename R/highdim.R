@@ -345,7 +345,7 @@ double_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE, by=1)) {
     #' @param syn_format Output of `syn_format`    r
     #' @param opts List of options for glmnet:
     #'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}
-    #'                      \item{by }{Step size for binary search of minimal Linfinity error}
+    #'                      \item{by }{Step size for binary search of minimal Linfinity error}}
     #'
     #'
     #'
@@ -511,7 +511,7 @@ get_screensyn <- function(outcomes, metadata, trt_unit=1,
 
 ##### Doubly Robust estimation combining and outcome model and selection model
 
-fit_drsyn_formatted <- function(ipw_format, syn_format,
+fit_augsyn_formatted <- function(ipw_format, syn_format,
                                 fit_progscore, fit_weights,
                                 opts.prog=NULL, opts.weights=NULL) {
     #' Fit E[Y(0)|X] and for each post-period and balance pre-period
@@ -567,7 +567,7 @@ fit_drsyn_formatted <- function(ipw_format, syn_format,
 
 
 
-impute_syndr <- function(outcomes, metadata, fit, trt_unit) {
+impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     #' Impute the controls after fitting a dr estimator
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe with metadata, in particular a t_int column
@@ -622,7 +622,7 @@ impute_syndr <- function(outcomes, metadata, fit, trt_unit) {
 }
 
 
-get_drsyn <- function(outcomes, metadata, trt_unit=1,
+get_augsyn <- function(outcomes, metadata, trt_unit=1,
                         progfunc=c("EN", "RF", "GSYN"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
@@ -670,7 +670,7 @@ get_drsyn <- function(outcomes, metadata, trt_unit=1,
     syn_format <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
 
     ## fit outcomes and weights
-    out <- fit_drsyn_formatted(ipw_format, syn_format,
+    out <- fit_augsyn_formatted(ipw_format, syn_format,
                                  progf, weightf,
                                  opts.prog, opt.weights)
                                  
@@ -683,7 +683,7 @@ get_drsyn <- function(outcomes, metadata, trt_unit=1,
     }
 
 
-    ctrls <- impute_syndr(syn_format$outcomes, metadata, out, trt_unit)
+    ctrls <- impute_synaug(syn_format$outcomes, metadata, out, trt_unit)
 
     ## outcome model estimate
     ctrls$outest <- out$tauhat

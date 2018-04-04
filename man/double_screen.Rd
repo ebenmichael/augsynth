@@ -11,6 +11,10 @@ double_screen(ipw_format, syn_format, opts = list(avg = FALSE, by = 1))
 \item{ipw_format}{Output of `format_ipw`}
 
 \item{syn_format}{Output of `syn_format`    r}
+
+\item{opts}{List of options for glmnet:
+\itemize{\item{avg }{Fit the average post-period rather than time periods separately}
+         \item{by }{Step size for binary search of minimal Linfinity error}}}
 }
 \value{
 \itemize{
