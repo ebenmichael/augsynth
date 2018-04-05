@@ -5,7 +5,7 @@
 \title{Select covariates for E[Y(0)|X], then balance those}
 \usage{
 fit_screensyn_formatted(ipw_format, syn_format, screen_x, fit_weights,
-  opts.prog = NULL, opts.weights = NULL)
+  opts.screen = NULL, opts.weights = NULL)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
@@ -14,11 +14,11 @@ fit_screensyn_formatted(ipw_format, syn_format, screen_x, fit_weights,
 
 \item{fit_weights}{Function to fit synth weights}
 
+\item{opts.screen}{Optional options for covariate screening}
+
 \item{opts.weights}{Optional options for fitting synth weights}
 
 \item{fit_progscore}{Function to fit prognostic score}
-
-\item{opts.screen}{Optional options for covariate screening}
 }
 \value{
 inverse of predicted propensity scores

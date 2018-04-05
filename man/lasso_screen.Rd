@@ -4,15 +4,14 @@
 \alias{lasso_screen}
 \title{Screen covariates for the outcome process}
 \usage{
-lasso_screen(ipw_format, syn_format, opts = list(avg = FALSE))
+lasso_screen(ipw_format, syn_format, avg = FALSE)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
 \item{syn_format}{Output of `syn_format`    r}
 
-\item{opts}{List of options for glmnet:
-\itemize{\item{avg }{Fit the average post-period rather than time periods separately}}}
+\item{avg}{Fit the average post-period rather than time periods separately}
 }
 \value{
 \itemize{

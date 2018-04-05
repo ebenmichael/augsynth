@@ -5,7 +5,7 @@
 \title{Use a separate regularized regression for each post period
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_reg(X, y, trt, opts = list(alpha = 1, avg = FALSE))
+fit_prog_reg(X, y, trt, alpha = 1, avg = FALSE)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -14,9 +14,9 @@ fit_prog_reg(X, y, trt, opts = list(alpha = 1, avg = FALSE))
 
 \item{trt}{Vector of treatment indicator}
 
-\item{opts}{List of options for glmnet:
-\itemize{\item{alpha }{Mixing between L1 and L2, default: 1 (LASSO)}
-         \item{avg }{Fit the average post-period rather than time periods separately}}}
+\item{alpha}{Mixing between L1 and L2, default: 1 (LASSO)}
+
+\item{avg}{Fit the average post-period rather than time periods separately}
 }
 \value{
 \itemize{

@@ -4,7 +4,7 @@
 \alias{fit_prog_gsynth}
 \title{Use gsynth to fit factor model for E[Y(0)|X]}
 \usage{
-fit_prog_gsynth(X, y, trt, opts = NULL)
+fit_prog_gsynth(X, y, trt)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -12,8 +12,6 @@ fit_prog_gsynth(X, y, trt, opts = NULL)
 \item{y}{Matrix of post-period outcomes}
 
 \item{trt}{Vector of treatment indicator}
-
-\item{opts}{List of options for randomForest}
 }
 \value{
 \itemize{

@@ -5,16 +5,16 @@
 \title{Screen covariates for the outcome process with LASSO and selection with
 SC with infinity norm}
 \usage{
-double_screen(ipw_format, syn_format, opts = list(avg = FALSE, by = 1))
+double_screen(ipw_format, syn_format, avg = FALSE, by = 1)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
-\item{syn_format}{Output of `syn_format`    r}
+\item{syn_format}{Output of `syn_format`}
 
-\item{opts}{List of options for glmnet:
-\itemize{\item{avg }{Fit the average post-period rather than time periods separately}
-         \item{by }{Step size for binary search of minimal Linfinity error}}}
+\item{avg}{Fit the average post-period rather than time periods separately}
+
+\item{by}{Step size for binary search of minimal L infinity error}
 }
 \value{
 \itemize{

@@ -131,7 +131,7 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL,
     ## if there is more than one treated unit, average them together
     if(n_t > 1) {
         trtavg <- newdf %>% filter(treated) %>%
-            group_by_at(setdiff(names(outcomes), c(outcome, unit)))
+            group_by_at(setdiff(names(outcomes), c("outcome", "unit")))
         trtavg <- trtavg %>%
             summarise(outcome = mean(outcome)) %>%
             mutate(unit=-1) %>% 

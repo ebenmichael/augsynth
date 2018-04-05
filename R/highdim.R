@@ -7,18 +7,15 @@
 
 #### Fitting and balancing the prognostic score
 
-fit_prog_reg <- function(X, y, trt, opts=list(alpha=1, avg=FALSE)) {
+fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
     #' Use a separate regularized regression for each post period
     #' to fit E[Y(0)|X]
     #'
     #' @param X Matrix of covariates/lagged outcomes
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
-    #' @param opts List of options for glmnet:
-    #'             \itemize{\item{alpha }{Mixing between L1 and L2, default: 1 (LASSO)}
-    #'                      \item{avg }{Fit the average post-period rather than time periods separately}}
-    #'
-    #'
+    #' @param alpha Mixing between L1 and L2, default: 1 (LASSO)
+    #' @param avg Fit the average post-period rather than time periods separately
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -26,13 +23,13 @@ fit_prog_reg <- function(X, y, trt, opts=list(alpha=1, avg=FALSE)) {
 
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=opts$alpha)$lambda.min
-            fit <- glmnet::glmnet(x, y, alpha=opts$alpha,
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
+            fit <- glmnet::glmnet(x, y, alpha=alpha,
                                   lambda=lam)
             return(as.matrix(coef(fit)))
     }
 
-    if(opts$avg) {
+    if(avg) {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -60,7 +57,7 @@ fit_prog_reg <- function(X, y, trt, opts=list(alpha=1, avg=FALSE)) {
 
 
 
-fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
+fit_prog_rf <- function(X, y, trt, avg=FALSE) {
     #' Use a separate random forest regression for each post period
     #' to fit E[Y(0)|X]
     #'
@@ -81,7 +78,7 @@ fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
     }
 
 
-    if(opts$avg) {
+    if(avg) {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -96,7 +93,7 @@ fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
 
         
         ## keep feature importances
-        imports <- importance(fit)
+        imports <- randomForest::importance(fit)
 
         
     } else {
@@ -112,7 +109,7 @@ fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
 
         
         ## keep feature importances
-        imports <- lapply(fits, function(fit) importance(fit)) %>%
+        imports <- lapply(fits, function(fit) randomForest::importance(fit)) %>%
             bind_rows() %>%
             as.matrix()
 
@@ -126,14 +123,12 @@ fit_prog_rf <- function(X, y, trt, opts=list(avg=FALSE)) {
 
 
 
-fit_prog_gsynth <- function(X, y, trt, opts=NULL) {
+fit_prog_gsynth <- function(X, y, trt) {
     #' Use gsynth to fit factor model for E[Y(0)|X]
     #'
     #' @param X Matrix of covariates/lagged outcomes
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
-    #' @param opts List of options for randomForest
-    #'
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -188,21 +183,29 @@ fit_progsyn_formatted <- function(ipw_format, syn_format,
     #'         treated outcomes
     #'         boolean for treated
 
+    X <- ipw_format$X
+    y <- ipw_format$y
+    trt <- ipw_format$trt
+    
     ## fit prognostic scores
     if(is.null(opts.prog)) {
-        fitout <- fit_progscore(ipw_format$X, ipw_format$y, ipw_format$trt)
+        fitout <- fit_progscore(X, y, trt)
     } else {
-        fitout <- fit_progscore(ipw_format$X, ipw_format$y, ipw_format$trt, opts.prog)
+        fitout <- do.call(fit_progscore,
+                          c(list(X=X, y=y, trt=trt), opts.prog))
     }
 
     y0hat <- fitout$y0hat
     
     ## replace outcomes with fitted prognostic scores
     syn_format$synth_data$Z0 <- t(as.matrix(y0hat[ipw_format$trt == 0,]))
-    syn_format$synth_data$Z1 <- as.matrix(y0hat[ipw_format$trt == 1,])
+    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(y0hat[ipw_format$trt == 1,])))
 
     ## fit synth/maxent weights
-    syn <- fit_weights(syn_format)
+    if(is.null(opts.weights)) {
+        syn <- fit_weights(syn_format)
+    }
+    syn <- do.call(fit_weights, c(list(data_out=syn_format), opts.weights))
 
     syn$params <- fitout$params
     return(syn)
@@ -250,7 +253,8 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     } else if(weightfunc == "ENT") {
         weightf <- fit_entropy_formatted
     }
-    
+
+          
     ## format data
     ipw_format <- format_ipw(outcomes, metadata, outcome_col, cols)
     syn_format <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
@@ -258,7 +262,7 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     ## fit weights
     out <- fit_progsyn_formatted(ipw_format, syn_format,
                                  progf, weightf,
-                                 opts.prog, opt.weights)
+                                 opts.prog, opts.weights)
                                  
 
     ## match outcome types to synthetic controls
@@ -269,7 +273,7 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     }
 
 
-    ctrls <- impute_controls(syn_format$outcomes, out, trt_unit)
+    ctrls <- impute_controls(syn_format$outcomes, out, syn_format$trt_unit)
 
     ctrls$params <- out$params
     ctrls$dual <- out$dual
@@ -286,15 +290,12 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     
 ####### Apply a covariate screen then fit synth
 
-lasso_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE)) {
+lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
     #' Screen covariates for the outcome process
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`    r
-    #' @param opts List of options for glmnet:
-    #'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}}
-    #'
-    #'
+    #' @param avg Fit the average post-period rather than time periods separately
     #'
     #' @return \itemize{
     #'           \item{selX }{Selected covariates}
@@ -312,7 +313,7 @@ lasso_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE)) {
             return(as.matrix(coef(fit))[-1,])
     }
 
-    if(opts$avg) {
+    if(avg) {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -340,24 +341,21 @@ lasso_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE)) {
 
 
 
-double_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE, by=1)) {
+double_screen <- function(ipw_format, syn_format, avg=FALSE, by=1) {
     #' Screen covariates for the outcome process with LASSO and selection with
     #' SC with infinity norm
     #'
     #' @param ipw_format Output of `format_ipw`
-    #' @param syn_format Output of `syn_format`    r
-    #' @param opts List of options for glmnet:
-    #'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}
-    #'                      \item{by }{Step size for binary search of minimal Linfinity error}}
-    #'
-    #'
+    #' @param syn_format Output of `syn_format`
+    #' @param avg Fit the average post-period rather than time periods separately
+    #' @param by Step size for binary search of minimal L infinity error
     #'
     #' @return \itemize{
     #'           \item{selX }{Selected covariates}
     #'           \item{params }{Regression parameters}}
 
     ## screen covariates for outcome process
-    lasout <- lasso_screen(ipw_format, syn_format, opts)
+    lasout <- lasso_screen(ipw_format, syn_format, avg)
 
     ## screen using L infinity
 
@@ -370,7 +368,7 @@ double_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE, by=1)) {
 
     
     ## find the best epsilon
-    minep <- bin_search(0, 2 * max(ipw_format$X), opts$by, feasfunc)
+    minep <- bin_search(0, 2 * max(ipw_format$X), by, feasfunc)
 
     ## if it failed, then stop everything
     if(minep < 0) {
@@ -399,7 +397,7 @@ double_screen <- function(ipw_format, syn_format, opts=list(avg=FALSE, by=1)) {
 
 fit_screensyn_formatted <- function(ipw_format, syn_format,
                                     screen_x, fit_weights,
-                                    opts.prog=NULL, opts.weights=NULL) {
+                                    opts.screen=NULL, opts.weights=NULL) {
     #' Select covariates for E[Y(0)|X], then balance those
     #'
     #' @param ipw_format Output of `format_ipw`
@@ -416,20 +414,30 @@ fit_screensyn_formatted <- function(ipw_format, syn_format,
     #'         boolean for treated
 
     ## fit prognostic scores
-    if(is.null(opts.prog)) {
+    if(is.null(opts.screen)) {
         fitout <- screen_x(ipw_format, syn_format)
     } else {
-        fitout <- screen_x(ipw_format, syn_format, opts.prog)
+        fitout <- do.call(screen_x, c(list(ipw_format=ipw_format,
+                                         syn_format=syn_format),
+                                      opts.screen))
     }
 
     selX <- fitout$selX
     
     ## replace outcomes with fitted prognostic scores
     syn_format$synth_data$Z0 <- t(as.matrix(selX[ipw_format$trt == 0,]))
-    syn_format$synth_data$Z1 <- as.matrix(selX[ipw_format$trt == 1,])
+    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(selX[ipw_format$trt == 1,])))
 
     ## fit synth/maxent weights
-    syn <- fit_weights(syn_format)
+    if(is.null(opts.weights)) {
+        syn <- fit_weights(syn_format)
+    } else {
+        syn <- do.call(fit_weights,
+                       c(list(data_out=syn_format),
+                         opts.weights))
+    }
+        
+    
 
     syn$params <- fitout$params
     return(syn)
@@ -485,7 +493,7 @@ get_screensyn <- function(outcomes, metadata, trt_unit=1,
     ## fit weights
     out <- fit_screensyn_formatted(ipw_format, syn_format,
                                  screenf, weightf,
-                                 opts.screen, opt.weights)
+                                 opts.screen, opts.weights)
                                  
 
     ## match outcome types to synthetic controls
@@ -496,7 +504,7 @@ get_screensyn <- function(outcomes, metadata, trt_unit=1,
     }
 
 
-    ctrls <- impute_controls(syn_format$outcomes, out, trt_unit)
+    ctrls <- impute_controls(syn_format$outcomes, out, syn_format$trt_unit)
 
     ctrls$params <- out$params
     ctrls$dual <- out$dual
@@ -538,23 +546,29 @@ fit_augsyn_formatted <- function(ipw_format, syn_format,
     
     ## fit prognostic scores
     if(is.null(opts.prog)) {
-        fitout <- fit_progscore(ipw_format$X, ipw_format$y, ipw_format$trt)
+        fitout <- fit_progscore(X, y, trt)
     } else {
-        fitout <- fit_progscore(ipw_format$X, ipw_format$y, ipw_format$trt, opts.prog)
+        fitout <- do.call(fit_progscore,
+                          c(list(X=X, y=y, trt=trt),
+                            opts.prog))
     }
-
-    
 
     y0hat <- fitout$y0hat
     
     ## fit synth/maxent weights
-    syn <- fit_weights(syn_format)
+    if(is.null(opts.weights)) {        
+        syn <- fit_weights(syn_format)
+    } else {
+        syn <- do.call(fit_weights,
+                       c(list(data_out=syn_format),
+                         opts.weights))
+    }
 
     syn$params <- fitout$params
 
     ## return predicted values for treatment and control
     syn$y0hat_c <- y0hat[ipw_format$trt == 0,]
-    syn$y0hat_t <- y0hat[ipw_format$trt == 1,]
+    syn$y0hat_t <- colMeans(y0hat[ipw_format$trt == 1,,drop=FALSE])
 
     ## residuals for controls
 
@@ -564,7 +578,7 @@ fit_augsyn_formatted <- function(ipw_format, syn_format,
     syn$tauhat <- ipw_format$y[ipw_format$trt == 1,] - y0hat[ipw_format$trt == 1,]
 
     ## and treated pre outcomes
-    syn$treatout <- X[trt ==1,]
+    syn$treatout <- colMeans(X[trt ==1,])
     
     
     return(syn)
@@ -651,11 +665,7 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     if(weightfunc == "SC") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "ENT") {
-        if(!is.null(opts.weights)) {
-            weightf <- function(x) fit_entropy_formatted(x, eps=opts.weights$eps)
-        } else {
-            weightf <- fit_entropy_formatted
-        }
+        weightf <- fit_entropy_formatted
     }
     
     ## format data
@@ -665,7 +675,7 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     ## fit outcomes and weights
     out <- fit_augsyn_formatted(ipw_format, syn_format,
                                  progf, weightf,
-                                 opts.prog, opt.weights)
+                                 opts.prog, opts.weights)
                                  
 
     ## match outcome types to synthetic controls
@@ -676,7 +686,7 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     }
 
 
-    ctrls <- impute_synaug(syn_format$outcomes, metadata, out, trt_unit)
+    ctrls <- impute_synaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
 
     ## outcome model estimate
     ctrls$outest <- out$tauhat
@@ -721,26 +731,33 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
     
     ## fit prognostic scores
     if(is.null(opts.gsyn)) {
-        fitout <- fit_prog_gsynth(ipw_format$X, ipw_format$y, ipw_format$trt)
+        gsyn <- fit_prog_gsynth(X, y, trt)
     } else {
-        fitout <- fit_prog_gsynth(ipw_format$X, ipw_format$y, ipw_format$trt, opts.gsyn)
+        gsyn <- do.call(fit_prog_gsynth,
+                          c(list(X=X, y=y, trt=trt),
+                            opts.gsyn))
     }
-
-    y0hat <- fitout$y0hat
+    y0hat <- gsyn$y0hat
 
     ## get residuals
     ctrl_resids <- gsyn$params$residuals
-    trt_resids <- c(X[trt==1,], y[trt==1,]) - c(gsyn$params$Y.ct)
+    trt_resids <- colMeans(cbind(X[trt==1,], y[trt==1,])) - rowMeans(gsyn$params$Y.ct)
     
     ## replace outcomes with gsynth pre-period residuals
     t0 <- dim(X)[2]
     syn_format$synth_data$Z0 <- ctrl_resids[1:t0, ]
     syn_format$synth_data$Z1 <- as.matrix(trt_resids[1:t0])
-
+    
     ## fit synth/maxent weights
-    syn <- fit_weights(syn_format)
+    if(is.null(opts.weights)) {
+        syn <- fit_weights(syn_format)
+    } else {
+        syn <- do.call(fit_weights,
+                       c(list(data_out=syn_format),
+                         opts.weights))
+    }
 
-    syn$params <- fitout$params    
+    syn$params <- gsyn$params    
 
     ## return predicted values for treatment and control
     syn$y0hat_c <- y0hat[ipw_format$trt == 0,]
@@ -752,7 +769,7 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
     syn$tauhat <- trt_resids
 
     ## and treated pre outcomes
-    syn$treatout <- c(X[trt==1,], y[trt==1,])
+    syn$treatout <- colMeans(cbind(X[trt==1,], y[trt==1,]))
 
     
     return(syn)
@@ -774,7 +791,7 @@ impute_gsynaug <- function(outcomes, metadata, fit, trt_unit) {
     wresid <- fit$params$residuals %*% fit$weights
 
     ## combine weighted residuals and predicted value into augmented estimate
-    aug_ctrl <- fit$params$Y.ct + wresid
+    aug_ctrl <- rowMeans(fit$params$Y.ct) + wresid
 
     ## keep track of difference
     tauhat <- fit$treatout - aug_ctrl
@@ -844,7 +861,7 @@ get_gsynaug <- function(outcomes, metadata, trt_unit=1,
     ## fit outcomes and weights
     out <- fit_gsynaug_formatted(ipw_format, syn_format,
                                  weightf,
-                                 opts.gsyn, opt.weights)
+                                 opts.gsyn, opts.weights)
                                  
 
     ## match outcome types to synthetic controls
@@ -859,7 +876,7 @@ get_gsynaug <- function(outcomes, metadata, trt_unit=1,
         out$weights <- rep(0, length(out$weights))
     }
     
-    ctrls <- impute_gsynaug(syn_format$outcomes, metadata, out, trt_unit)
+    ctrls <- impute_gsynaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
 
     ## outcome model estimate
     ctrls$outest <- out$tauhat

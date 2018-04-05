@@ -5,7 +5,7 @@
 \title{Use a separate random forest regression for each post period
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_rf(X, y, trt, opts = list(avg = FALSE))
+fit_prog_rf(X, y, trt, avg = FALSE)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
