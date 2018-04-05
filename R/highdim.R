@@ -78,7 +78,7 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
     }
 
 
-    if(avg) {
+    if(avg | dim(y)[2] == 1) {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -101,9 +101,9 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
         fits <- apply(as.matrix(y), 2,
                       function(yt) outfit(X[trt==0,],
                                           yt[trt==0]))
-
+        
         ## predict outcome
-        y0hat <- lapply(fits, function(fit) predict(fit,X)) %>%
+        y0hat <- lapply(fits, function(fit) as.matrix(predict(fit,X))) %>%
             bind_rows() %>%
             as.matrix()
 

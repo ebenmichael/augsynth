@@ -212,7 +212,7 @@ format_ipw <- function(outcomes, metadata, outcome_col=NULL,
         select(-potential_outcome, -unit) %>%
         as.matrix()
 
-    y <- post[,-1]
+    y <- post[,-1, drop=FALSE]
 
     ## average together treated units
     trtavg <- newdf %>% filter(treated) %>%
