@@ -5,7 +5,7 @@
 \title{Screen covariates for the outcome process with LASSO and selection with
 SC with infinity norm}
 \usage{
-double_screen(ipw_format, syn_format, avg = FALSE, by = 1)
+double_screen(ipw_format, syn_format, avg = FALSE, mine = 0, by = 1)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
@@ -13,6 +13,8 @@ double_screen(ipw_format, syn_format, avg = FALSE, by = 1)
 \item{syn_format}{Output of `syn_format`}
 
 \item{avg}{Fit the average post-period rather than time periods separately}
+
+\item{mine}{Smallest imbalance to consider, default 0}
 
 \item{by}{Step size for binary search of minimal L infinity error}
 }

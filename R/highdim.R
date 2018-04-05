@@ -40,7 +40,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
                              stacky[stacktrt==0])
     } else {
         ## fit separate regressions for each post period
-        regweights <- apply(y, 2,
+        regweights <- apply(as.matrix(y), 2,
                             function(yt) outfit(X[trt==0,],
                                                 yt[trt==0]))
     }
@@ -98,7 +98,7 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
         
     } else {
         ## fit separate regressions for each post period
-        fits <- apply(y, 2,
+        fits <- apply(as.matrix(y), 2,
                       function(yt) outfit(X[trt==0,],
                                           yt[trt==0]))
 
@@ -324,13 +324,13 @@ lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
                              stacky[stacktrt==0])
     } else {
         ## fit separate regressions for each post period
-        regweights <- apply(y, 2,
+        regweights <- apply(as.matrix(y), 2,
                             function(yt) outfit(X[trt==0,],
                                                 yt[trt==0]))
     }
 
     ## get covariates with non-zero regression weight
-    selected <- apply(regweights, 1, function(beta) 1 * (sum(abs(beta)) > 0))
+    selected <- apply(as.matrix(regweights), 1, function(beta) 1 * (sum(abs(beta)) > 0))
     ## only return those covariates
     selX <- X[, selected == 1]
     
@@ -341,13 +341,14 @@ lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
 
 
 
-double_screen <- function(ipw_format, syn_format, avg=FALSE, by=1) {
+double_screen <- function(ipw_format, syn_format, avg=FALSE, mine=0, by=1) {
     #' Screen covariates for the outcome process with LASSO and selection with
     #' SC with infinity norm
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`
     #' @param avg Fit the average post-period rather than time periods separately
+    #' @param mine Smallest imbalance to consider, default 0
     #' @param by Step size for binary search of minimal L infinity error
     #'
     #' @return \itemize{
@@ -368,7 +369,7 @@ double_screen <- function(ipw_format, syn_format, avg=FALSE, by=1) {
 
     
     ## find the best epsilon
-    minep <- bin_search(0, 2 * max(ipw_format$X), by, feasfunc)
+    minep <- bin_search(mine, 2 * max(ipw_format$X), by, feasfunc)
 
     ## if it failed, then stop everything
     if(minep < 0) {
@@ -388,7 +389,7 @@ double_screen <- function(ipw_format, syn_format, avg=FALSE, by=1) {
     selX <- ipw_format$X[, selected == 1]
     
     return(list(selX=selX,
-                params=list(reparams=lasout$params,
+                params=list(regparams=lasout$params$regparams,
                             selparams=linfent$dual,
                             minep=minep,
                             selected=selected)))
