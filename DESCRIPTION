@@ -17,7 +17,8 @@ Imports:
     glmnet,
     plyr,
     LiblineaR,
-    randomForest
+    randomForest,
+    gsynth
 Remotes:
     jpvert/apg,
     xuyiqing/gsynth
