@@ -5,7 +5,7 @@
 \title{Use a separate regularized regression for each post period
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_reg(X, y, trt, alpha = 1, avg = FALSE)
+fit_prog_reg(X, y, trt, alpha = 1, type = "sep")
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -16,7 +16,11 @@ fit_prog_reg(X, y, trt, alpha = 1, avg = FALSE)
 
 \item{alpha}{Mixing between L1 and L2, default: 1 (LASSO)}
 
-\item{avg}{Fit the average post-period rather than time periods separately}
+\item{type}{How to fit outcome model(s)
+\itemize{
+ \item{sep }{Separate outcome models}
+ \item{avg }{Average responses into 1 outcome}
+ \item{multi }{Use multi response regression in glmnet}}}
 }
 \value{
 \itemize{

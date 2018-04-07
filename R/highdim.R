@@ -7,7 +7,7 @@
 
 #### Fitting and balancing the prognostic score
 
-fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
+fit_prog_reg <- function(X, y, trt, alpha=1, type="sep") {
     #' Use a separate regularized regression for each post period
     #' to fit E[Y(0)|X]
     #'
@@ -15,7 +15,11 @@ fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
     #' @param alpha Mixing between L1 and L2, default: 1 (LASSO)
-    #' @param avg Fit the average post-period rather than time periods separately
+    #' @param type How to fit outcome model(s)
+    #'             \itemize{
+    #'              \item{sep }{Separate outcome models}
+    #'              \item{avg }{Average responses into 1 outcome}
+    #'              \item{multi }{Use multi response regression in glmnet}}
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -29,7 +33,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
             return(as.matrix(coef(fit)))
     }
 
-    if(avg) {
+    if(type=="avg") {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -38,11 +42,19 @@ fit_prog_reg <- function(X, y, trt, alpha=1, avg=FALSE) {
         stacktrt <- rep(trt, dim(y)[2])
         regweights <- outfit(stackx[stacktrt==0,],
                              stacky[stacktrt==0])
-    } else {
+    } else if(type=="sep"){
         ## fit separate regressions for each post period
         regweights <- apply(as.matrix(y), 2,
                             function(yt) outfit(X[trt==0,],
                                                 yt[trt==0]))
+    } else {
+        ## fit multi response regression
+        lam <- glmnet::cv.glmnet(X, y, family="mgaussian",
+                                 alpha=alpha)$lambda.min
+        fit <- glmnet::glmnet(X, y, family="mgaussian",
+                              alpha=alpha,
+                              lambda=lam)
+        regweights <- as.matrix(do.call(cbind, coef(fit)))
     }
     
     ## Get predicted values
@@ -199,7 +211,7 @@ fit_progsyn_formatted <- function(ipw_format, syn_format,
     
     ## replace outcomes with fitted prognostic scores
     syn_format$synth_data$Z0 <- t(as.matrix(y0hat[ipw_format$trt == 0,]))
-    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(y0hat[ipw_format$trt == 1,])))
+    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(y0hat[ipw_format$trt == 1,,drop=FALSE])))
 
     ## fit synth/maxent weights
     if(is.null(opts.weights)) {
@@ -290,12 +302,16 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     
 ####### Apply a covariate screen then fit synth
 
-lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
+lasso_screen <- function(ipw_format, syn_format, type="sep") {
     #' Screen covariates for the outcome process
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`    r
-    #' @param avg Fit the average post-period rather than time periods separately
+    #' @param type How to fit outcome model(s)
+    #'             \itemize{
+    #'              \item{sep }{Separate outcome models}
+    #'              \item{avg }{Average responses into 1 outcome}
+    #'              \item{multi }{Use multi response regression in glmnet}}
     #'
     #' @return \itemize{
     #'           \item{selX }{Selected covariates}
@@ -313,7 +329,7 @@ lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
             return(as.matrix(coef(fit))[-1,])
     }
 
-    if(avg) {
+    if(type=="avg") {
         ## if fitting the average post period value, stack post periods together
         stacky <- c(y)
         stackx <- do.call(rbind,
@@ -322,12 +338,21 @@ lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
         stacktrt <- rep(trt, dim(y)[2])
         regweights <- outfit(stackx[stacktrt==0,],
                              stacky[stacktrt==0])
-    } else {
+    } else if(type=="sep"){
         ## fit separate regressions for each post period
         regweights <- apply(as.matrix(y), 2,
                             function(yt) outfit(X[trt==0,],
                                                 yt[trt==0]))
+    } else {
+        ## fit multi response regression
+        lam <- glmnet::cv.glmnet(X, y, family="mgaussian",
+                                 alpha=alpha)$lambda.min
+        fit <- glmnet::glmnet(X, y, family="mgaussian",
+                              alpha=alpha,
+                              lambda=lam)
+        regweights <- do.call(cbind, coef(fit))
     }
+    
 
     ## get covariates with non-zero regression weight
     selected <- apply(as.matrix(regweights), 1, function(beta) 1 * (sum(abs(beta)) > 0))
@@ -341,13 +366,17 @@ lasso_screen <- function(ipw_format, syn_format, avg=FALSE) {
 
 
 
-double_screen <- function(ipw_format, syn_format, avg=FALSE, mine=0, by=1) {
+double_screen <- function(ipw_format, syn_format, type="sep", mine=0, by=1) {
     #' Screen covariates for the outcome process with LASSO and selection with
     #' SC with infinity norm
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`
-    #' @param avg Fit the average post-period rather than time periods separately
+    #' @param type How to fit outcome model(s)
+    #'             \itemize{
+    #'              \item{sep }{Separate outcome models}
+    #'              \item{avg }{Average responses into 1 outcome}
+    #'              \item{multi }{Use multi response regression in glmnet}}
     #' @param mine Smallest imbalance to consider, default 0
     #' @param by Step size for binary search of minimal L infinity error
     #'
@@ -356,7 +385,7 @@ double_screen <- function(ipw_format, syn_format, avg=FALSE, mine=0, by=1) {
     #'           \item{params }{Regression parameters}}
 
     ## screen covariates for outcome process
-    lasout <- lasso_screen(ipw_format, syn_format, avg)
+    lasout <- lasso_screen(ipw_format, syn_format, type)
 
     ## screen using L infinity
 
@@ -427,7 +456,7 @@ fit_screensyn_formatted <- function(ipw_format, syn_format,
     
     ## replace outcomes with fitted prognostic scores
     syn_format$synth_data$Z0 <- t(as.matrix(selX[ipw_format$trt == 0,]))
-    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(selX[ipw_format$trt == 1,])))
+    syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(selX[ipw_format$trt == 1,,drop=FALSE])))
 
     ## fit synth/maxent weights
     if(is.null(opts.weights)) {
@@ -579,7 +608,7 @@ fit_augsyn_formatted <- function(ipw_format, syn_format,
     syn$tauhat <- ipw_format$y[ipw_format$trt == 1,] - y0hat[ipw_format$trt == 1,]
 
     ## and treated pre outcomes
-    syn$treatout <- colMeans(X[trt ==1,])
+    syn$treatout <- colMeans(X[trt ==1,,drop=FALSE])
     
     
     return(syn)
@@ -742,7 +771,9 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
 
     ## get residuals
     ctrl_resids <- gsyn$params$residuals
-    trt_resids <- colMeans(cbind(X[trt==1,], y[trt==1,])) - rowMeans(gsyn$params$Y.ct)
+    trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                 y[trt==1,,drop=FALSE])) -
+        rowMeans(gsyn$params$Y.ct)
     
     ## replace outcomes with gsynth pre-period residuals
     t0 <- dim(X)[2]
@@ -770,7 +801,7 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
     syn$tauhat <- trt_resids
 
     ## and treated pre outcomes
-    syn$treatout <- colMeans(cbind(X[trt==1,], y[trt==1,]))
+    syn$treatout <- colMeans(cbind(X[trt==1,,drop=FALSE], y[trt==1,,drop=FALSE]))
 
     
     return(syn)

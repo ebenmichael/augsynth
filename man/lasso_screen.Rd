@@ -4,14 +4,18 @@
 \alias{lasso_screen}
 \title{Screen covariates for the outcome process}
 \usage{
-lasso_screen(ipw_format, syn_format, avg = FALSE)
+lasso_screen(ipw_format, syn_format, type = "sep")
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
 \item{syn_format}{Output of `syn_format`    r}
 
-\item{avg}{Fit the average post-period rather than time periods separately}
+\item{type}{How to fit outcome model(s)
+\itemize{
+ \item{sep }{Separate outcome models}
+ \item{avg }{Average responses into 1 outcome}
+ \item{multi }{Use multi response regression in glmnet}}}
 }
 \value{
 \itemize{

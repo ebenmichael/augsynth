@@ -5,14 +5,18 @@
 \title{Screen covariates for the outcome process with LASSO and selection with
 SC with infinity norm}
 \usage{
-double_screen(ipw_format, syn_format, avg = FALSE, mine = 0, by = 1)
+double_screen(ipw_format, syn_format, type = "sep", mine = 0, by = 1)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
 \item{syn_format}{Output of `syn_format`}
 
-\item{avg}{Fit the average post-period rather than time periods separately}
+\item{type}{How to fit outcome model(s)
+\itemize{
+ \item{sep }{Separate outcome models}
+ \item{avg }{Average responses into 1 outcome}
+ \item{multi }{Use multi response regression in glmnet}}}
 
 \item{mine}{Smallest imbalance to consider, default 0}
 
