@@ -302,11 +302,12 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
     
 ####### Apply a covariate screen then fit synth
 
-lasso_screen <- function(ipw_format, syn_format, type="sep") {
+lasso_screen <- function(ipw_format, syn_format, alpha=1, type="sep") {
     #' Screen covariates for the outcome process
     #'
     #' @param ipw_format Output of `format_ipw`
-    #' @param syn_format Output of `syn_format`    r
+    #' @param syn_format Output of `syn_format`
+    #' @param alpha Elastic Net parameter
     #' @param type How to fit outcome model(s)
     #'             \itemize{
     #'              \item{sep }{Separate outcome models}
@@ -323,8 +324,8 @@ lasso_screen <- function(ipw_format, syn_format, type="sep") {
     
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=.25, intercept=FALSE)$lambda.min
-            fit <- glmnet::glmnet(x, y, alpha=.25,
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha, intercept=FALSE)$lambda.min
+            fit <- glmnet::glmnet(x, y, alpha=alpha,
                                   lambda=lam, intercept=FALSE)
             return(as.matrix(coef(fit))[-1,])
     }
@@ -350,7 +351,7 @@ lasso_screen <- function(ipw_format, syn_format, type="sep") {
         fit <- glmnet::glmnet(X, y, family="mgaussian",
                               alpha=alpha,
                               lambda=lam)
-        regweights <- do.call(cbind, coef(fit))
+        regweights <- as.matrix(do.call(cbind, coef(fit))[-1,])
     }
     
 
@@ -366,12 +367,13 @@ lasso_screen <- function(ipw_format, syn_format, type="sep") {
 
 
 
-double_screen <- function(ipw_format, syn_format, type="sep", mine=0, by=1) {
+double_screen <- function(ipw_format, syn_format, alpha=1, type="sep", mine=0, by=1) {
     #' Screen covariates for the outcome process with LASSO and selection with
     #' SC with infinity norm
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`
+    #' @param alpha Elastic net parameter
     #' @param type How to fit outcome model(s)
     #'             \itemize{
     #'              \item{sep }{Separate outcome models}
@@ -385,7 +387,7 @@ double_screen <- function(ipw_format, syn_format, type="sep", mine=0, by=1) {
     #'           \item{params }{Regression parameters}}
 
     ## screen covariates for outcome process
-    lasout <- lasso_screen(ipw_format, syn_format, type)
+    lasout <- lasso_screen(ipw_format, syn_format, alpha, type)
 
     ## screen using L infinity
 

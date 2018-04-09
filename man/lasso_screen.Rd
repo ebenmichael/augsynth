@@ -4,12 +4,14 @@
 \alias{lasso_screen}
 \title{Screen covariates for the outcome process}
 \usage{
-lasso_screen(ipw_format, syn_format, type = "sep")
+lasso_screen(ipw_format, syn_format, alpha = 1, type = "sep")
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
-\item{syn_format}{Output of `syn_format`    r}
+\item{syn_format}{Output of `syn_format`}
+
+\item{alpha}{Elastic Net parameter}
 
 \item{type}{How to fit outcome model(s)
 \itemize{

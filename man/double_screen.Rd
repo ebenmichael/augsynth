@@ -5,12 +5,15 @@
 \title{Screen covariates for the outcome process with LASSO and selection with
 SC with infinity norm}
 \usage{
-double_screen(ipw_format, syn_format, type = "sep", mine = 0, by = 1)
+double_screen(ipw_format, syn_format, alpha = 1, type = "sep", mine = 0,
+  by = 1)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
 
 \item{syn_format}{Output of `syn_format`}
+
+\item{alpha}{Elastic net parameter}
 
 \item{type}{How to fit outcome model(s)
 \itemize{
