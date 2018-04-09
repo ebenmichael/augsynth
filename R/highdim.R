@@ -400,7 +400,7 @@ double_screen <- function(ipw_format, syn_format, alpha=1, type="sep", mine=0, b
 
     
     ## find the best epsilon
-    minep <- bin_search(mine, 2 * max(ipw_format$X), by, feasfunc)
+    minep <- bin_search(mine, 10 * max(ipw_format$X), by, feasfunc)
 
     ## if it failed, then stop everything
     if(minep < 0) {
