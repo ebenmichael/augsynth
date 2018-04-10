@@ -4,8 +4,9 @@
 \alias{sep_lasso_}
 \title{Internal function that does the work of sep_lasso}
 \usage{
-sep_lasso_(outcomes, metadata, trt_unit, by, cols = list(unit = "unit", time =
-  "time", outcome = "outcome", treated = "treated"))
+sep_lasso_(outcomes, metadata, trt_unit, by, scale = TRUE, maxep = 4,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -15,6 +16,10 @@ sep_lasso_(outcomes, metadata, trt_unit, by, cols = list(unit = "unit", time =
 \item{trt_unit}{Unit that is treated (target for regression)}
 
 \item{by}{Step size for tolerances to try}
+
+\item{scale}{Scale imbalances by standard deviations, default: True}
+
+\item{maxep}{Maximum imbalance to consider in units of sd, default: 4}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}

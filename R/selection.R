@@ -195,14 +195,16 @@ recent_group <- function(outcomes, metadata, t_past,
 }
 
 
-sep_lasso_ <- function(outcomes, metadata, trt_unit, by,
-                       cols=list(unit="unit", time="time",
+sep_lasso_ <- function(outcomes, metadata, trt_unit, by, scale=TRUE,
+                       maxep=4, cols=list(unit="unit", time="time",
                                  outcome="outcome", treated="treated")) {
     #' Internal function that does the work of sep_lasso
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression)
     #' @param by Step size for tolerances to try
+    #' @param scale Scale imbalances by standard deviations, default: True
+    #' @param maxep Maximum imbalance to consider in units of sd, default: 4
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
     #'
@@ -214,7 +216,11 @@ sep_lasso_ <- function(outcomes, metadata, trt_unit, by,
     ## get the standard deviations of controls for each group
     syn_data <- data_out$synth_data
     x <- syn_data$Z0
-    sds <- apply(x, 1, sd)
+    if(scale) {
+        sds <- apply(x, 1, sd)
+    } else {
+        sds <- rep(1, dim(x)[1])
+    }
     ## set original epsilon to infinity
     epslist <- sapply(sds, function(sd) 10^20 * sd)
     
@@ -226,7 +232,7 @@ sep_lasso_ <- function(outcomes, metadata, trt_unit, by,
     }
     
     ## find the best epsilon
-    minep <- bin_search(0, 4, by, feasfunc)
+    minep <- bin_search(0, maxep, by, feasfunc)
 
     ## if it failed, then stop everything
     if(minep < 0) {
@@ -234,12 +240,13 @@ sep_lasso_ <- function(outcomes, metadata, trt_unit, by,
     }
     ## keep that tolerance
     epslist <- lapply(sds, function(sd) minep * sd)
-    return(epslist)
+    return(list(epslist, minep))
     
     }
 
 
 sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
+                      scale=TRUE, maxep=4, 
                       cols=list(unit="unit", time="time",
                                 outcome="outcome", treated="treated")) {
     #' Finds the lowest feasible tolerance in units of standard deviation for
@@ -249,15 +256,18 @@ sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param by Step size for tolerances to dry, default: 0.1 * magnitude
     #' @param cols Column names corresponding to the units,
+    #' @param scale Scale imbalances by standard deviations, default: True
+    #' @param maxep Maximum imbalance to consider in units of sd, default: 4
     #'             time variable, outcome, and treated indicator
     #'
     #' @return max ent SC fit with lowest imbalance tolerance
     #' @export
 
     ## get the lowest global imbalance
-    epslist <- sep_lasso_(outcomes, metadata, trt_unit, by, cols=cols)
+    epslist <- sep_lasso_(outcomes, metadata, trt_unit, by, scale, maxep, cols=cols)
     ## fit the SC
-    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist, lasso=TRUE, cols=cols)
+    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist[[1]], lasso=TRUE, cols=cols)
 
+    lasso_sc$minep <- epslist[[2]]
     return(lasso_sc)
 }
