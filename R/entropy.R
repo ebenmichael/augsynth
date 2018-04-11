@@ -63,7 +63,7 @@ prox_group <- function(x, lams, groups) {
 }
 
 
-fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000) {
+fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, tol=1e-8) {
     #' Fit l2 entropy regularized synthetic controls
     #' by solving the dual problem
     #' @param data_out formatted data from format_entropy
@@ -71,6 +71,7 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000) {
     #'            outcome, if only one outcome type then a scalar
     #' @param lasso Whether to do lasso (every covariate is separate)
     #' @param max_iters Maximum number of iterations
+    #' @param tol Convergence tolerance
     #'
     #' @return synthetic control weights
 
@@ -159,7 +160,7 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000) {
     lam0 <- numeric(t)
     ## solve the dual problem with prx gradient
     
-    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=max_iters))
+    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=max_iters, EPS=tol))
     lam <- out$x
 
     ## get the primal weights from the dual variables
@@ -239,7 +240,7 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
                         outcome_col=NULL, lasso=FALSE,
                         cols=list(unit="unit", time="time",
                                   outcome="outcome", treated="treated"),
-                        max_iters=1000) {
+                        max_iters=1000, tol=1e-8) {
     #' Fit l2_entropy regularized synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
@@ -251,13 +252,14 @@ get_entropy <- function(outcomes, metadata, trt_unit=1, eps=NULL,
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
     #' @param max_iters Maximum number of iterations
+    #' @param tol Convergence tolerance
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
     ## get the synthetic controls weights
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
-    out <- fit_entropy_formatted(data_out, eps, lasso, max_iters)
+    out <- fit_entropy_formatted(data_out, eps, lasso, max_iters, tol=tol)
 
     ## match outcome types to synthetic controls
     if(!is.null(outcome_col)) {

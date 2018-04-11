@@ -6,7 +6,8 @@
 \usage{
 get_entropy(outcomes, metadata, trt_unit = 1, eps = NULL,
   outcome_col = NULL, lasso = FALSE, cols = list(unit = "unit", time =
-  "time", outcome = "outcome", treated = "treated"), max_iters = 1000)
+  "time", outcome = "outcome", treated = "treated"), max_iters = 1000,
+  tol = 1e-08)
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -26,6 +27,8 @@ assume only one outcome}
 time variable, outcome, and treated indicator}
 
 \item{max_iters}{Maximum number of iterations}
+
+\item{tol}{Convergence tolerance}
 }
 \value{
 outcomes with additional synthetic control added and weights

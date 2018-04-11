@@ -266,7 +266,7 @@ sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
     ## get the lowest global imbalance
     epslist <- sep_lasso_(outcomes, metadata, trt_unit, by, scale, maxep, cols=cols)
     ## fit the SC
-    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist[[1]], lasso=TRUE, cols=cols)
+    lasso_sc <- get_entropy(outcomes, metadata, trt_unit, eps=epslist[[2]], lasso=TRUE, cols=cols)
 
     lasso_sc$minep <- epslist[[2]]
     return(lasso_sc)
