@@ -25,7 +25,7 @@ logsumexp_grad <- function(eta, x) {
 
 prox_l2 <- function(x, lam) {
     #' prox operator of lam * ||x||_2
-    shrink <- max(0, 1 - lam / norm(x, type="2"))
+    shrink <- max(0, 1 - lam / sqrt(sum(x^2)))
     return(shrink * x)
 }
 
@@ -63,7 +63,8 @@ prox_group <- function(x, lams, groups) {
 }
 
 
-fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, tol=1e-8) {
+fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, tol=1e-8,
+                                  init_theta=NULL) {
     #' Fit l2 entropy regularized synthetic controls
     #' by solving the dual problem
     #' @param data_out formatted data from format_entropy
@@ -72,6 +73,7 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, to
     #' @param lasso Whether to do lasso (every covariate is separate)
     #' @param max_iters Maximum number of iterations
     #' @param tol Convergence tolerance
+    #' @param init_theta Initial dual parameter to start at (for warm starts), default NULL
     #'
     #' @return synthetic control weights
 
@@ -157,10 +159,12 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, to
 
 
     ## initial value
-    lam0 <- numeric(t)
+    if(is.null(init_theta)) {
+        init_theta=numeric(t)
+    }
     ## solve the dual problem with prx gradient
-    
-    out <- apg::apg(grad, prox, t, opts=list(MAX_ITERS=max_iters, EPS=tol))
+    out <- apg::apg(grad, prox, t,
+                    opts=list(MAX_ITERS=max_iters, EPS=tol, X_INIT=init_theta))
     lam <- out$x
 
     ## get the primal weights from the dual variables
@@ -170,7 +174,8 @@ fit_entropy_formatted <- function(data_out, eps, lasso=FALSE, max_iters=1000, to
     
     ## compute primal objective value
     primal_obj <- sqrt(sum((t(x) %*% weights - y)^2))
-    
+
+    primal_obj <- sqrt(sum((syn_data$Z0 %*% weights - syn_data$Z1)^2))    
     ## primal objective value scaled by least squares difference for mean
     unif_primal_obj <- sqrt(sum((t(x) %*% rep(1/dim(x)[1], dim(x)[1]) - y)^2))
     scaled_primal_obj <- primal_obj / unif_primal_obj

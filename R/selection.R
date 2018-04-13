@@ -271,3 +271,218 @@ sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
     lasso_sc$minep <- epslist[[2]]
     return(lasso_sc)
 }
+
+
+cv_di <- function(outcomes, metadata, trt_unit=1, eps,
+                   outcome_col=NULL, lasso=FALSE,
+                   cols=list(unit="unit", time="time",
+                             outcome="outcome", treated="treated"),
+                   max_iters=1000, tol=1e-8) {
+    #' Cross validation for l2_entropy regularized synthetic controls
+    #' Uses the CV procedure from Doudchenko-Imbens (2017)
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param eps vector of regularization parameters to consider
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param lasso Whether to do lasso (every covariate is separate)
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #' @param max_iters Maximum number of iterations
+    #' @param tol Convergence tolerance
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## format data correctly
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+    
+    nc <- dim(data_out$synth_data$Z0)[2]
+    t0 <- dim(data_out$synth_data$Z0)[1]
+
+    ## collect errors here
+    errs <- matrix(0, nrow=nc, ncol=length(eps))
+    
+    ## iterate over control units
+    for(i in 1:nc) {
+        newdat <- data_out
+        ## remove the last pre-period for validation
+        ## set the treated unit to i
+        newdat$synth_data$Z0 <- data_out$synth_data$Z0[-t0, -i, drop=FALSE]
+        newdat$synth_data$Z1 <- data_out$synth_data$Z0[-t0, i, drop=FALSE]
+
+        ctrls <- data_out$synth_data$Z0[t0,-i]
+        trt <- data_out$synth_data$Z0[t0,i]
+
+        ## iterate over hyper-parameter choices
+        for(j in 1:length(eps)) {
+            ## fit max ent SC
+            suppressMessages(
+                ent <- fit_entropy_formatted(newdat, eps[j],
+                                             lasso, max_iters, tol)
+            )
+            ## get the error
+            errs[i,j] <- trt - ctrls %*% ent$weights
+        }
+        
+    }
+    ## get the epsilon with the best balance and refit
+    best_eps <- eps[which.min(apply(errs, 2, function(x) mean(x^2)))]
+
+    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
+                       lasso, cols, max_iters, tol)
+    ent$best_eps <- best_eps
+    return(ent)
+
+
+}
+
+
+
+cv_kfold <- function(outcomes, metadata, trt_unit, eps,
+                  n_folds,
+                  outcome_col=NULL, lasso=FALSE,
+                  cols=list(unit="unit", time="time",
+                            outcome="outcome", treated="treated"),
+                  max_iters=1000, tol=1e-8) {
+    #' Cross validation for l2_entropy regularized synthetic controls
+    #' K-fold cross validation, fit on K-1 folds, evaluate balance on Kth fold
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param eps vector of regularization parameters to consider
+    #' @param n_folds Number of CV folds
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param lasso Whether to do lasso (every covariate is separate)
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #' @param max_iters Maximum number of iterations
+    #' @param tol Convergence tolerance
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## format data correctly
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+    
+    nc <- dim(data_out$synth_data$Z0)[2]
+    t0 <- dim(data_out$synth_data$Z0)[1]
+
+    ## collect errors here
+    errs <- matrix(0, nrow=n_folds, ncol=length(eps))
+
+    ## shuffle controls
+    Z0 <- data_out$synth_data$Z0
+    Z0 <- Z0[,sample(nc)]
+
+    ## get folds
+    folds <- cut(1:nc, breaks=n_folds, labels=FALSE)
+
+    ## iterate over folds
+    for(i in 1:n_folds) {
+        newdat <- data_out
+
+        ## remove the ith fold
+        ## set the treated unit to i
+        fold_inds <- which(folds == i)
+        newdat$synth_data$Z0 <- Z0[, -fold_inds]
+
+        ctrls <- Z0[,fold_inds]
+        trt <- data_out$synth_data$Z1
+
+        
+        ## iterate over hyper-parameter choices
+        for(j in 1:length(eps)) {
+            ## fit max ent SC
+            suppressMessages(
+                ent <- fit_entropy_formatted(newdat, eps[j],
+                                             lasso, max_iters, tol)
+            )
+            ## get weights for new controls
+            eta <- t(ctrls) %*% ent$dual
+            m <- max(eta)
+            weights <- exp(eta - m) / sum(exp(eta - m))
+            ## get the error
+            errs[i,j] <- sum((trt - ctrls %*% weights)^2)
+        }
+        
+    }
+    ## get the epsilon with the best balance and refit
+    best_eps <- eps[which.min(apply(errs, 2, sum))]
+
+    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
+                       lasso, cols, max_iters, tol)
+    ent$best_eps <- best_eps
+    return(ent)
+
+}
+
+
+
+cv_wz <- function(outcomes, metadata, trt_unit, eps,
+                  n_boot,
+                  outcome_col=NULL, lasso=FALSE,
+                  cols=list(unit="unit", time="time",
+                            outcome="outcome", treated="treated"),
+                  max_iters=1000, tol=1e-8) {
+    #' Cross validation for l2_entropy regularized synthetic controls
+    #' Take bootstrap samples over the controls and evaluate balance
+    #' Modified version of Wang & Zubizaretta (2018)
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param eps vector of regularization parameters to consider
+    #' @param n_boot Number of bootstrap samples
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param lasso Whether to do lasso (every covariate is separate)
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #' @param max_iters Maximum number of iterations
+    #' @param tol Convergence tolerance
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## format data correctly
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+    
+    nc <- dim(data_out$synth_data$Z0)[2]
+    t0 <- dim(data_out$synth_data$Z0)[1]
+
+    ## collect errors here
+    errs <- matrix(0, nrow=n_boot, ncol=length(eps))
+
+
+    Z0 <- data_out$synth_data$Z0
+
+    ## iterate over hyper-parameter choices
+    for(j in 1:length(eps)) {
+        ## fit max ent SC once
+        suppressMessages(
+            ent <- fit_entropy_formatted(data_out, eps[j],
+                                         lasso, max_iters, tol)
+        )
+        ## get bootstrap samples
+        for(b in 1:n_boot) {
+            boots <- sample(nc, replace=TRUE)
+            ctrls <- Z0[,boots]
+            ## get weights for new controls
+            eta <- t(ctrls) %*% ent$dual
+            m <- max(eta)
+            weights <- exp(eta - m) / sum(exp(eta - m))
+            ## get the error
+            errs[b,j] <- sqrt(sum((data_out$synth_data$Z1 - ctrls %*% weights)^2))
+        }
+    }
+    ## get the epsilon with the best balance and refit
+    best_eps <- eps[which.min(apply(errs, 2, mean))]
+
+    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
+                       lasso, cols, max_iters, tol)
+    ent$best_eps <- best_eps
+    return(ent)
+
+}
