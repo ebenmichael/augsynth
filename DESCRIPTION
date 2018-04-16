@@ -18,10 +18,12 @@ Imports:
     plyr,
     LiblineaR,
     randomForest,
-    gsynth
+    gsynth,
+    balancer
 Remotes:
     jpvert/apg,
-    xuyiqing/gsynth
+    xuyiqing/gsynth,
+    ebenmichael/balancer
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
