@@ -43,6 +43,70 @@ bin_search <- function(start, end, by, feasfunc) {
     return(bin_search_(eps, feasfunc))
 }
 
+bin_search_balancer <- function(outcomes, metadata, trt_unit=1, start, end, by,
+                         link=c("logit", "linear", "pos-linear"),
+                         regularizer=c("l1", "l2", "linf"),
+                         normalized=TRUE,
+                         outcome_col=NULL,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated"),
+                         opts=list()) {
+    #' Find the minimal amount of regularization possible
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param start Starting value of tolerances
+    #' @param end Ending value of tolerances
+    #' @param by Step size of tolerances
+    #' @param link Link function for weights
+    #' @param regularizer Dual of balance criterion
+    #' @param normalized Whether to normalize the weights
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #' @param opts Optimization options
+    #'        \itemize{
+    #'          \item{MAX_ITERS }{Maximum number of iterations to run}
+    #'          \item{EPS }{Error tolerance}}
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## just format data once
+    data_out <- format_ipw(outcomes, metadata, outcome_col, cols)
+
+    ## create the feasibility function by changing the hyper parameter
+    feasfunc <- function(param) {
+        suppressMessages(
+            out <-
+                fit_balancer_formatted(
+                    data_out$X,
+                    data_out$trt,
+                    link=link,
+                    regularizer=regularizer,
+                    param, normalized=normalized,
+                    opts=opts))
+        return(out$feasible)
+    }
+    
+    ## find the best epsilon
+    param <- bin_search(start, end, by, feasfunc)
+
+    ## if it failed, then stop everything
+    if(param < 0) {
+        stop("Failed to find a synthetic control with balance better than 4 std deviations")
+    }
+
+
+    ## use this hyperparameter
+    suppressMessages(out <- get_balancer(outcomes, metadata, trt_unit, param,
+                                         link, regularizer, normalized,
+                                         outcome_col, cols, opts))
+    out$param <- param
+    return(out)
+    }
+
 
 lexical <- function(outcomes, metadata, grp_order, outcome_col,
                     trt_unit=1, by=.1, maxep=1, 
