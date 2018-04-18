@@ -180,11 +180,18 @@ wpermtest <- function(metadata, fitfunc, units, weights, trt_unit,
         data.frame(list(unit=as.numeric(names(s)),
                         stat=sapply(s, function(x) x))))
 
+    ## estimate marginal probabilities
+    n_sim <- 10000
+    sims <- sapply(1:n_sim,
+                   function(x)
+                       sample(units, 1, prob=weights))
+    probs <-sapply(units, function(x) sum(sims == x)) / n_sim
+
     ## compute the "p value"
     pvals <- lapply(stats,
                     function(s) {
                         est <- mean(s[s$unit == trt_unit, 2])
-                        pval <- sum(weights * (s[s$unit != trt_unit,]$stat >= est))
+                        pval <- sum(probs * (s$stat >= est))
                     })
 
     return(list(atts=atts, stats=stats, pvals=pvals))
@@ -238,7 +245,7 @@ wpermtest_sc <- function(outcomes, metadata, trt_unit,
 
     odds <- exp(ipw$X %*% ent$dual)
     ## permute treatment label
-    inf <- wpermtest(metadata, synfunc, units, round(ent$weights, 3), trt_unit,
+    inf <- wpermtest(metadata, synfunc, units, pscores, trt_unit,
                      pretimes, posttimes, statfuncs)
 
     inf$ent <- ent
