@@ -292,7 +292,7 @@ wpermtest2 <- function(metadata, fitfunc, units, weights, trt_unit,
                     function(s) {
                         est <- mean(s[s$unit == trt_unit, 2])
                         if(max(s[s$unit != trt_unit,]$stat) < est) {
-                            pval <- weights[which.max(s[s$unit != trt_unit,]$stat)]
+                            pval <- max(weights)
                         } else {
                             pval <- sum(weights * (s[s$unit != trt_unit,]$stat >= est))
                         }
@@ -340,16 +340,21 @@ wpermtest2_sc <- function(outcomes, metadata, trt_unit,
                        cols=cols))
 
     pscores <- 1 / (1 + exp(-ipw$X %*% ent$dual))
-    
     ## use all pre and post periods and units
     times <- unique(sc$outcomes$time)
     pretimes <- times[which(times < metadata$t_int)]
     posttimes <- times[which(times >= metadata$t_int)]
     units <- unique(sc$outcomes$unit)
 
+    ctrls <- units[which(units != trt_unit)]
+    posunits <- which(round(sc$weights, 3) > 0)
+    ctrls <- ctrls[posunits]
+    units <- c(trt_unit, ctrls)
+
+
     odds <- exp(ipw$X %*% ent$dual)
     ## permute treatment label
-    inf <- wpermtest2(metadata, synfunc, units, ent$weights, trt_unit,
+    inf <- wpermtest2(metadata, synfunc, units, ent$weights[posunits], trt_unit,
                      pretimes, posttimes, statfuncs)
 
     inf$ent <- ent
