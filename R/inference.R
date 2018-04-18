@@ -108,13 +108,22 @@ firpo_inf_synth <- function(outcomes, metadata, trt_unit,
     #' @return att estimates, test statistics, p-values
     #' @export
 
-
-    ## create a fitting function for synth
     synfunc <- function(u) {
-
-        get_synth(outcomes,
-                  metadata, u, cols=cols)
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
     }
+
+    ## ## create a fitting function for synth
+    ## synfunc <- function(u) {
+
+    ##     get_synth(outcomes,
+    ##               metadata, u, cols=cols)
+    ## }
 
     ## fit synth once
     sc <- get_synth(outcomes, metadata, trt_unit, cols)
@@ -199,16 +208,20 @@ wpermtest_sc <- function(outcomes, metadata, trt_unit,
     #' @return att estimates, test statistics, p-values
     #' @export
 
-
+    ipw <- format_ipw(outcomes, metadata, cols=cols)
     ## create a fitting function for synth
     synfunc <- function(u) {
-
-        get_synth(outcomes,
-                  metadata, u, cols=cols)
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit,] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
     }
 
     ## fit synth once
-    ipw <- format_ipw(outcomes, metadata, cols=cols)
+
     sc <- get_synth(outcomes, metadata, trt_unit, cols)
 
     ## get estimated propensity scores
