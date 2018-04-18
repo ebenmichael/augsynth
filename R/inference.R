@@ -83,7 +83,7 @@ firpo_inf <- function(metadata, fitfunc, units, trt_unit,
     pvals <- lapply(stats,
                     function(s) {
                         est <- mean(s[s$unit == trt_unit, 2])
-                        pval <- sum(s$stat > est) / dim(s)[1]
+                        pval <- sum(s$stat >= est) / dim(s)[1]
                     })
 
     return(list(atts=atts, stats=stats, pvals=pvals))
@@ -184,7 +184,7 @@ wpermtest <- function(metadata, fitfunc, units, weights, trt_unit,
     pvals <- lapply(stats,
                     function(s) {
                         est <- mean(s[s$unit == trt_unit, 2])
-                        pval <- sum(weights * (s[s$unit != trt_unit,]$stat > est))
+                        pval <- sum(weights * (s[s$unit != trt_unit,]$stat >= est))
                     })
 
     return(list(atts=atts, stats=stats, pvals=pvals))
