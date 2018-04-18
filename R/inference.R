@@ -215,7 +215,7 @@ wpermtest_sc <- function(outcomes, metadata, trt_unit,
             get_synth(outcomes,
                       metadata, u, cols=cols)
         } else {
-            get_synth(outcomes[outcomes[cols$unit,] != trt_unit,],
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
                       metadata, u, cols=cols)
         }
     }
