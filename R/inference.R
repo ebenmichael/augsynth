@@ -254,6 +254,111 @@ wpermtest_sc <- function(outcomes, metadata, trt_unit,
 
 }
 
+
+
+wpermtest2 <- function(metadata, fitfunc, units, weights, trt_unit,
+                      pretimes, posttimes, statfuncs) {
+    #' Get the permutation distribution of the test stat
+    #' assuming equal probability of treatment
+    #' @param metadata with treatment time
+    #' @param fitfunc Partially applied fitting function which takes in
+    #'                the number of the treated unit
+    #' @param units Numbers of the units to permute treatment around
+    #' @param weights Weights for the permutation distribution
+    #' @param trt_unit Treated unit
+    #' @param pretimes Vector of times in pre-period
+    #' @param posttimes Vector of times in post-period
+    #' @param statfuncs Function to compute test stats
+    #'
+    #' @return att estimates, test statistics, p-values
+    
+    ## compute atts
+    atts <- bind_rows(lapply(units, function(u) est_att(metadata, fitfunc, u)))
+
+    ## compute test statistics
+    stats <- lapply(statfuncs,
+                    function(statfunc)
+                        by(atts, atts$unit,
+                           function(df)
+                               compute_stat(data.frame(df),
+                                            pretimes, posttimes,
+                                            statfunc)))
+    stats <- lapply(stats, function(s)
+        data.frame(list(unit=as.numeric(names(s)),
+                        stat=sapply(s, function(x) x))))
+
+    ## compute the "p value"
+    pvals <- lapply(stats,
+                    function(s) {
+                        est <- mean(s[s$unit == trt_unit, 2])
+                        if(max(s[s$unit != trt_unit,]$stat) < est) {
+                            pval <- weights[which.max(s[s$unit != trt_unit,]$stat)]
+                        } else {
+                            pval <- sum(weights * (s[s$unit != trt_unit,]$stat >= est))
+                        }
+                    })
+
+    return(list(atts=atts, stats=stats, pvals=pvals))
+}
+
+
+
+wpermtest2_sc <- function(outcomes, metadata, trt_unit,
+                        statfuncs=c(rmse_ratio, mean_abs, abs_tstat), 
+                        cols=list(unit="unit", time="time",
+                                  outcome="outcome", treated="treated")) {
+    #' Get the weighted permutation distribution of SC estimate test statistics
+    #' estimating p-scores with logit-link synth
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param statfuncs Function to compute test stats
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return att estimates, test statistics, p-values
+    #' @export
+
+    ipw <- format_ipw(outcomes, metadata, cols=cols)
+    ## create a fitting function for synth
+    synfunc <- function(u) {
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
+    }
+
+    ## fit synth once
+
+    sc <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## get estimated propensity scores
+    suppressMessages(ent <- get_entropy(outcomes, metadata, trt_unit, eps=sc$primal_obj,
+                       cols=cols))
+
+    pscores <- 1 / (1 + exp(-ipw$X %*% ent$dual))
+    
+    ## use all pre and post periods and units
+    times <- unique(sc$outcomes$time)
+    pretimes <- times[which(times < metadata$t_int)]
+    posttimes <- times[which(times >= metadata$t_int)]
+    units <- unique(sc$outcomes$unit)
+
+    odds <- exp(ipw$X %*% ent$dual)
+    ## permute treatment label
+    inf <- wpermtest2(metadata, synfunc, units, ent$weights, trt_unit,
+                     pretimes, posttimes, statfuncs)
+
+    inf$ent <- ent
+    inf$pscores <- pscores
+    return(inf)
+
+}
+
+
 #' test stat is ratio of RMSEs in post and pre
 #' @export
 rmse_ratio <- function(pre, post) {
