@@ -611,7 +611,9 @@ fit_augsyn_formatted <- function(ipw_format, syn_format,
 
     ## and treated pre outcomes
     syn$treatout <- colMeans(X[trt ==1,,drop=FALSE])
-    
+
+    ## and control pre-outcomes
+    syn$pre_ctrls <- ipw_format$X[ipw_format$trt == 0,]
     
     return(syn)
 }
@@ -634,9 +636,9 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     ## combine weighted residuals and predicted value into DR estimate
     dr <- fit$y0hat_t + wresid
 
-
-    ## combine pre period with DR estimate into a "synthetic control"
-    dr_ctrl <- c(fit$treatout, dr)
+    ## combine weighted pre-period controls with
+    ## augmented estimate into a "synthetic control"
+    dr_ctrl <- c(t(fit$pre_ctrls) %*% fit$weights, dr)
 
     ## replace true outcome with imputed value
     dr_outcomes <- outcomes %>%

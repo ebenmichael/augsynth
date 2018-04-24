@@ -359,6 +359,7 @@ cv_di <- function(outcomes, metadata, trt_unit=1, eps,
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
+
     ## format data correctly
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
     
