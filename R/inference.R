@@ -430,20 +430,61 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
     
     ## compute atts
     atts <- lapply(c(trt_unit, units), function(u) est_att(metadata, fitfunc, u))
-
-    ## compute squared error for each time period and each unit
-    errs <- sapply(atts[-1], function(att) att[att$time %in% posttimes,]$att^2)
+    trt_att <- est_att(metadata, fitfunc, trt_unit)
+    ## compute error for each time period and each unit
+    errs <- sapply(atts[-1], function(att) att[att$time %in% posttimes,]$att)
     ## get standard error estimates
     if(is.null(weights)) {
-        comb_func <- function(x) sqrt(sum(x)) / length(units)
+        comb_func <- function(x) sqrt(sum(x^2)) / length(units)
     } else {
-        comb_func <- function(x) sqrt(sum(x * weights^2))
+        ## 4 different estimators
+        
+        ## second moment
+        comb_func <- function(x) sqrt(mean(x^2)) / sqrt(length(units))
+        ses1 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
+        att1 <- trt_att$att
+        
+        ## weighted second moment
+        comb_func <- function(x) sqrt(sum(x^2 * weights)) / sqrt(sum(weights)^2/sum(weights^2))
+        ses2 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
+        att2 <- trt_att$att
+        
+        ## unweighted variance
+        ## comb_func <- function(x) sqrt(mean((x - mean(x))^2)) / sqrt(length(units))
+        comb_func <- function(x) sqrt(mean(x^2) - mean(x)^2) / sqrt(length(units))
+        ses3 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
+
+        ## bias adjustment
+        att3 <- trt_att$att - c(rep(0, dim(trt_att)[1] - length(posttimes)),
+                                apply(errs, 1, mean))
+                                    
+
+        ## weighted variance
+        ## comb_func <- function(x) sqrt(sum(x^2 * weights^2) / sum(weights^2) -
+        ##                               sum(x * weights)^2 / sum(weights)) * sqrt(sum(weights^2))
+
+        ## comb_func <- function(x) sqrt(sum((x-sum(x*weights))^2 * weights)) / sqrt(sum(weights)^2/sum(weights^2))
+
+        comb_func <- function(x) sqrt(sum(weights * x^2) / sum(weights) -
+                                      sum(weights * x)^2 / sum(weights)^2) / sqrt(sum(weights)^2/sum(weights^2))
+        ses4 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
+
+        ## bias adjustment
+        att4 <- trt_att$att - c(rep(0, dim(trt_att)[1] - length(posttimes)),
+                                apply(errs, 1, function(x) sum(x * weights) / sum(weights)))
+
+        ses <- c(ses1, ses2, ses3, ses4)
+        weighted <- rep(c(rep(FALSE, length(ses1)), rep(TRUE, length(ses1))), 2)
+        centered = c(rep(FALSE, 2 * length(ses1)), rep(TRUE, 2 * length(ses1)))
+        
     }
-    ses <- apply(errs, 1, comb_func)
 
     ## combine into one dataframe
-    trt_att <- est_att(metadata, fitfunc, trt_unit)
-    trt_att$se <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), ses)
+    trt_att <- rbind(trt_att, trt_att, trt_att, trt_att)
+    trt_att$att <- c(att1, att2, att3, att4)
+    trt_att$se <- ses
+    trt_att$weighted <- weighted
+    trt_att$centered <- centered
     return(trt_att)
 }
 
@@ -498,8 +539,8 @@ standard_error <- function(outcomes, metadata, trt_unit, use_weights=FALSE,
     if(use_weights) {
         weights <- sc$weights
         ## restrict to units with positive weight
-        units <- units[round(weights,3) > 0]
-        weights <- weights[round(weights,3) > 0]
+        ## units <- units[round(weights,3) > 0]
+        ## weights <- weights[round(weights,3) > 0]
     } else {
         weights <- NULL
     }
