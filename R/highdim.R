@@ -636,6 +636,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     ## combine weighted residuals and predicted value into DR estimate
     dr <- fit$y0hat_t + wresid
 
+    
     ## combine weighted pre-period controls with
     ## augmented estimate into a "synthetic control"
     dr_ctrl <- c(t(fit$pre_ctrls) %*% fit$weights, dr)
@@ -734,6 +735,9 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     ctrls$primal_group_obj <- out$primal_group_obj
     ctrls$scaled_primal_obj <- out$scaled_primal_obj
     ctrls$controls <- out$controls
+    ctrls$tauhat <- out$tauhat
+    ctrls$y0hat_t <- out$y0hat_t
+    ctrls$resid <- out$resid
     
     return(ctrls)
 }

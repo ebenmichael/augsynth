@@ -2,6 +2,8 @@
 ## Code for inference
 ################################################################################
 
+######## RANDOMIZATION INFERENCE
+
 est_att <- function(metadata, fitfunc, trt_unit) {
     #' Fit weights and get att estimates
     #' @param metadata with treatment time
@@ -409,3 +411,103 @@ last <- function(pre, post) {
     return(post[length(post)])
 }
 
+
+
+##### SAMPLING INFERENCE
+
+standard_error_ <- function(metadata, fitfunc, units, trt_unit,
+                           posttimes, weights=NULL) {
+    #' Internal function to estimate the variance of the SC estimate
+    #' @param metadata with treatment time
+    #' @param fitfunc Partially applied fitting function which takes in
+    #'                the number of the treated unit
+    #' @param units Numbers of the control units to include when estimating the se
+    #' @param trt_unit Treated unit
+    #' @param posttimes Vector of times in post-period
+    #' @param weights Weights to use in SC estimate, default: NULL (Doudchenko-Imbens 2017)
+    #'
+    #' @return att estimates, test statistics, p-values
+    
+    ## compute atts
+    atts <- lapply(c(trt_unit, units), function(u) est_att(metadata, fitfunc, u))
+
+    ## compute squared error for each time period and each unit
+    errs <- sapply(atts[-1], function(att) att[att$time %in% posttimes,]$att^2)
+    ## get standard error estimates
+    if(is.null(weights)) {
+        comb_func <- function(x) sqrt(sum(x)) / length(units)
+    } else {
+        comb_func <- function(x) sqrt(sum(x * weights^2))
+    }
+    ses <- apply(errs, 1, comb_func)
+
+    ## combine into one dataframe
+    trt_att <- est_att(metadata, fitfunc, trt_unit)
+    trt_att$se <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), ses)
+    return(trt_att)
+}
+
+
+
+#' Estimate the variance of the SC estimate
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param fitfunc Partially applied fitting function which takes in
+#'                the number of the treated unit
+#' @param units Numbers of the units to include when estimating the se
+#' @param trt_unit Treated unit
+#' @param use_weights Whether to use weights in se estimate, default: FALSE
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' 
+#' @return att estimates, test statistics, p-values
+#' @export
+standard_error <- function(outcomes, metadata, trt_unit, use_weights=FALSE,
+                            cols=list(unit="unit", time="time",
+                                      outcome="outcome", treated="treated")) {
+        
+    ## partially applied synth fitting function
+    ## synfunc <- function(u) {
+    ##     if(u == trt_unit) {
+    ##         get_synth(outcomes,
+    ##                   metadata, u, cols=cols)
+    ##     } else {
+    ##         get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+    ##                   metadata, u, cols=cols)
+    ##     }
+    ## }
+
+    ## create a fitting function for synth
+    synfunc <- function(u) {
+
+        get_synth(outcomes,
+                  metadata, u, cols=cols)
+    }
+
+    ## fit synth once
+    sc <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## use all pre and post periods and units
+    times <- unique(sc$outcomes$time)
+    pretimes <- times[which(times < metadata$t_int)]
+    posttimes <- times[which(times >= metadata$t_int)]
+    units <- unique(sc$outcomes$unit)
+    units <- units[units != trt_unit]
+
+    ## use synth weights
+    if(use_weights) {
+        weights <- sc$weights
+        ## restrict to units with positive weight
+        units <- units[round(weights,3) > 0]
+        weights <- weights[round(weights,3) > 0]
+    } else {
+        weights <- NULL
+    }
+    
+    ## get standard error
+    se <- standard_error_(metadata, synfunc, units, trt_unit,
+                          posttimes, weights)
+    ## se$sc <- sc
+    return(se)
+
+}
