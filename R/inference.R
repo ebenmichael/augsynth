@@ -455,7 +455,7 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
         ses3 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
 
         ## bias adjustment
-        att3 <- trt_att$att + c(rep(0, dim(trt_att)[1] - length(posttimes)),
+        att3 <- trt_att$att - c(rep(0, dim(trt_att)[1] - length(posttimes)),
                                 apply(errs, 1, mean))
                                     
 
@@ -470,7 +470,7 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
         ses4 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
 
         ## bias adjustment
-        att4 <- trt_att$att + c(rep(0, dim(trt_att)[1] - length(posttimes)),
+        att4 <- trt_att$att - c(rep(0, dim(trt_att)[1] - length(posttimes)),
                                 apply(errs, 1, function(x) sum(x * weights) / sum(weights)))
 
         ses <- c(ses1, ses2, ses3, ses4)
