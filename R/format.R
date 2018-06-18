@@ -30,6 +30,10 @@ format_synth <- function(outcomes, metadata, trt_unit=1) {
     ## no option for no predictors
     synth_data <- outcomes %>%
         mutate(pred1=1)
+       treatment.rows <- which(synth_data[,"unit"] %in% trt_unit)
+       control.rows   <- which(synth_data[,"unit"] %in% ctrl_units)
+    balcheck <-       table(    synth_data[c(control.rows,treatment.rows),"unit"],
+                            synth_data[c(control.rows,treatment.rows),"time"])
 
     ## fit synthetic controls weights
     synth_data <-
@@ -123,7 +127,7 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL,
                                         # add in extra columns
 
     ## count number of treated units
-    n_t <- outcomes %>% distinct(unit, treated) %>%
+    n_t <- newdf %>% distinct(unit, treated) %>%
         filter(treated) %>%
         count() %>%
         as.numeric()
@@ -131,7 +135,7 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL,
     ## if there is more than one treated unit, average them together
     if(n_t > 1) {
         trtavg <- newdf %>% filter(treated) %>%
-            group_by_at(setdiff(names(outcomes), c("outcome", "unit")))
+            group_by_at(setdiff(names(newdf), c("outcome", "unit")))
         trtavg <- trtavg %>%
             summarise(outcome = mean(outcome)) %>%
             mutate(unit=-1) %>% 
@@ -141,7 +145,7 @@ format_data <- function(outcomes, metadata, trt_unit=1, outcome_col=NULL,
         trt_unit <- -1
     }
 
-    
+
     if(is.null(outcome_col)) {
         out <- format_synth(newdf, metadata, trt_unit)
     } else {

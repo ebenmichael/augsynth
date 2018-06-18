@@ -433,6 +433,7 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
     trt_att <- est_att(metadata, fitfunc, trt_unit)
     ## compute error for each time period and each unit
     errs <- sapply(atts[-1], function(att) att[att$time %in% posttimes,]$att)
+
     ## get standard error estimates
     if(is.null(weights)) {
         comb_func <- function(x) sqrt(sum(x^2)) / length(units)
@@ -446,6 +447,8 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
         
         ## weighted second moment
         comb_func <- function(x) sqrt(sum(x^2 * weights)) / sqrt(sum(weights)^2/sum(weights^2))
+        ## comb_func <- function(x) sqrt(sum(x^2 * weights^2)) /
+        ##                              sqrt(sum(weights^2)) * sqrt(sum(weights^2))
         ses2 <- c(rep(NA, dim(trt_att)[1] - length(posttimes)), apply(errs, 1, comb_func))
         att2 <- trt_att$att
         

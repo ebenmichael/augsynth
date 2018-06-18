@@ -127,7 +127,7 @@ get_balancer <- function(outcomes, metadata, trt_unit=1, hyperparam,
 
     syndat <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
     out$controls <- syndat$synth_data$Y0plot
-    ctrls <- impute_controls(syndat$outcomes, out, trt_unit)
+    ctrls <- impute_controls(syndat$outcomes, out, syndat$trt_unit)
     ctrls$dual <- out$dual
     ctrls$primal_obj <- out$primal_obj
     ctrls$l1_error <- out$l1_error
