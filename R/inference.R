@@ -496,9 +496,6 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
 #' Estimate the variance of the SC estimate
 #' @param outcomes Tidy dataframe with the outcomes and meta data
 #' @param metadata Dataframe of metadata
-#' @param fitfunc Partially applied fitting function which takes in
-#'                the number of the treated unit
-#' @param units Numbers of the units to include when estimating the se
 #' @param trt_unit Treated unit
 #' @param use_weights Whether to use weights in se estimate, default: FALSE
 #' @param cols Column names corresponding to the units,
@@ -506,52 +503,227 @@ standard_error_ <- function(metadata, fitfunc, units, trt_unit,
 #' 
 #' @return att estimates, test statistics, p-values
 #' @export
-standard_error <- function(outcomes, metadata, trt_unit, use_weights=FALSE,
+di_standard_error <- function(outcomes, metadata, trt_unit=1, use_weights=FALSE,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
-        
-    ## partially applied synth fitting function
-    ## synfunc <- function(u) {
-    ##     if(u == trt_unit) {
-    ##         get_synth(outcomes,
-    ##                   metadata, u, cols=cols)
-    ##     } else {
-    ##         get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
-    ##                   metadata, u, cols=cols)
-    ##     }
-    ## }
 
-    ## create a fitting function for synth
-    synfunc <- function(u) {
 
-        get_synth(outcomes,
-                  metadata, u, cols=cols)
+    ## format data once
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
+
+    n_c <- dim(data_out$synth_data$Z0)[2]
+
+    t0 <- dim(data_out$synth_data$Z0)[1]
+    t_final <- dim(data_out$synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    ## iterate over control units
+    for(i in 1:n_c) {
+        new_data_out <- data_out
+        new_data_out$synth_data$Z0 <- data_out$synth_data$Z0[, -i]
+        new_data_out$synth_data$Y0plot <- data_out$synth_data$Y0plot[, -i]
+
+        new_data_out$synth_data$Z1 <- data_out$synth_data$Z0[, i, drop=FALSE]
+        new_data_out$synth_data$Y1plot <- data_out$synth_data$Y0plot[, i, drop=FALSE]
+
+        ## get synth weights
+        syn <- fit_synth_formatted(new_data_out)
+
+        ## estimate satt
+        errs[i,] <- new_data_out$synth_data$Y1plot[(t0+1):t_final,] -
+            new_data_out$synth_data$Y0plot[(t0+1):t_final,] %*% syn$weights        
     }
 
-    ## fit synth once
-    sc <- get_synth(outcomes, metadata, trt_unit, cols)
+    ## att on actual sample
+    syn <- fit_synth_formatted(data_out)
+    att <- as.numeric(data_out$synth_data$Y1plot -
+            data_out$synth_data$Y0plot %*% syn$weights)
+    
+    ## standard errors
+    se <- sqrt(apply(errs^2, 2, mean))
 
-    ## use all pre and post periods and units
-    times <- unique(sc$outcomes$time)
-    pretimes <- times[which(times < metadata$t_int)]
-    posttimes <- times[which(times >= metadata$t_int)]
-    units <- unique(sc$outcomes$unit)
-    units <- units[units != trt_unit]
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att
 
-    ## use synth weights
-    if(use_weights) {
-        weights <- sc$weights
-        ## restrict to units with positive weight
-        ## units <- units[round(weights,3) > 0]
-        ## weights <- weights[round(weights,3) > 0]
-    } else {
-        weights <- NULL
+    out$se <- c(rep(NA, t0), se)
+    
+    return(out)
+}
+
+
+#### BOOTSTRAP
+
+
+#' Bootstrap standard errors for estimated counterfactual with synth
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param n_boot Number of bootstrap samples
+#' @param trt_unit Treated unit
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' 
+#' @return att estimates, test statistics, p-values
+#' @export
+bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated")) {
+
+    ## format data once
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
+
+    n_c <- dim(data_out$synth_data$Z0)[2]
+
+    t0 <- dim(data_out$synth_data$Z0)[1] + 1
+    t_final <- dim(data_out$synth_data$Y0plot)[1]
+    atts <- matrix(0, n_boot, length(t0:t_final))
+    ## fit on bootstrap samples
+    for(b in 1:n_boot) {
+        ## resample controls
+        ctrls <- sample(1:n_c, n_c, replace=TRUE)
+
+        new_data_out <- data_out
+        new_data_out$synth_data$Z0 <- data_out$synth_data$Z0[, ctrls]
+        new_data_out$synth_data$Y0plot <- data_out$synth_data$Y0plot[, ctrls]
+
+        ## get synth weights
+        syn <- fit_synth_formatted(new_data_out)
+
+        ## estimate satt
+        atts[b,] <- new_data_out$synth_data$Y1plot[t0:t_final,] -
+            new_data_out$synth_data$Y0plot[t0:t_final,] %*% syn$weights
     }
     
-    ## get standard error
-    se <- standard_error_(metadata, synfunc, units, trt_unit,
-                          posttimes, weights)
-    ## se$sc <- sc
-    return(se)
+    ## att on actual sample
+    syn <- fit_synth_formatted(data_out)
+    att <- as.numeric(data_out$synth_data$Y1plot -
+            data_out$synth_data$Y0plot %*% syn$weights)
+    ## standard errors
+    se <- apply(atts, 2, sd)
 
+    ## return(list(att, atts))
+    ## bias
+    bias <- as.numeric(apply(atts, 2, mean)) - att[t0:t_final]
+                       
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att
+
+    out$se <- c(rep(NA, t0-1), se)
+    out$bias <- c(rep(NA, t0-1), bias)
+
+    ## quantiles
+    att_post <- att[t0:t_final]
+    centered <- atts - t(matrix(att_post, nrow=length(att_post), ncol=dim(atts)[1]))
+    out$cilength <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .95)))
+    
+    return(out)
+}
+
+
+
+#' Bootstrap standard errors for estimated counterfactual with synth
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param n_boot Number of bootstrap samples
+#' @param hyperparam Regularization hyperparameter
+#' @param trt_unit Treated unit
+#' @param link Link function for weights
+#' @param regularizer Dual of balance criterion
+#' @param normalized Whether to normalize the weights
+#' @param outcome_col Column name which identifies outcomes, if NULL then
+#'                    assume only one outcome
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' @param opts Optimization options
+#'        \itemize{
+#'          \item{MAX_ITERS }{Maximum number of iterations to run}
+#'          \item{EPS }{Error tolerance}}
+#'
+#' @return outcomes with additional synthetic control added and weights
+#' @export
+#'
+#' 
+#' @return att estimates, test statistics, p-values
+#' @export
+bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
+                         link=c("logit", "linear", "pos-linear"),
+                         regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                         normalized=TRUE,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated"),
+                         opts=list()) {
+
+    ## format data once
+    data_out <- format_ipw(outcomes, metadata, trt_unit, cols=cols)
+
+    n_c <- sum(data_out$trt==0)
+    n_t <- sum(data_out$trt==1)
+
+    t0 <- dim(data_out$X)[2]+1
+    t_final <- t0 + dim(data_out$y)[2] - 1
+    atts <- matrix(0, n_boot, length(t0:t_final))
+
+    ## controls and trt matrix
+    Xc <- data_out$X[data_out$trt==0,,drop=FALSE]
+    Xt <- data_out$X[data_out$trt==1,,drop=FALSE]
+
+    ## outcomes
+    yc <- data_out$y[data_out$trt==0,,drop=FALSE]
+    yt <- data_out$y[data_out$trt==1,,drop=FALSE]
+
+
+    ## fit on bootstrap samples
+    for(b in 1:n_boot) {
+        ## resample controls
+        ctrls <- sample(1:n_c, n_c, replace=TRUE)
+        new_data_out <- data_out
+        new_data_out$X <- rbind(Xt, Xc[ctrls,,drop=FALSE])
+        new_data_out$trt <- c(rep(1, n_t), rep(0,n_c))
+        new_data_out$y <- rbind(yt, yc[ctrls,,drop=FALSE])
+
+        ## get balancer
+        capture.output(bal <- fit_balancer_formatted(new_data_out$X, new_data_out$trt,
+                                      link=link, regularizer=regularizer,
+                                      hyperparam=hyperparam, normalized=normalized,
+                                      opts=opts))
+
+        ## estimate satt
+        atts[b,] <- colMeans(new_data_out$y[new_data_out$trt==1,,drop=FALSE]) -
+            as.numeric(t(new_data_out$y[new_data_out$trt==0,,drop=FALSE]) %*% bal$weights)
+
+    }
+    
+    ## att on actual sample
+    capture.output(bal <- fit_balancer_formatted(data_out$X, data_out$trt,
+                                  link=link, regularizer=regularizer,
+                                  hyperparam=hyperparam, normalized=normalized,
+                                  opts=opts))
+    att_pre <- colMeans(new_data_out$X[data_out$trt==1,,drop=FALSE]) -
+        as.numeric(t(data_out$X[data_out$trt==0,,drop=FALSE]) %*% bal$weights)
+    
+    att_post <- colMeans(data_out$y[data_out$trt==1,,drop=FALSE]) -
+        as.numeric(t(data_out$y[data_out$trt==0,,drop=FALSE]) %*% bal$weights)
+    att <- c(att_pre, att_post)
+    ## standard errors
+    se <- apply(atts, 2, sd)
+
+    ## return(list(att, atts))
+    ## bias
+    bias <- as.numeric(apply(atts, 2, mean)) - att[t0:t_final]
+                       
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att
+
+    out$se <- c(rep(NA, t0-1), se)
+    out$bias <- c(rep(NA, t0-1), bias)
+
+    ## quantiles
+    centered <- atts - t(matrix(att_post, nrow=length(att_post), ncol=dim(atts)[1]))
+    ## out$lower <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .025)))
+    out$cilength <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .95)))
+    
+    
+    return(out)
 }
