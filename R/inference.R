@@ -540,7 +540,11 @@ di_standard_error <- function(outcomes, metadata, trt_unit=1, use_weights=FALSE,
             data_out$synth_data$Y0plot %*% syn$weights)
     
     ## standard errors
-    se <- sqrt(apply(errs^2, 2, mean))
+    if(use_weights) {
+        se <- sqrt(t(errs^2) %*% syn$weights)
+    } else {
+        se <- sqrt(apply(errs^2, 2, mean))
+    }
 
     ## combine into dataframe
     out <- outcomes %>% distinct(time)
@@ -616,7 +620,12 @@ bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1,
     att_post <- att[t0:t_final]
     centered <- atts - t(matrix(att_post, nrow=length(att_post), ncol=dim(atts)[1]))
     out$cilength <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .95)))
-    
+
+    out$lower <- c(rep(NA, t0-1), apply(atts, 2, function(x) quantile(x, .025)))
+    out$upper <- c(rep(NA, t0-1), apply(atts, 2, function(x) quantile(x, .975)))
+
+    out <- out %>% mutate(lower=2*att-upper, upper=2*att-lower)
+
     return(out)
 }
 
@@ -723,7 +732,11 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
     centered <- atts - t(matrix(att_post, nrow=length(att_post), ncol=dim(atts)[1]))
     ## out$lower <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .025)))
     out$cilength <- c(rep(NA, t0-1), apply(abs(centered), 2, function(x) quantile(x, .95)))
-    
+
+    out$lower <- c(rep(NA, t0-1), apply(atts, 2, function(x) quantile(x, .025)))
+    out$upper <- c(rep(NA, t0-1), apply(atts, 2, function(x) quantile(x, .975)))
+
+    out <- out %>% mutate(lower=2*att-upper, upper=2*att-lower)
     
     return(out)
 }
