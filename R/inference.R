@@ -686,10 +686,12 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
     for(b in 1:n_boot) {
         ## resample controls
         ctrls <- sample(1:n_c, n_c, replace=TRUE)
+        ## resample treated units
+        trts <- sample(1:n_t, n_t, replace=TRUE)        
         new_data_out <- data_out
-        new_data_out$X <- rbind(Xt, Xc[ctrls,,drop=FALSE])
+        new_data_out$X <- rbind(Xt[trts,,drop=FALSE], Xc[ctrls,,drop=FALSE])
         new_data_out$trt <- c(rep(1, n_t), rep(0,n_c))
-        new_data_out$y <- rbind(yt, yc[ctrls,,drop=FALSE])
+        new_data_out$y <- rbind(yt[trts,,drop=FALSE], yc[ctrls,,drop=FALSE])
 
         ## get balancer
         capture.output(bal <- fit_balancer_formatted(new_data_out$X, new_data_out$trt,
