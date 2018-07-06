@@ -366,6 +366,116 @@ wpermtest2_sc <- function(outcomes, metadata, trt_unit,
 }
 
 
+
+importance_test <- function(metadata, fitfunc, units, probs, trt_unit,
+                      pretimes, posttimes, statfuncs, n_sim) {
+    #' Estimate p-value with non-uniform probabilities of treatment with
+    #' importance sampling
+    #' @param metadata with treatment time
+    #' @param fitfunc Partially applied fitting function which takes in
+    #'                the number of the treated unit
+    #' @param units Numbers of the units to permute treatment around
+    #' @param probs Propensity scores
+    #' @param trt_unit Treated unit
+    #' @param pretimes Vector of times in pre-period
+    #' @param posttimes Vector of times in post-period
+    #' @param statfuncs Function to compute test stats
+    #' @param n_sim Number of montecarlo samples
+    #'
+    #' @return att estimates, test statistics, p-values
+    ## compute atts
+    atts <- bind_rows(lapply(units, function(u) est_att(metadata, fitfunc, u)))
+
+    ## compute test statistics
+    stats <- lapply(statfuncs,
+                    function(statfunc)
+                        by(atts, atts$unit,
+                           function(df)
+                               compute_stat(data.frame(df),
+                                            pretimes, posttimes,
+                                            statfunc)))
+    stats <- lapply(stats, function(s) sapply(s, function(x) x))
+    ## treat one unit, compute test statistic, reweight by propensities
+
+    sims <- sapply(1:n_sim,
+                   function(x) {
+                       tr <- sample(length(units[-trt_unit]), 1)
+                       tvec <- numeric(length(probs))
+                       tvec[tr] <- 1
+                       prob <- tvec * log(probs) + (1-tvec) * log(1-probs)
+                       prob <- exp(sum(prob - max(prob)))
+                       c(tr, prob)
+                   })
+
+    ## normalize probabilities
+    sims <- t(sims)
+    sims[,2] <- sims[,2] / sum(sims[,2])
+    
+    ## compute the p value
+    pvals <- lapply(stats,
+                   function(stat) {
+                       notrt <- stat[-trt_unit]
+                       sum((notrt[sims[,1]] > stat[trt_unit]) * sims[,2])
+                   })
+
+    return(list(atts=atts, stats=stats, pvals=pvals))
+}
+
+
+
+importance_test_sc <- function(outcomes, metadata, trt_unit,
+                               statfuncs=c(rmse_ratio, mean_abs, abs_tstat),
+                               n_sim=1000,
+                               cols=list(unit="unit", time="time",
+                                         outcome="outcome", treated="treated")) {
+    #' Get the weighted permutation distribution of SC estimate test statistics
+    #' estimating p-scores with logit-link synth
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param statfuncs Function to compute test stats
+    #' @param n_sim Number of montecarlo samples
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return att estimates, test statistics, p-values
+    #' @export
+
+    ipw <- format_ipw(outcomes, metadata, cols=cols)
+    ## create a fitting function for synth
+    synfunc <- function(u) {
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
+    }
+
+    ## fit synth once
+
+    sc <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## get estimated propensity scores
+    probs <- sc$weights / (1 + sc$weights)
+    
+    ## use all pre and post periods and units
+    times <- unique(sc$outcomes$time)
+    pretimes <- times[which(times < metadata$t_int)]
+    posttimes <- times[which(times >= metadata$t_int)]
+    units <- unique(sc$outcomes$unit)
+
+    ## permute treatment label
+    inf <- importance_test(metadata, synfunc, units, probs, trt_unit,
+                           pretimes, posttimes, statfuncs, n_sim)
+
+    return(inf)
+
+}
+
+
+
 #' test stat is ratio of RMSEs in post and pre
 #' @export
 rmse_ratio <- function(pre, post) {
