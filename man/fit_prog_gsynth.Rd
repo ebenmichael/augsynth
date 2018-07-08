@@ -4,7 +4,7 @@
 \alias{fit_prog_gsynth}
 \title{Use gsynth to fit factor model for E[Y(0)|X]}
 \usage{
-fit_prog_gsynth(X, y, trt)
+fit_prog_gsynth(X, y, trt, r = 0, r.end = 5, force = 3, CV = 1)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -12,6 +12,14 @@ fit_prog_gsynth(X, y, trt)
 \item{y}{Matrix of post-period outcomes}
 
 \item{trt}{Vector of treatment indicator}
+
+\item{r}{Number of factors to use (or start with if CV==1)}
+
+\item{r.end}{Max number of factors to consider if CV==1}
+
+\item{CV}{Whether to do CV (0=no CV, 1=yes CV)}
+
+\item{force=c(0, 1, 2, 3)}{Fixed effects (0=none, 1=unit, 2=time, 3=two-way)}
 }
 \value{
 \itemize{

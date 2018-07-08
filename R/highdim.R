@@ -135,12 +135,16 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 
 
 
-fit_prog_gsynth <- function(X, y, trt) {
+fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
     #' Use gsynth to fit factor model for E[Y(0)|X]
     #'
     #' @param X Matrix of covariates/lagged outcomes
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
+    #' @param r Number of factors to use (or start with if CV==1)
+    #' @param r.end Max number of factors to consider if CV==1
+    #' @param force=c(0,1,2,3) Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
+    #' @param CV Whether to do CV (0=no CV, 1=yes CV)
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -161,7 +165,10 @@ fit_prog_gsynth <- function(X, y, trt) {
     comb <- t(cbind(X, y))
     
     ## use internal gsynth function
-    capture.output(gsyn <- gsynth:::synth.core(comb, NULL, trtmat, I, force=3, r.end=5, tol=0.001))
+    capture.output(gsyn <- gsynth:::synth.core(comb, NULL, trtmat, I,
+                                               r=r, r.end=r.end,
+                                               force=force, CV=CV,
+                                               tol=0.001))
 
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
