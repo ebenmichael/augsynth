@@ -641,7 +641,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     wresid <- t(fit$resid) %*% fit$weights
 
     ## combine weighted residuals and predicted value into DR estimate
-    dr <- fit$y0hat_t + wresid
+    dr <- fit$y0hat_t - wresid
 
     
     ## combine weighted pre-period controls with

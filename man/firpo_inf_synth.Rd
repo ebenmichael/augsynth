@@ -6,8 +6,9 @@
 assuming equal probability of treatment}
 \usage{
 firpo_inf_synth(outcomes, metadata, trt_unit, pos = FALSE,
-  statfuncs = c(rmse_ratio, mean_abs, abs_tstat), cols = list(unit = "unit",
-  time = "time", outcome = "outcome", treated = "treated"))
+  statfuncs = c(rmse_ratio, mean_abs, abs_tstat), include_treat = FALSE,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -19,6 +20,8 @@ firpo_inf_synth(outcomes, metadata, trt_unit, pos = FALSE,
 \item{pos}{Whether to only consider units with positive weights, default False}
 
 \item{statfuncs}{Function to compute test stats}
+
+\item{include_treat}{Whether to include the treated unit in randomization distribution}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}

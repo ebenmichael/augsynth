@@ -94,7 +94,8 @@ firpo_inf <- function(metadata, fitfunc, units, trt_unit,
 
 firpo_inf_synth <- function(outcomes, metadata, trt_unit,
                             pos=FALSE,
-                            statfuncs=c(rmse_ratio,mean_abs, abs_tstat), 
+                            statfuncs=c(rmse_ratio,mean_abs, abs_tstat),
+                            include_treat=FALSE,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
     #' Get the permutation distribution of SC estimate test statistics
@@ -104,6 +105,7 @@ firpo_inf_synth <- function(outcomes, metadata, trt_unit,
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param pos Whether to only consider units with positive weights, default False
     #' @param statfuncs Function to compute test stats
+    #' @param include_treat Whether to include the treated unit in randomization distribution
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
     #'
@@ -111,11 +113,16 @@ firpo_inf_synth <- function(outcomes, metadata, trt_unit,
     #' @export
 
     synfunc <- function(u) {
-        if(u == trt_unit) {
-            get_synth(outcomes,
-                      metadata, u, cols=cols)
+        if(!include_treat) {
+            if(u == trt_unit) {
+                get_synth(outcomes,
+                          metadata, u, cols=cols)
+            } else {
+                get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                          metadata, u, cols=cols)
+            }
         } else {
-            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+            get_synth(outcomes,
                       metadata, u, cols=cols)
         }
     }
