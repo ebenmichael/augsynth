@@ -5,7 +5,8 @@
 \title{Use a separate regularized regression for each post period
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_reg(X, y, trt, alpha = 1, type = "sep")
+fit_prog_reg(X, y, trt, alpha = 1, lambda = NULL, poly_order = 1,
+  type = "sep")
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -15,6 +16,10 @@ fit_prog_reg(X, y, trt, alpha = 1, type = "sep")
 \item{trt}{Vector of treatment indicator}
 
 \item{alpha}{Mixing between L1 and L2, default: 1 (LASSO)}
+
+\item{lambda}{Regularization hyperparameter, if null then CV}
+
+\item{poly_order}{Order of polynomial to fit, default 1}
 
 \item{type}{How to fit outcome model(s)
 \itemize{

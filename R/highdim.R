@@ -7,7 +7,8 @@
 
 #### Fitting and balancing the prognostic score
 
-fit_prog_reg <- function(X, y, trt, alpha=1, type="sep") {
+fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
+                         poly_order=1, type="sep") {
     #' Use a separate regularized regression for each post period
     #' to fit E[Y(0)|X]
     #'
@@ -15,6 +16,8 @@ fit_prog_reg <- function(X, y, trt, alpha=1, type="sep") {
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
     #' @param alpha Mixing between L1 and L2, default: 1 (LASSO)
+    #' @param lambda Regularization hyperparameter, if null then CV
+    #' @param poly_order Order of polynomial to fit, default 1
     #' @param type How to fit outcome model(s)
     #'             \itemize{
     #'              \item{sep }{Separate outcome models}
@@ -25,12 +28,19 @@ fit_prog_reg <- function(X, y, trt, alpha=1, type="sep") {
     #'           \item{y0hat }{Predicted outcome under control}
     #'           \item{params }{Regression parameters}}
 
+    X <- matrix(poly(matrix(X),poly_order), nrow=dim(X)[1])
+    print(dim(X))
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
+        if(is.null(lambda)) {
             lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
-            fit <- glmnet::glmnet(x, y, alpha=alpha,
-                                  lambda=lam)
-            return(as.matrix(coef(fit)))
+        } else {
+            lam <- lambda
+        }
+        fit <- glmnet::glmnet(x, y, alpha=alpha,
+                              lambda=lam)
+        
+        return(as.matrix(coef(fit)))
     }
 
     if(type=="avg") {
@@ -56,7 +66,8 @@ fit_prog_reg <- function(X, y, trt, alpha=1, type="sep") {
                               lambda=lam)
         regweights <- as.matrix(do.call(cbind, coef(fit)))
     }
-    
+
+
     ## Get predicted values
     y0hat <- cbind(rep(1, dim(X)[1]),
                    X) %*% regweights
@@ -169,10 +180,10 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
                                                r=r, r.end=r.end,
                                                force=force, CV=CV,
                                                tol=0.001))
-
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
-    y0hat[trt==0,]  <- t(gsyn$est.co$residuals[(t0+1):t_final,] + gsyn$Y.co[(t0+1):t_final, ])
+    y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] - gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
+
     y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
 
     ## add treated prediction for whole pre-period
@@ -215,9 +226,9 @@ fit_progsyn_formatted <- function(ipw_format, syn_format,
     }
 
     y0hat <- fitout$y0hat
-    
+
     ## replace outcomes with fitted prognostic scores
-    syn_format$synth_data$Z0 <- t(as.matrix(y0hat[ipw_format$trt == 0,]))
+    syn_format$synth_data$Z0 <- t(as.matrix(y0hat[ipw_format$trt == 0,,drop=FALSE]))
     syn_format$synth_data$Z1 <- as.matrix(colMeans(as.matrix(y0hat[ipw_format$trt == 1,,drop=FALSE])))
 
     ## fit synth/maxent weights
@@ -641,7 +652,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
     wresid <- t(fit$resid) %*% fit$weights
 
     ## combine weighted residuals and predicted value into DR estimate
-    dr <- fit$y0hat_t - wresid
+    dr <- fit$y0hat_t + wresid
 
     
     ## combine weighted pre-period controls with
