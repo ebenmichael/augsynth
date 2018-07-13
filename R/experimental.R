@@ -63,3 +63,56 @@ get_svd_bal <- function(outcomes, metadata, trt_unit=1, r, hyperparam,
     ctrls$controls <- out$controls
     return(ctrls)
 }
+
+
+
+get_svd_syn <- function(outcomes, metadata, trt_unit=1, r, 
+                        outcome_col=NULL,
+                        cols=list(unit="unit", time="time",
+                                  outcome="outcome", treated="treated")) {
+    #' Find Balancing weights by solving the dual optimization problem
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param r Rank of matrix for SVD
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## format data, reduce dim with SVD and get weights
+    ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)
+
+    lowdim <- svd(ipw_dat$X)$u[,1:r,drop=FALSE]
+    ## format into synth
+    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+
+    data_out$synth_data$Z0 <- t(lowdim[ipw_dat$trt==0,,drop=FALSE])
+    data_out$synth_data$Z1 <- matrix(colMeans(lowdim[ipw_dat$trt==1,,drop=FALSE]))
+
+    out <- fit_synth_formatted(data_out)
+    ## match outcome types to synthetic controls
+    if(!is.null(outcome_col)) {
+        data_out$outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
+                                          levels = names(out$groups))
+        data_out$outcomes <- data_out$outcomes %>% dplyr::arrange_(outcome_col)
+    }
+
+    syndat <- data_out
+    out$controls <- syndat$synth_data$Y0plot
+    ctrls <- impute_controls(syndat$outcomes, out, syndat$trt_unit)
+    ctrls$dual <- out$dual
+    ctrls$primal_obj <- out$primal_obj
+    ctrls$l1_error <- out$l1_error
+    ctrls$l2_error <- out$l2_error
+    ctrls$linf_error <- out$linf_error
+    ctrls$pscores <- out$pscores
+    ctrls$eta <- out$eta
+    ctrls$feasible <- out$feasible
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
+    ctrls$controls <- out$controls
+    return(ctrls)
+}
