@@ -29,7 +29,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     #'           \item{params }{Regression parameters}}
 
     X <- matrix(poly(matrix(X),poly_order), nrow=dim(X)[1])
-    print(dim(X))
+
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
         if(is.null(lambda)) {
@@ -189,6 +189,12 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 
     ## add treated prediction for whole pre-period
     gsyn$est.co$Y.ct <- gsyn$Y.ct
+
+    ## control and treated residuals
+    gsyn$est.co$ctrl_resids <- gsyn$est.co$residuals
+    gsyn$est.co$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                            y[trt==1,,drop=FALSE])) -
+        rowMeans(gsyn$est.co$Y.ct)
     
     return(list(y0hat=y0hat,
                 params=gsyn$est.co))
@@ -233,9 +239,17 @@ fit_prog_complete <- function(X, y, trt, rank.max=5, lambda=0, type="svd") {
 
     ## get predicted outcomes
     y0hat <- imp_mat[,(t0+1):t_final]
-    
+    params <- fit_comp
+
+    params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                        y[trt==1,,drop=FALSE])) -
+        rowMeans(imp_mat[trt==1,,drop=FALSE])
+
+    params$ctrl_resids <- t(cbind(X[trt==0,,drop=FALSE],
+                                y[trt==0,,drop=FALSE]) - imp_mat[trt==0,,drop=FALSE])
+    params$Y.ct <- t(imp_mat[trt==1,,drop=FALSE])
     return(list(y0hat=y0hat,
-                params=fit_comp))
+                params=params))
     
 }
 
@@ -320,10 +334,13 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_rf
     } else if(progfunc == "GSYN"){
         progf <- fit_prog_gsynth
+    } else if(progfunc == "COMP"){
+        progf <- fit_prog_complete
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP'")
     }
 
+    
     if(weightfunc == "SC") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "ENT") {
@@ -761,13 +778,19 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     } else if(progfunc == "COMP"){
         progf <- fit_prog_complete
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP'")
     }
 
     if(weightfunc == "SC") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "ENT") {
         weightf <- fit_entropy_formatted
+    } else if(weightfunc == "NONE") {
+        ## still fit synth even if none
+        ## TODO: This is a dumb wasteful hack
+        weightf <- fit_synth_formatted
+    } else {
+        stop("weightfunc must be one of `SC`, `ENT`, `NONE`")
     }
     
     ## format data
@@ -787,6 +810,10 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         data_out$outcomes <- data_out$outcomes %>% dplyr::arrange_(outcome_col)
     }
 
+    ## if weightfunc is none, set weights to zero
+    if(weightfunc == "NONE") {
+        out$weights <- rep(0, length(out$weights))
+    }
 
     ctrls <- impute_synaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
 
@@ -813,13 +840,14 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
 ### Combine synth and gsynth by balancing pre-period residuals
 
 
-fit_gsynaug_formatted <- function(ipw_format, syn_format,
-                                  fit_weights,
-                                  opts.gsyn=NULL, opts.weights=NULL) {
+fit_residaug_formatted <- function(ipw_format, syn_format,
+                                  fit_progscore, fit_weights,
+                                  opts.prog=NULL, opts.weights=NULL) {
     #' Fit E[Y(0)|X] and for each post-period and balance pre-period
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`
+    #' @param fit_progscore Function to fit prognostic score
     #' @param fit_weights Function to fit synth weights
     #' @param opts.gsyn Optional options for gsynth
     #' @param opts.weights Optional options for fitting synth weights
@@ -833,25 +861,39 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
     X <- ipw_format$X
     y <- ipw_format$y
     trt <- ipw_format$trt
-    
+
     ## fit prognostic scores
-    if(is.null(opts.gsyn)) {
-        gsyn <- fit_prog_gsynth(X, y, trt)
+    if(is.null(opts.prog)) {
+        fitout <- fit_progscore(X, y, trt)
     } else {
-        gsyn <- do.call(fit_prog_gsynth,
+        fitout <- do.call(fit_progscore,
                           c(list(X=X, y=y, trt=trt),
-                            opts.gsyn))
+                            opts.prog))
     }
-    y0hat <- gsyn$y0hat
+
+    
+    ## ## fit prognostic scores
+    ## if(is.null(opts.gsyn)) {
+    ##     gsyn <- fit_prog_gsynth(X, y, trt)
+    ## } else {
+    ##     gsyn <- do.call(fit_prog_gsynth,
+    ##                       c(list(X=X, y=y, trt=trt),
+    ##                         opts.gsyn))
+    ## }
+    
+    y0hat <- fitout$y0hat
 
     ## get residuals
-    ctrl_resids <- gsyn$params$residuals
-    trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
-                                 y[trt==1,,drop=FALSE])) -
-        rowMeans(gsyn$params$Y.ct)
+    ctrl_resids <- fitout$params$ctrl_resids
+    trt_resids <- fitout$params$trt_resids
+
+    ## trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+    ##                              y[trt==1,,drop=FALSE])) -
+    ##     rowMeans(gsyn$params$Y.ct)
     
     ## replace outcomes with gsynth pre-period residuals
     t0 <- dim(X)[2]
+
     syn_format$synth_data$Z0 <- ctrl_resids[1:t0, ]
     syn_format$synth_data$Z1 <- as.matrix(trt_resids[1:t0])
     
@@ -864,7 +906,7 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
                          opts.weights))
     }
 
-    syn$params <- gsyn$params    
+    syn$params <- fitout$params    
 
     ## return predicted values for treatment and control
     syn$y0hat_c <- y0hat[ipw_format$trt == 0,]
@@ -884,7 +926,7 @@ fit_gsynaug_formatted <- function(ipw_format, syn_format,
 
 
 
-impute_gsynaug <- function(outcomes, metadata, fit, trt_unit) {
+impute_residaug <- function(outcomes, metadata, fit, trt_unit) {
     #' Impute the controls after fitting gynsth and reweighting residuals
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe with metadata, in particular a t_int column
@@ -895,9 +937,10 @@ impute_gsynaug <- function(outcomes, metadata, fit, trt_unit) {
     #'         outcome regression weights
 
     ## reweight residuals
-    wresid <- fit$params$residuals %*% fit$weights
+    wresid <- fit$params$ctrl_resids %*% fit$weights
 
     ## combine weighted residuals and predicted value into augmented estimate
+
     aug_ctrl <- rowMeans(fit$params$Y.ct) + wresid
 
     ## keep track of difference
@@ -924,21 +967,24 @@ impute_gsynaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 
-get_gsynaug <- function(outcomes, metadata, trt_unit=1,
+get_residaug <- function(outcomes, metadata, trt_unit=1,
+                        progfunc=c("GSYN", "COMP"),
                         weightfunc=c("SC","ENT","NONE"),
-                        opts.gsyn = NULL,
+                        opts.prog = NULL,
                         opts.weights = NULL,
                         outcome_col=NULL,
                         cols=list(unit="unit", time="time",
                                   outcome="outcome", treated="treated")) {
-    #' Fit gsynth and balance residuals
+    #' Fit outcome model and balance residuals
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param progfunc What function to use to impute control outcomes
+    #'                 GSYN=gSynth, COMP=Matrix completion
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
     #'                   NONE=No reweighting, just gsynth
-    #' @param opts.gsyn Optional options for gsynth
+    #' @param opts.prog Optional options for gsynth
     #' @param opts.weights Optional options for fitting synth weights    
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
@@ -948,6 +994,16 @@ get_gsynaug <- function(outcomes, metadata, trt_unit=1,
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
+    ## prognostic score and weight functions to use
+    if(progfunc == "GSYN"){
+        progf <- fit_prog_gsynth
+    } else if(progfunc == "COMP"){
+        progf <- fit_prog_complete
+    } else {
+        stop("progfunc must be one of 'GSYN', 'COMP'")
+    }
+
+    
     ## weight function to use
     if(weightfunc == "SC") {
         weightf <- fit_synth_formatted
@@ -966,9 +1022,9 @@ get_gsynaug <- function(outcomes, metadata, trt_unit=1,
     syn_format <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
 
     ## fit outcomes and weights
-    out <- fit_gsynaug_formatted(ipw_format, syn_format,
-                                 weightf,
-                                 opts.gsyn, opts.weights)
+    out <- fit_residaug_formatted(ipw_format, syn_format,
+                                 progf, weightf,
+                                 opts.prog, opts.weights)
                                  
 
     ## match outcome types to synthetic controls
@@ -983,7 +1039,7 @@ get_gsynaug <- function(outcomes, metadata, trt_unit=1,
         out$weights <- rep(0, length(out$weights))
     }
     
-    ctrls <- impute_gsynaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
+    ctrls <- impute_residaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
 
     ## outcome model estimate
     ctrls$outest <- out$tauhat
