@@ -182,7 +182,8 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
                                                tol=0.001))
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
-    y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] - gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
+    y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] -
+                         gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
 
     y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
 
@@ -193,6 +194,51 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
                 params=gsyn$est.co))
     
 }
+
+
+
+fit_prog_complete <- function(X, y, trt, rank.max=5, lambda=0, type="svd") {
+    #' Use nuclear norm matrix completion to fit outcome model
+    #'
+    #' @param X Matrix of covariates/lagged outcomes
+    #' @param y Matrix of post-period outcomes
+    #' @param trt Vector of treatment indicator
+    #' @param rank.max Max rank of the solution
+    #' @param lambdaNuclear norm regularization parameter
+    #' @param type "svd" is soft-thresholded SVD and "als" is alternating ridge
+    #'
+    #' @return \itemize{
+    #'           \item{y0hat }{Predicted outcome under control}
+    #'           \item{params }{Regression parameters}}
+
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+    n <- dim(X)[1]    
+
+    ## construct matrix
+    mismat <- matrix(y, nrow=n)
+    mismat[trt==1 ,] <- NA
+    mismat <- cbind(X,mismat)
+    ## fit matrix completion
+    fit_comp <- softImpute::softImpute(softImpute::biScale(mismat),
+                                       rank.max, lambda, type)
+
+    ## impute matrix
+    imp_mat <- softImpute::complete(matrix(NA, ncol=t_final, nrow=n,),
+                        fit_comp)
+    
+    
+    trtmat <- matrix(0, ncol=n, nrow=t_final)
+    trtmat[t0:t_final, trt == 1] <- 1
+
+    ## get predicted outcomes
+    y0hat <- imp_mat[,(t0+1):t_final]
+    
+    return(list(y0hat=y0hat,
+                params=fit_comp))
+    
+}
+
 
 
 fit_progsyn_formatted <- function(ipw_format, syn_format,
@@ -679,7 +725,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_augsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN"),
+                        progfunc=c("EN", "RF", "GSYN", "COMP"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -691,7 +737,8 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param progfunc What function to use to impute control outcomes
-    #'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth
+    #'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
+    #'                 Comp=softImpute
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
     #' @param opts.prog Optional options for fitting prognostic score
@@ -711,6 +758,8 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_rf
     } else if(progfunc == "GSYN"){
         progf <- fit_prog_gsynth
+    } else if(progfunc == "COMP"){
+        progf <- fit_prog_complete
     } else {
         stop("progfunc must be one of 'EN', 'RF', 'GSYN'")
     }
@@ -765,8 +814,8 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
 
 
 fit_gsynaug_formatted <- function(ipw_format, syn_format,
-                                    fit_weights,
-                                    opts.gsyn=NULL, opts.weights=NULL) {
+                                  fit_weights,
+                                  opts.gsyn=NULL, opts.weights=NULL) {
     #' Fit E[Y(0)|X] and for each post-period and balance pre-period
     #'
     #' @param ipw_format Output of `format_ipw`

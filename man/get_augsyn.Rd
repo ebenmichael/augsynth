@@ -5,7 +5,7 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 get_augsyn(outcomes, metadata, trt_unit = 1, progfunc = c("EN", "RF",
-  "GSYN"), weightfunc = c("SC", "ENT"), opts.prog = NULL,
+  "GSYN", "COMP"), weightfunc = c("SC", "ENT"), opts.prog = NULL,
   opts.weights = NULL, outcome_col = NULL, cols = list(unit = "unit", time
   = "time", outcome = "outcome", treated = "treated"))
 }
@@ -17,7 +17,8 @@ get_augsyn(outcomes, metadata, trt_unit = 1, progfunc = c("EN", "RF",
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
 \item{progfunc}{What function to use to impute control outcomes
-EN=Elastic Net, RF=Random Forest, GSYN=gSynth}
+EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
+Comp=softImpute}
 
 \item{weightfunc}{What function to use to fit weights
 SC=Vanilla Synthetic Controls, ENT=Maximum Entropy}
