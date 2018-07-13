@@ -28,7 +28,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     #'           \item{y0hat }{Predicted outcome under control}
     #'           \item{params }{Regression parameters}}
 
-    X <- matrix(poly(matrix(X),poly_order), nrow=dim(X)[1])
+    X <- matrix(poly(matrix(X),degree=poly_order), nrow=dim(X)[1])
 
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
