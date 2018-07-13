@@ -238,7 +238,7 @@ fit_prog_complete <- function(X, y, trt, rank.max=5, lambda=0, type="svd") {
     trtmat[t0:t_final, trt == 1] <- 1
 
     ## get predicted outcomes
-    y0hat <- imp_mat[,(t0+1):t_final]
+    y0hat <- imp_mat[,(t0+1):t_final,drop=FALSE]
     params <- fit_comp
 
     params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
