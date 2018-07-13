@@ -19,7 +19,8 @@ Imports:
     LiblineaR,
     randomForest,
     gsynth,
-    balancer
+    balancer,
+    softImpute
 Remotes:
     jpvert/apg,
     xuyiqing/gsynth,
