@@ -4,8 +4,8 @@
 \alias{get_residaug}
 \title{Fit outcome model and balance residuals}
 \usage{
-get_residaug(outcomes, metadata, trt_unit = 1, progfunc = c("GSYN", "COMP"),
-  weightfunc = c("SC", "ENT", "NONE"), opts.prog = NULL,
+get_residaug(outcomes, metadata, trt_unit = 1, progfunc = c("GSYN", "COMP",
+  "MCP"), weightfunc = c("SC", "ENT", "NONE"), opts.prog = NULL,
   opts.weights = NULL, outcome_col = NULL, cols = list(unit = "unit", time
   = "time", outcome = "outcome", treated = "treated"))
 }
@@ -17,7 +17,7 @@ get_residaug(outcomes, metadata, trt_unit = 1, progfunc = c("GSYN", "COMP"),
 \item{trt_unit}{Unit that is treated (target for regression), default: 0}
 
 \item{progfunc}{What function to use to impute control outcomes
-GSYN=gSynth, COMP=Matrix completion}
+GSYN=gSynth, COMP=softImpute, MCP=MCPanel}
 
 \item{weightfunc}{What function to use to fit weights
 SC=Vanilla Synthetic Controls, ENT=Maximum Entropy

@@ -255,6 +255,60 @@ fit_prog_complete <- function(X, y, trt, rank.max=5, lambda=0, type="svd") {
 
 
 
+fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
+    #' Use Athey (2017) matrix completion panel data code
+    #'
+    #' @param X Matrix of covariates/lagged outcomes
+    #' @param y Matrix of post-period outcomes
+    #' @param trt Vector of treatment indicator
+    #' @param unit_fixed Whether to estimate unit fixed effects
+    #' @param time_fixed Whether to estimate time fixed effects
+    #'
+    #' @return \itemize{
+    #'           \item{y0hat }{Predicted outcome under control}
+    #'           \item{params }{Regression parameters}}
+
+    ## create matrix and missingness matrix
+
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+    n <- dim(X)[1]    
+    
+    fullmat <- cbind(X, y)
+    maskmat <- matrix(1, nrow=nrow(fullmat), ncol=ncol(fullmat))
+    maskmat[trt==1, (t0+1):t_final] <- 0
+
+    ## estimate matrix
+    mcp <- MCPanel::mcnnm_cv(fullmat, maskmat,
+                             to_estimate_u=unit_fixed, to_estimate_v=time_fixed)
+    
+    ## impute matrix
+    imp_mat <- mcp$L +
+        sweep(matrix(0, nrow=nrow(M), ncol=ncol(M)), 1, mcp$u, "+") + # unit fixed
+        sweep(matrix(0, nrow=nrow(M), ncol=ncol(M)), 2, mcp$v, "+") # time fixed
+    
+    
+    trtmat <- matrix(0, ncol=n, nrow=t_final)
+    trtmat[t0:t_final, trt == 1] <- 1
+
+    ## get predicted outcomes
+    y0hat <- imp_mat[,(t0+1):t_final,drop=FALSE]
+    params <- mcp
+
+    params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                        y[trt==1,,drop=FALSE])) -
+        rowMeans(imp_mat[trt==1,,drop=FALSE])
+
+    params$ctrl_resids <- t(cbind(X[trt==0,,drop=FALSE],
+                                y[trt==0,,drop=FALSE]) - imp_mat[trt==0,,drop=FALSE])
+    params$Y.ct <- t(imp_mat[trt==1,,drop=FALSE])
+    return(list(y0hat=y0hat,
+                params=params))
+    
+}
+
+
+
 fit_progsyn_formatted <- function(ipw_format, syn_format,
                                   fit_progscore, fit_weights,
                                   opts.prog=NULL, opts.weights=NULL) {
@@ -742,7 +796,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_augsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN", "COMP"),
+                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -755,7 +809,7 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param progfunc What function to use to impute control outcomes
     #'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-    #'                 Comp=softImpute
+    #'                 Comp=softImpute, MCP=MCPanel
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
     #' @param opts.prog Optional options for fitting prognostic score
@@ -777,8 +831,10 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_gsynth
     } else if(progfunc == "COMP"){
         progf <- fit_prog_complete
+    } else if(progfunc == "MCP"){
+        progf <- fit_prog_mcpanel
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP'")
     }
 
     if(weightfunc == "SC") {
@@ -968,7 +1024,7 @@ impute_residaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_residaug <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("GSYN", "COMP"),
+                        progfunc=c("GSYN", "COMP", "MCP"),
                         weightfunc=c("SC","ENT","NONE"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -980,7 +1036,7 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param progfunc What function to use to impute control outcomes
-    #'                 GSYN=gSynth, COMP=Matrix completion
+    #'                 GSYN=gSynth, COMP=softImpute, MCP=MCPanel
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
     #'                   NONE=No reweighting, just gsynth
@@ -999,8 +1055,10 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_gsynth
     } else if(progfunc == "COMP"){
         progf <- fit_prog_complete
+    } else if(progfunc == "MCP"){
+        progf <- fit_prog_mcpanel
     } else {
-        stop("progfunc must be one of 'GSYN', 'COMP'")
+        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP'")
     }
 
     
