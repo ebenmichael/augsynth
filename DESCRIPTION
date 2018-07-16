@@ -20,11 +20,13 @@ Imports:
     randomForest,
     gsynth,
     balancer,
-    softImpute
+    softImpute,
+    MCPanel
 Remotes:
     jpvert/apg,
     xuyiqing/gsynth,
     ebenmichael/balancer
+    susanathey/MCPanel
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
