@@ -284,8 +284,8 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
     
     ## impute matrix
     imp_mat <- mcp$L +
-        sweep(matrix(0, nrow=nrow(M), ncol=ncol(M)), 1, mcp$u, "+") + # unit fixed
-        sweep(matrix(0, nrow=nrow(M), ncol=ncol(M)), 2, mcp$v, "+") # time fixed
+        sweep(matrix(0, nrow=nrow(fullmat), ncol=ncol(fullmat)), 1, mcp$u, "+") + # unit fixed
+        sweep(matrix(0, nrow=nrow(fullmat), ncol=ncol(fullmat)), 2, mcp$v, "+") # time fixed
     
     
     trtmat <- matrix(0, ncol=n, nrow=t_final)
