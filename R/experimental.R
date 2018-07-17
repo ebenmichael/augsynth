@@ -116,3 +116,45 @@ get_svd_syn <- function(outcomes, metadata, trt_unit=1, r,
     ctrls$controls <- out$controls
     return(ctrls)
 }
+
+
+
+fit_svd_formatted <- function(data_out, r) {
+    #' Fit synthetic controls on outcomes after performing SVD
+    #' @param data_out Panel data formatted by Synth::dataprep
+    #' @param r Rank of matrix for SVD
+    #'
+    is_treated <- data_out$is_treated
+    data_out <- data_out$synth_data
+
+    ## SVD on lagged outcomes
+
+    svd_out <- svd(t(cbind(data_out$Z1, data_out$Z0)))
+    lowdim <- svd_out$u[,1:r,drop=FALSE] %*% diag(svd_out$d)[1:r, 1:r] %*% svd_out$u[1:r,]
+    plot(svd_out$d)
+    ## change the "predictors" to be the pre period outcomes
+    data_out$X0 <- t(lowdim[-1,,drop=FALSE])
+    data_out$X1 <- t(lowdim[1,,drop=FALSE])
+
+    ## set weights on predictors to be 0
+    custom.v <- rep(1, dim(data_out$X0)[1])
+
+    ## fit the weights    
+    capture.output(synth_out <- Synth::synth(data_out,
+                                             custom.v=custom.v,
+                                             quadopt="LowRankQP"))
+    weights <- synth_out$solution.w
+    loss <- synth_out$loss.w
+    primal_obj <- sqrt(sum((data_out$Z0 %*% weights - data_out$Z1)^2))
+    ## primal objective value scaled by least squares difference for mean
+    x <- t(data_out$Z0)
+    y <- data_out$Z1
+    unif_primal_obj <- sqrt(sum((t(x) %*% rep(1/dim(x)[1], dim(x)[1]) - y)^2))
+    scaled_primal_obj <- primal_obj / unif_primal_obj    
+    return(list(weights=weights,
+                controls=data_out$Y0plot,
+                is_treated=is_treated,
+                primal_obj=primal_obj,
+                scaled_primal_obj=scaled_primal_obj))
+}
+

@@ -226,7 +226,7 @@ fit_prog_complete <- function(X, y, trt, rank.max=5, lambda=0, type="svd") {
     mismat[trt==1 ,] <- NA
     mismat <- cbind(X,mismat)
     ## fit matrix completion
-    fit_comp <- softImpute::softImpute(softImpute::biScale(mismat),
+    fit_comp <- softImpute::softImpute(softImpute::biScale(mismat,row.scale=FALSE, col.scale=FALSE),
                                        rank.max, lambda, type)
 
     ## impute matrix
@@ -1025,7 +1025,7 @@ impute_residaug <- function(outcomes, metadata, fit, trt_unit) {
 
 get_residaug <- function(outcomes, metadata, trt_unit=1,
                         progfunc=c("GSYN", "COMP", "MCP"),
-                        weightfunc=c("SC","ENT","NONE"),
+                        weightfunc=c("SC","ENT", "SVD", "NONE"),
                         opts.prog = NULL,
                         opts.weights = NULL,
                         outcome_col=NULL,
@@ -1039,7 +1039,8 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
     #'                 GSYN=gSynth, COMP=softImpute, MCP=MCPanel
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
-    #'                   NONE=No reweighting, just gsynth
+    #'                   SVD=SCM after dimension reduction,
+    #'                   NONE=No reweighting, just outcome model
     #' @param opts.prog Optional options for gsynth
     #' @param opts.weights Optional options for fitting synth weights    
     #' @param outcome_col Column name which identifies outcomes, if NULL then
@@ -1067,7 +1068,9 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
         weightf <- fit_synth_formatted
     } else if(weightfunc == "ENT") {
         weightf <- fit_entropy_formatted
-    } else if(weightfunc == "NONE") {
+    } else if(weightfunc == "SVD") {
+        weightf <- fit_svd_formatted
+    }else if(weightfunc == "NONE") {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
         weightf <- fit_synth_formatted

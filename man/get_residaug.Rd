@@ -5,7 +5,7 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 get_residaug(outcomes, metadata, trt_unit = 1, progfunc = c("GSYN", "COMP",
-  "MCP"), weightfunc = c("SC", "ENT", "NONE"), opts.prog = NULL,
+  "MCP"), weightfunc = c("SC", "ENT", "SVD", "NONE"), opts.prog = NULL,
   opts.weights = NULL, outcome_col = NULL, cols = list(unit = "unit", time
   = "time", outcome = "outcome", treated = "treated"))
 }
@@ -21,7 +21,8 @@ GSYN=gSynth, COMP=softImpute, MCP=MCPanel}
 
 \item{weightfunc}{What function to use to fit weights
 SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
-NONE=No reweighting, just gsynth}
+SVD=SCM after dimension reduction,
+NONE=No reweighting, just outcome model}
 
 \item{opts.prog}{Optional options for gsynth}
 
