@@ -131,7 +131,7 @@ fit_svd_formatted <- function(data_out, r) {
 
     svd_out <- svd(t(cbind(data_out$Z1, data_out$Z0)))
     lowdim <- svd_out$u[,1:r,drop=FALSE] %*% diag(svd_out$d)[1:r, 1:r] %*% svd_out$u[1:r,]
-    plot(svd_out$d)
+
     ## change the "predictors" to be the pre period outcomes
     data_out$X0 <- t(lowdim[-1,,drop=FALSE])
     data_out$X1 <- t(lowdim[1,,drop=FALSE])
