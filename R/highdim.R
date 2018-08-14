@@ -345,7 +345,12 @@ fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
     pnl <- bind_rows(pnl1, pnl2)
     
     ## fit regression
-    if(poly_order > 0) {
+    if(poly_order == "fixed") {
+        fit <- lm(val ~  trt + as.factor(time),
+              pnl %>%
+              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+              )
+    } else if(poly_order > 0) {
         fit <- lm(val ~ poly(time, poly_order) + post + trt + poly(time * trt, poly_order),
               pnl %>%
               filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
