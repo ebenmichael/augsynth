@@ -309,6 +309,95 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 
 
 
+fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
+    #' Fit a Comparitive interupted time series
+    #' to fit E[Y(0)|X]
+    #'
+    #' @param X Matrix of covariates/lagged outcomes
+    #' @param y Matrix of post-period outcomes
+    #' @param trt Vector of treatment indicator
+    #' @param poly_order Order of time trend polynomial to fit, default 1
+    #'
+    #' @return \itemize{
+    #'           \item{y0hat }{Predicted outcome under control}
+    #'           \item{params }{Regression parameters}}
+
+    ## combine back into a panel structure
+    ids <- 1:nrow(X)
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+    n <- nrow(X)
+
+    pnl1 <- data.frame(X)
+    colnames(pnl1) <- 1:(t0)
+
+    pnl1 <- pnl1 %>% mutate(trt=trt, post=0, id=ids) %>%
+        gather(time, val, -trt, -post, -id) %>%
+        mutate(time=as.numeric(time))
+
+    pnl2 <- data.frame(y)
+    colnames(pnl2) <- (t0+1):t_final
+    pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids) %>%
+        gather(time, val, -trt, -post, -id) %>%
+        mutate(time=as.numeric(time))
+    
+    
+    pnl <- bind_rows(pnl1, pnl2)
+    
+    ## fit regression
+    if(poly_order > 0) {
+        fit <- lm(val ~ poly(time, poly_order) + post + trt + poly(time * trt, poly_order),
+              pnl %>%
+              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+              )
+    } else {
+        fit <- lm(val ~  post + trt,
+              pnl %>%
+              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+              )
+    }
+
+    
+    ## get predicted post-period outcomes
+    
+    y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
+    y0hat[trt==0,]  <- matrix(predict(fit,
+                                      pnl %>% filter(post==1 & trt==0)),
+                              ncol=ncol(y))
+
+    y0hat[trt==1,] <- matrix(predict(fit,
+                                     pnl %>% filter(post==1 & trt==1)),
+                             ncol=ncol(y))
+
+
+    params <- list()
+
+    
+    ## add treated prediction for whole pre-period
+    params$Y.ct <- matrix(predict(fit,
+                                  pnl %>% filter(trt==1),
+                                  ncol=(ncol(X) + ncol(y))))
+
+    ## and control prediction
+    ctrl_pred <- matrix(predict(fit,
+                                pnl %>% filter(trt==0)),
+                                ncol=(ncol(X) + ncol(y)))
+
+    ## control and treated residuals
+    params$ctrl_resids <- t(cbind(X[trt==0,,drop=FALSE],
+                                y[trt==0,,drop=FALSE])) - 
+        t(ctrl_pred)
+    params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                            y[trt==1,,drop=FALSE])) -
+        rowMeans(params$Y.ct)
+    
+    return(list(y0hat=y0hat,
+                params=params))
+    
+}
+
+
+
 fit_progsyn_formatted <- function(ipw_format, syn_format,
                                   fit_progscore, fit_weights,
                                   opts.prog=NULL, opts.weights=NULL) {
@@ -796,7 +885,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_augsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP"),
+                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP","CITS"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -809,7 +898,7 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param progfunc What function to use to impute control outcomes
     #'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-    #'                 Comp=softImpute, MCP=MCPanel
+    #'                 Comp=softImpute, MCP=MCPanel, CITS=CITS
     #' @param weightfunc What function to use to fit weights
     #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
     #' @param opts.prog Optional options for fitting prognostic score
@@ -833,8 +922,10 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_complete
     } else if(progfunc == "MCP"){
         progf <- fit_prog_mcpanel
+    } else if(progfunc == "CITS") {
+        progf <- fit_prog_cits
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP', 'CITS'")
     }
 
     if(weightfunc == "SC") {
@@ -1058,8 +1149,10 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_complete
     } else if(progfunc == "MCP"){
         progf <- fit_prog_mcpanel
+    } else if(progfunc == "CITS") {
+        progf <- fit_prog_cits
     } else {
-        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP'")
+        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP', 'CITS'")
     }
 
     
