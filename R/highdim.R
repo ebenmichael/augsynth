@@ -309,7 +309,7 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 
 
 
-fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
+fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
     #' Fit a Comparitive interupted time series
     #' to fit E[Y(0)|X]
     #'
@@ -317,6 +317,7 @@ fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
     #' @param y Matrix of post-period outcomes
     #' @param trt Vector of treatment indicator
     #' @param poly_order Order of time trend polynomial to fit, default 1
+    #' @param weights Weights to use in WLS, default is no weights
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -328,17 +329,22 @@ fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
     t_final <- t0 + dim(y)[2]
     n <- nrow(X)
 
+
+    if(is.null(weights)) {
+        weights <- rep(1, n)
+    }
+    
     pnl1 <- data.frame(X)
     colnames(pnl1) <- 1:(t0)
 
-    pnl1 <- pnl1 %>% mutate(trt=trt, post=0, id=ids) %>%
-        gather(time, val, -trt, -post, -id) %>%
+    pnl1 <- pnl1 %>% mutate(trt=trt, post=0, id=ids, weight=weights) %>%
+        gather(time, val, -trt, -post, -id, -weight) %>%
         mutate(time=as.numeric(time))
 
     pnl2 <- data.frame(y)
     colnames(pnl2) <- (t0+1):t_final
-    pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids) %>%
-        gather(time, val, -trt, -post, -id) %>%
+    pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids, weight=weights) %>%
+        gather(time, val, -trt, -post, -id, -weight) %>%
         mutate(time=as.numeric(time))
     
     
@@ -346,19 +352,26 @@ fit_prog_cits <- function(X, y, trt, alpha=1, poly_order=1) {
     
     ## fit regression
     if(poly_order == "fixed") {
-        fit <- lm(val ~  trt + as.factor(time),
-              pnl %>%
-              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+        fit <- pnl %>%
+            filter(!((post==1) & (trt==1))) %>% ## filter out post-period treated outcomes
+            lm(val ~  as.factor(id) + as.factor(time),
+              .,
+              weights = .$weight 
               )
     } else if(poly_order > 0) {
-        fit <- lm(val ~ poly(time, poly_order) + post + trt + poly(time * trt, poly_order),
-              pnl %>%
-              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+        fit <- pnl %>%
+            filter(!((post==1) & (trt==1))) %>% ## filter out post-period treated outcomes
+        lm(val ~ poly(time, poly_order) + post + trt + poly(time * trt, poly_order),
+              ., 
+              weights = .$weight
               )
     } else {
-        fit <- lm(val ~  post + trt,
-              pnl %>%
-              filter(!((post==1) & (trt==1))) ## filter out post-period treated outcomes
+
+        fit <- pnl %>%
+            filter(!((post==1) & (trt==1))) %>% ## filter out post-period treated outcomes
+            lm(val ~  post + trt,
+              .,
+              weights = .$weight 
               )
     }
 
@@ -1197,6 +1210,119 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
     if(weightfunc == "NONE") {
         out$weights <- rep(0, length(out$weights))
     }
+    
+    ctrls <- impute_residaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
+
+    ## outcome model estimate
+    ctrls$outest <- out$tauhat
+    ctrls$params <- out$params
+    ctrls$dual <- out$dual
+    ctrls$primal_obj <- out$primal_obj
+    ctrls$pscores <- out$pscores
+    ctrls$eta <- out$eta
+    ctrls$groups <- out$groups
+    ctrls$feasible <- out$feasible
+    ctrls$primal_group_obj <- out$primal_group_obj
+    ctrls$scaled_primal_obj <- out$scaled_primal_obj
+    ctrls$controls <- out$controls
+    
+    return(ctrls)
+}
+
+
+
+
+get_wlsaug <- function(outcomes, metadata, trt_unit=1,
+                        progfunc=c("GSYN", "COMP", "MCP", "CITS"),
+                        weightfunc=c("SC","ENT", "SVD", "NONE"),
+                        opts.prog = NULL,
+                        opts.weights = NULL,
+                        outcome_col=NULL,
+                        cols=list(unit="unit", time="time",
+                                  outcome="outcome", treated="treated")) {
+    #' Get weights then fit outcome model with weighted loss function
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param progfunc What function to use to impute control outcomes
+    #'                 GSYN=gSynth, COMP=softImpute, MCP=MCPanel
+    #' @param weightfunc What function to use to fit weights
+    #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
+    #'                   SVD=SCM after dimension reduction,
+    #'                   NONE=No reweighting, just outcome model
+    #' @param opts.prog Optional options for gsynth
+    #' @param opts.weights Optional options for fitting synth weights    
+    #' @param outcome_col Column name which identifies outcomes, if NULL then
+    #'                    assume only one outcome
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return outcomes with additional synthetic control added and weights
+    #' @export
+
+    ## prognostic score and weight functions to use
+    if(progfunc == "GSYN"){
+        progf <- fit_prog_gsynth
+    } else if(progfunc == "COMP"){
+        progf <- fit_prog_complete
+    } else if(progfunc == "MCP"){
+        progf <- fit_prog_mcpanel
+    } else if(progfunc == "CITS") {
+        progf <- fit_prog_cits
+    } else {
+        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP', 'CITS'")
+    }
+
+    
+    ## weight function to use
+    if(weightfunc == "SC") {
+        weightf <- fit_synth_formatted
+    } else if(weightfunc == "ENT") {
+        weightf <- fit_entropy_formatted
+    } else if(weightfunc == "SVD") {
+        weightf <- fit_svd_formatted
+    }else if(weightfunc == "NONE") {
+        ## still fit synth even if none
+        ## TODO: This is a dumb wasteful hack
+        weightf <- fit_synth_formatted
+    } else {
+        stop("weightfunc must be one of 'SC', 'ENT', 'NONE'")
+    }
+    
+    ## format data
+    ipw_format <- format_ipw(outcomes, metadata, outcome_col, cols)
+    syn_format <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
+
+    ## fit weights
+    weights <- weightf(syn_format)$weights
+
+    ## structure in the right way
+    new_weights <- numeric(nrow(ipw_format$X))
+    new_weights[ipw_format$trt==0] <- weights
+    new_weights[ipw_format$trt==1] <- 1
+
+    ## add weights to outcome model fitting
+    if(is.null(opts.prog)) {
+        opts.prog=list(weights=new_weights)
+    } else {
+        opts.prog$weights  <- new_weights
+    }
+    ## fit outcomes and weights
+    out <- fit_residaug_formatted(ipw_format, syn_format,
+                                 progf, weightf,
+                                 opts.prog, opts.weights)
+                                 
+
+    ## match outcome types to synthetic controls
+    if(!is.null(outcome_col)) {
+        data_out$outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
+                                          levels = names(out$groups))
+        data_out$outcomes <- data_out$outcomes %>% dplyr::arrange_(outcome_col)
+    }
+
+    ## zero out weights for imputation since we already used them to fit the model
+    ## TODO: I still hate this hack, FIX IT!!
+    out$weights <- rep(0, length(out$weights))
     
     ctrls <- impute_residaug(syn_format$outcomes, metadata, out, syn_format$trt_unit)
 
