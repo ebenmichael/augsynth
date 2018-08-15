@@ -768,10 +768,6 @@ bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1,
 #'
 #' @return outcomes with additional synthetic control added and weights
 #' @export
-#'
-#' 
-#' @return att estimates, test statistics, p-values
-#' @export
 bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
                          link=c("logit", "linear", "pos-linear"),
                          regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
@@ -859,3 +855,142 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
     
     return(out)
 }
+
+
+#' Compute model-based weighted least squares SE estimates of the ATT
+#' @param X Matrix of pre-period outcomes
+#' @param y Matrix of post-period outcomes
+#' @param trt Treatment indicator
+#' @param weights Balancing weights
+wls_se_ <- function(X, y, trt, weights) {
+
+
+    ## combine back into a panel structure
+    n <- nrow(y)
+    ids <- 1:n
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+
+
+    new_weights <- numeric(0)
+    new_weights[trt==0] <- weights
+    new_weights[trt==1] <- 1
+
+    pnl1 <- data.frame(X)
+    colnames(pnl1) <- 1:t0
+    pnl1 <- pnl1 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
+        gather(time, val, -trt, -post, -id, -weight)
+
+    
+    pnl2 <- data.frame(y)
+    colnames(pnl2) <- (t0+1):t_final
+    pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
+        gather(time, val, -trt, -post, -id, -weight)
+
+    pnl <- bind_rows(pnl1, pnl2) %>%
+        mutate(time=factor(time,
+                           levels=1:t_final))
+
+    ## get att estimates with WLS
+    if(t_final > 1) {
+        fit <- lm(val ~ time + time:trt -1,
+                  pnl,
+                  weights=pnl$weight)
+    } else {
+        fit <- lm(val ~ trt,
+                  pnl,
+                  weights=pnl$weight)
+    }
+
+    att <- as.numeric(coef(fit)[(t_final+1):(2*t_final)])
+
+    se <- as.numeric(coef(summary(fit))[,2][(t_final+1):(2*t_final)])
+
+    return(list(att=att, se=se))    
+}
+
+
+
+#' Weighted Least Squares Standard Errors
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param trt_unit Treated unit
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#'
+#' @return outcomes with additional synthetic control added and weights
+#' @export
+wls_se_synth <- function(outcomes, metadata, trt_unit=1,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated")) {
+    
+    ## fit synth
+    syn <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## format for WLS
+    ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
+
+    ## get att and standard error estimates
+    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights)
+
+    ## 
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att_se$att
+
+    out$se <- att_se$se
+
+    return(out)
+}
+
+
+
+#' Bootstrap standard errors for estimated counterfactual with synth
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param hyperparam Regularization hyperparameter
+#' @param trt_unit Treated unit
+#' @param link Link function for weights
+#' @param regularizer Dual of balance criterion
+#' @param normalized Whether to normalize the weights
+#' @param outcome_col Column name which identifies outcomes, if NULL then
+#'                    assume only one outcome
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' @param opts Optimization options
+#'        \itemize{
+#'          \item{MAX_ITERS }{Maximum number of iterations to run}
+#'          \item{EPS }{Error tolerance}}
+#'
+#' @return outcomes with additional synthetic control added and weights
+#' @export
+wls_se_bal <- function(outcomes, metadata, hyperparam, trt_unit=1,
+                         link=c("logit", "linear", "pos-linear"),
+                         regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                         normalized=TRUE,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated"),
+                         opts=list()) {
+
+
+    ## format data once
+    ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
+
+    
+    capture.output(bal <- fit_balancer_formatted(ipw_dat$X, ipw_dat$trt,
+                                                 link=link, regularizer=regularizer,
+                                                 hyperparam=hyperparam, normalized=normalized,
+                                                 opts=opts))
+
+    ## get att and standard error estimates
+    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, bal$weights)
+
+    ## 
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att_se$att
+
+    out$se <- att_se$se
+
+    return(out)
+    }
