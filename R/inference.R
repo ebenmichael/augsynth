@@ -919,8 +919,7 @@ wls_se_ <- function(X=NULL, y, trt, weights) {
 
     se <- sqrt(diag(sandwich::vcovHC(fit, type="HC", sandwich=T)))[(t_final+1):(2*t_final)]
 
-    print(att)
-    print(se)
+
     return(list(att=att, se=se))    
 }
 
