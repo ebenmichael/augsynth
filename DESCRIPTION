@@ -21,7 +21,8 @@ Imports:
     gsynth,
     balancer,
     softImpute,
-    MCPanel
+    MCPanel,
+    sandwich
 Remotes:
     jpvert/apg,
     xuyiqing/gsynth,

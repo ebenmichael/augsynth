@@ -4,7 +4,7 @@
 \alias{wls_se_}
 \title{Compute model-based weighted least squares SE estimates of the ATT}
 \usage{
-wls_se_(X, y, trt, weights)
+wls_se_(X = NULL, y, trt, weights)
 }
 \arguments{
 \item{X}{Matrix of pre-period outcomes}

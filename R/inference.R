@@ -862,13 +862,17 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
 #' @param y Matrix of post-period outcomes
 #' @param trt Treatment indicator
 #' @param weights Balancing weights
-wls_se_ <- function(X, y, trt, weights) {
+wls_se_ <- function(X=NULL, y, trt, weights) {
 
 
     ## combine back into a panel structure
     n <- nrow(y)
     ids <- 1:n
-    t0 <- dim(X)[2]
+    if(is.null(X)) {
+        t0 <- 0
+    } else {
+        t0 <- dim(X)[2]
+    }
     t_final <- t0 + dim(y)[2]
 
 
@@ -876,10 +880,15 @@ wls_se_ <- function(X, y, trt, weights) {
     new_weights[trt==0] <- weights
     new_weights[trt==1] <- 1
 
-    pnl1 <- data.frame(X)
-    colnames(pnl1) <- 1:t0
-    pnl1 <- pnl1 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
-        gather(time, val, -trt, -post, -id, -weight)
+    if(!is.null(X)) {
+        pnl1 <- data.frame(X)
+        colnames(pnl1) <- 1:t0
+        pnl1 <- pnl1 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
+            gather(time, val, -trt, -post, -id, -weight)
+        
+    } else {
+        pnl1 <- data.frame(time=NULL, val=NULL, trt=NULL, post=NULL, id=NULL, weight=NULL)
+    }
 
     
     pnl2 <- data.frame(y)
@@ -893,19 +902,25 @@ wls_se_ <- function(X, y, trt, weights) {
 
     ## get att estimates with WLS
     if(t_final > 1) {
-        fit <- lm(val ~ time + time:trt -1,
-                  pnl,
-                  weights=pnl$weight)
+        fit <- pnl %>% 
+            lm(val ~ time + time:trt -1,
+               .,
+               weights=.$weight)
     } else {
         fit <- lm(val ~ trt,
                   pnl,
                   weights=pnl$weight)
     }
 
+
     att <- as.numeric(coef(fit)[(t_final+1):(2*t_final)])
 
-    se <- as.numeric(coef(summary(fit))[,2][(t_final+1):(2*t_final)])
+    ## se <- as.numeric(coef(summary(fit))[,2][(t_final+1):(2*t_final)])
 
+    se <- sqrt(diag(sandwich::vcovHC(fit, type="HC", sandwich=T)))[(t_final+1):(2*t_final)]
+
+    print(att)
+    print(se)
     return(list(att=att, se=se))    
 }
 
@@ -936,9 +951,14 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1,
     ## 
     ## combine into dataframe
     out <- outcomes %>% distinct(time)
-    out$att <- att_se$att
 
+    out$att <- att_se$att
     out$se <- att_se$se
+    ## out$att <- c(rep(NA, ncol(ipw_dat$X)),
+    ##              att_se$att)
+
+    ## out$se <- c(rep(NA, ncol(ipw_dat$X)),
+    ##             att_se$se)
 
     return(out)
 }
