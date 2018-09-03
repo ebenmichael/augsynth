@@ -12,6 +12,7 @@ est_att <- function(metadata, fitfunc, trt_unit) {
     #' @param trt_unit Number of the treated unit
     #'
     #' @return Dataframe with ATT estimates
+    #' @export
 
     ## fit the method
     fit <- fitfunc(trt_unit)
