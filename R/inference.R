@@ -12,7 +12,6 @@ est_att <- function(metadata, fitfunc, trt_unit) {
     #' @param trt_unit Number of the treated unit
     #'
     #' @return Dataframe with ATT estimates
-    #' @export
 
     ## fit the method
     fit <- fitfunc(trt_unit)
@@ -524,6 +523,51 @@ weighted_test <- function(metadata, fitfunc, units, probs, trt_unit,
                    function(stat) {
                        notrt <- stat[-trt_unit]
                        sum((notrt >= stat[trt_unit]) * probs)
+                   })
+
+    return(list(atts=atts, stats=stats, pvals=pvals, probs=probs))
+}
+
+
+
+
+valid_test <- function(metadata, fitfunc, units, probs, trt_unit,
+                      pretimes, posttimes, statfuncs) {
+    #' Estimate p-value with non-uniform probabilities of treatment with
+    #' SCM weights
+    #' @param metadata with treatment time
+    #' @param fitfunc Partially applied fitting function which takes in
+    #'                the number of the treated unit
+    #' @param units Numbers of the units to permute treatment around
+    #' @param probs Propensity scores
+    #' @param trt_unit Treated unit
+    #' @param pretimes Vector of times in pre-period
+    #' @param posttimes Vector of times in post-period    
+    #' @param statfuncs Function to compute test stats
+    #'
+    #' @return att estimates, test statistics, p-values
+    #' @export 
+    ## compute atts
+    atts <- bind_rows(lapply(units, function(u) est_att(metadata, fitfunc, u)))
+    ## compute test statistics
+    stats <- lapply(statfuncs,
+                    function(statfunc)
+                        by(atts, atts$unit,
+                           function(df)
+                               compute_stat(data.frame(df),
+                                            pretimes, posttimes,
+                                            statfunc)))
+    stats <- lapply(stats, function(s) sapply(s, function(x) x))
+    ## treat one unit, compute test statistic, reweight by propensities
+
+    ## compute and normalize probabilities
+    probs <- sapply(1:length(probs),
+                    function(i) probs[i] * prod(1-probs[-i]))
+    probs <- probs / sum(probs)
+    ## compute the p value
+    pvals <- lapply(stats,
+                   function(stat) {
+                       sum((stat >= stat[trt_unit]) * probs)
                    })
 
     return(list(atts=atts, stats=stats, pvals=pvals, probs=probs))
