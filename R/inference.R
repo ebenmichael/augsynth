@@ -237,7 +237,6 @@ wpermtest_sc <- function(outcomes, metadata, trt_unit,
     }
 
     ## fit synth once
-
     sc <- get_synth(outcomes, metadata, trt_unit, cols)
 
     ## get estimated propensity scores
@@ -476,6 +475,104 @@ importance_test_sc <- function(outcomes, metadata, trt_unit,
     ## permute treatment label
     inf <- importance_test(metadata, synfunc, units, probs, trt_unit,
                            pretimes, posttimes, statfuncs, n_sim)
+
+    return(inf)
+
+}
+
+
+
+
+
+
+
+weighted_test <- function(metadata, fitfunc, units, probs, trt_unit,
+                      pretimes, posttimes, statfuncs) {
+    #' Estimate p-value with non-uniform probabilities of treatment with
+    #' SCM weights
+    #' @param metadata with treatment time
+    #' @param fitfunc Partially applied fitting function which takes in
+    #'                the number of the treated unit
+    #' @param units Numbers of the units to permute treatment around
+    #' @param probs Propensity scores
+    #' @param trt_unit Treated unit
+    #' @param pretimes Vector of times in pre-period
+    #' @param posttimes Vector of times in post-period    
+    #' @param statfuncs Function to compute test stats
+    #'
+    #' @return att estimates, test statistics, p-values
+    ## compute atts
+    atts <- bind_rows(lapply(units, function(u) est_att(metadata, fitfunc, u)))
+    ## compute test statistics
+    stats <- lapply(statfuncs,
+                    function(statfunc)
+                        by(atts, atts$unit,
+                           function(df)
+                               compute_stat(data.frame(df),
+                                            pretimes, posttimes,
+                                            statfunc)))
+    stats <- lapply(stats, function(s) sapply(s, function(x) x))
+    ## treat one unit, compute test statistic, reweight by propensities
+
+    ## compute and normalize probabilities
+    probs <- sapply(1:length(probs),
+                    function(i) probs[i] * prod(1-probs[-i]))
+    probs <- probs / sum(probs)
+    ## compute the p value
+    pvals <- lapply(stats,
+                   function(stat) {
+                       notrt <- stat[-trt_unit]
+                       sum((notrt >= stat[trt_unit]) * probs)
+                   })
+
+    return(list(atts=atts, stats=stats, pvals=pvals, probs=probs))
+}
+
+
+weighted_test_sc <- function(outcomes, metadata, trt_unit,
+                             statfuncs=c(rmse_ratio, mean_abs, abs_tstat),
+                             cols=list(unit="unit", time="time",
+                                       outcome="outcome", treated="treated")) {
+    #' Get the weighted permutation distribution of SC estimate test statistics
+    #' estimating p-scores with logit-link synth
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param statfuncs Function to compute test stats
+    #' @param n_sim Number of montecarlo samples
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return att estimates, test statistics, p-values
+    #' @export
+
+    ipw <- format_ipw(outcomes, metadata, cols=cols)
+    ## create a fitting function for synth
+    synfunc <- function(u) {
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
+    }
+
+    ## fit synth once
+
+    sc <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## get estimated propensity scores
+    probs <- sc$weights / (1 + sc$weights)    
+
+    units <- unique(sc$outcomes$unit)
+    times <- unique(sc$outcomes$time)
+    pretimes <- times[which(times < metadata$t_int)]
+    posttimes <- times[which(times >= metadata$t_int)]
+    
+    ## permute treatment label
+    inf <- weighted_test(metadata, synfunc, units, probs, trt_unit,
+                         pretimes, posttimes, statfuncs)
 
     return(inf)
 
