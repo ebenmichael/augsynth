@@ -86,14 +86,15 @@ get_svd_syn <- function(outcomes, metadata, trt_unit=1, r,
     ## format data, reduce dim with SVD and get weights
     ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)
 
-    lowdim <- svd(ipw_dat$X)$u[,1:r,drop=FALSE]
+    ## lowdim <- svd(ipw_dat$X)$u[,1:r,drop=FALSE]
+
     ## format into synth
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
 
-    data_out$synth_data$Z0 <- t(lowdim[ipw_dat$trt==0,,drop=FALSE])
-    data_out$synth_data$Z1 <- matrix(colMeans(lowdim[ipw_dat$trt==1,,drop=FALSE]))
+    ## data_out$synth_data$Z0 <- t(lowdim[ipw_dat$trt==0,,drop=FALSE])
+    ## data_out$synth_data$Z1 <- matrix(colMeans(lowdim[ipw_dat$trt==1,,drop=FALSE]))
 
-    out <- fit_synth_formatted(data_out)
+    out <- fit_svd_formatted(data_out, r)
     ## match outcome types to synthetic controls
     if(!is.null(outcome_col)) {
         data_out$outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
@@ -123,7 +124,8 @@ fit_svd_formatted <- function(data_out, r) {
     #' Fit synthetic controls on outcomes after performing SVD
     #' @param data_out Panel data formatted by Synth::dataprep
     #' @param r Rank of matrix for SVD
-    #'
+
+    
     is_treated <- data_out$is_treated
     data_out <- data_out$synth_data
 

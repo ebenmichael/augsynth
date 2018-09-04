@@ -892,12 +892,13 @@ di_standard_error <- function(outcomes, metadata, trt_unit=1, use_weights=FALSE,
 #' @param metadata Dataframe of metadata
 #' @param n_boot Number of bootstrap samples
 #' @param trt_unit Treated unit
+#' @param pred_int Whether to add outcome control variance to make pred interval
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
 #' @export
-bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1,
+bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=F,
                          cols=list(unit="unit", time="time",
                                    outcome="outcome", treated="treated")) {
 
@@ -929,9 +930,17 @@ bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1,
     ## att on actual sample
     syn <- fit_synth_formatted(data_out)
     att <- as.numeric(data_out$synth_data$Y1plot -
-            data_out$synth_data$Y0plot %*% syn$weights)
+                      data_out$synth_data$Y0plot %*% syn$weights)
+    yhat <- as.numeric(data_out$synth_data$Y0plot %*% syn$weights)
     ## standard errors
     se <- apply(atts, 2, sd)
+
+    if(pred_int) {
+        ## estimate of control potential outcome variance
+        sig2 <- sapply(t0:t_final, function(i)
+            sum(syn$weights * (data_out$synth_data$Y0plot[i,] - yhat[i])^2))
+        se <- sqrt(se^2 + sig2)
+    }
 
     ## return(list(att, atts))
     ## bias
@@ -1073,7 +1082,8 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
 #' @param y Matrix of post-period outcomes
 #' @param trt Treatment indicator
 #' @param weights Balancing weights
-wls_se_ <- function(X=NULL, y, trt, weights) {
+#' @param pred_int Whether to add outcome control variance to make pred interval
+wls_se_ <- function(X=NULL, y, trt, weights, pred_int) {
 
 
     ## combine back into a panel structure
@@ -1101,7 +1111,6 @@ wls_se_ <- function(X=NULL, y, trt, weights) {
         pnl1 <- data.frame(time=NULL, val=NULL, trt=NULL, post=NULL, id=NULL, weight=NULL)
     }
 
-    
     pnl2 <- data.frame(y)
     colnames(pnl2) <- (t0+1):t_final
     pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
@@ -1109,27 +1118,47 @@ wls_se_ <- function(X=NULL, y, trt, weights) {
 
     pnl <- bind_rows(pnl1, pnl2) %>%
         mutate(time=factor(time,
-                           levels=1:t_final))
+                           levels=1:t_final)) %>%
+        filter(trt==0)
 
     ## get att estimates with WLS
     if(t_final > 1) {
+        ## fit <- pnl %>% 
+        ##     lm(val ~ time + time:trt -1,
+        ##        .,
+        ##        weights=.$weight)
         fit <- pnl %>% 
-            lm(val ~ time + time:trt -1,
+            lm(val ~ time -1,
                .,
                weights=.$weight)
     } else {
-        fit <- lm(val ~ trt,
+        ## fit <- lm(val ~ trt,
+        ##           pnl,
+        ##           weights=pnl$weight)
+        fit <- lm(val ~ 1,
                   pnl,
-                  weights=pnl$weight)
+                  weights=pnl$weight)        
     }
-
-
-    att <- as.numeric(coef(fit)[(t_final+1):(2*t_final)])
-
+    
+    ## att <- as.numeric(coef(fit)[(t_final+1):(2*t_final)])
+    yhat <- as.numeric(coef(fit)[1:t_final])
     ## se <- as.numeric(coef(summary(fit))[,2][(t_final+1):(2*t_final)])
 
-    se <- sqrt(diag(sandwich::vcovHC(fit, type="HC", sandwich=T)))[(t_final+1):(2*t_final)]
+    ## se <- sqrt(diag(sandwich::vcovHC(fit, type="HC", sandwich=T)))[(t_final+1):(2*t_final)]
+    se <- sqrt(diag(sandwich::vcovHC(fit, type="HC", sandwich=T)))
+    comb <- cbind(X, y)
 
+    att <- colMeans(comb[trt==1,,drop=F]) - yhat
+    comb <- comb[trt==0,]
+    if(pred_int) {
+        sig2 <- sapply(1:length(att), function(i) sum(weights * (comb[,i] - yhat[i])^2))
+        ## sig2 <- summary(fit)$sigma^2
+    } else {
+        sig2 <- 0
+    }
+    ## add variance for prediction interval
+    ## sig2 <- summary(fit)$sigma^2 / sum(trt==1)
+    se <- sqrt(se^2 + sig2)
 
     return(list(att=att, se=se))    
 }
@@ -1140,12 +1169,13 @@ wls_se_ <- function(X=NULL, y, trt, weights) {
 #' @param outcomes Tidy dataframe with the outcomes and meta data
 #' @param metadata Dataframe of metadata
 #' @param trt_unit Treated unit
+#' @param pred_int Whether to add outcome control variance to make pred interval
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #'
 #' @return outcomes with additional synthetic control added and weights
 #' @export
-wls_se_synth <- function(outcomes, metadata, trt_unit=1,
+wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
                          cols=list(unit="unit", time="time",
                                    outcome="outcome", treated="treated")) {
     
@@ -1156,7 +1186,7 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1,
     ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
 
     ## get att and standard error estimates
-    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights)
+    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights, pred_int)
 
     ## 
     ## combine into dataframe
@@ -1224,3 +1254,126 @@ wls_se_bal <- function(outcomes, metadata, hyperparam, trt_unit=1,
 
     return(out)
     }
+
+
+
+
+#' Compute standard errors from survey glm
+#' @param X Matrix of pre-period outcomes
+#' @param y Matrix of post-period outcomes
+#' @param trt Treatment indicator
+#' @param weights Balancing weights
+#' @param pred_int Whether to add outcome control variance to make pred interval
+svyglm_se_ <- function(X=NULL, y, trt, weights, pred_int) {
+
+
+    ## combine back into a panel structure
+    n <- nrow(y)
+    ids <- 1:n
+    if(is.null(X)) {
+        t0 <- 0
+    } else {
+        t0 <- dim(X)[2]
+    }
+    t_final <- t0 + dim(y)[2]
+
+
+    new_weights <- numeric(0)
+    new_weights[trt==0] <- weights
+    new_weights[trt==1] <- 1
+
+    if(!is.null(X)) {
+        pnl1 <- data.frame(X)
+        colnames(pnl1) <- 1:t0
+        pnl1 <- pnl1 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
+            gather(time, val, -trt, -post, -id, -weight)
+        
+    } else {
+        pnl1 <- data.frame(time=NULL, val=NULL, trt=NULL, post=NULL, id=NULL, weight=NULL)
+    }
+
+    
+    pnl2 <- data.frame(y)
+    colnames(pnl2) <- (t0+1):t_final
+    pnl2 <- pnl2 %>% mutate(trt=trt, post=1, id=ids, weight=new_weights) %>%
+        gather(time, val, -trt, -post, -id, -weight)
+
+    pnl <- bind_rows(pnl1, pnl2) %>%
+        mutate(time=factor(time,
+                           levels=1:t_final)) %>%
+        filter(trt==0)
+
+    ## make desing
+    design <- survey::svydesign(id=~1, weights=~weight, data=pnl)
+    
+    ## get att estimates with WLS
+    if(t_final > 1) {
+        ## fit <- pnl %>% 
+        ##     lm(val ~ time + time:trt -1,
+        ##        .,
+        ##        weights=.$weight)
+        fit <- survey::svyglm(val ~ time -1, design)
+    } else {
+        ## fit <- lm(val ~ trt,
+        ##           pnl,
+        ##           weights=pnl$weight)
+        fit <- survey::svyglm(val ~ 1, design)
+    }
+    ## att <- as.numeric(coef(fit)[(t_final+1):(2*t_final)])
+    yhat <- as.numeric(coef(fit))
+    ## se <- as.numeric(coef(summary(fit))[,2][(t_final+1):(2*t_final)])
+
+    se <- coef(summary(fit))[,2]
+
+    comb <- cbind(X, y)
+    att <- colMeans(comb[trt==1,,drop=F]) - yhat
+    comb <- comb[trt==0,]
+    if(pred_int) {
+        sig2 <- sapply(1:length(att), function(i) sum(weights * (comb[,i] - yhat[i])^2))
+    } else {
+        sig2 <- 0
+    }
+    se <- sqrt(se^2 + sig2)
+
+    return(list(att=att, se=se))    
+}
+
+
+
+#' svyglm standard errors
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param trt_unit Treated unit
+#' @param pred_int Whether to add outcome control variance to make pred interval
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#'
+#' @return outcomes with additional synthetic control added and weights
+#' @export
+svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
+                         cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated")) {
+    
+    ## fit synth
+    syn <- get_synth(outcomes, metadata, trt_unit, cols)
+
+    ## format for WLS
+    ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
+
+    ## get att and standard error estimates
+    att_se <- svyglm_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights, pred_int)
+
+    ## 
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+
+    out$att <- att_se$att
+    out$se <- att_se$se
+    ## out$att <- c(rep(NA, ncol(ipw_dat$X)),
+    ##              att_se$att)
+
+    ## out$se <- c(rep(NA, ncol(ipw_dat$X)),
+    ##             att_se$se)
+
+    return(out)
+}

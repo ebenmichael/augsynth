@@ -4,8 +4,9 @@
 \alias{wls_se_synth}
 \title{Weighted Least Squares Standard Errors}
 \usage{
-wls_se_synth(outcomes, metadata, trt_unit = 1, cols = list(unit = "unit",
-  time = "time", outcome = "outcome", treated = "treated"))
+wls_se_synth(outcomes, metadata, trt_unit = 1, pred_int = f,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -13,6 +14,8 @@ wls_se_synth(outcomes, metadata, trt_unit = 1, cols = list(unit = "unit",
 \item{metadata}{Dataframe of metadata}
 
 \item{trt_unit}{Treated unit}
+
+\item{pred_int}{Whether to add outcome control variance to make pred interval}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}

@@ -1,7 +1,7 @@
 ## Files
 # Emacs autosave files
 *~
-
+\#*#
 # Don't put data in the repo
 *.csv
 *.feather
