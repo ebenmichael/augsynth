@@ -2,9 +2,14 @@
 % Please edit documentation in R/inference.R
 \name{svyglm_se_synth}
 \alias{svyglm_se_synth}
+\alias{svyglm_se_synth}
 \title{svyglm standard errors}
 \usage{
-svyglm_se_synth(outcomes, metadata, trt_unit = 1, pred_int = f,
+svyglm_se_synth(outcomes, metadata, trt_unit = 1, pred_int = F,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
+
+svyglm_se_synth(outcomes, metadata, trt_unit = 1, pred_int = F,
   cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
   "treated"))
 }
@@ -19,10 +24,25 @@ svyglm_se_synth(outcomes, metadata, trt_unit = 1, pred_int = f,
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
+
+\item{outcomes}{Tidy dataframe with the outcomes and meta data}
+
+\item{metadata}{Dataframe of metadata}
+
+\item{trt_unit}{Treated unit}
+
+\item{pred_int}{Whether to add outcome control variance to make pred interval}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 outcomes with additional synthetic control added and weights
+
+outcomes with additional synthetic control added and weights
 }
 \description{
+svyglm standard errors
+
 svyglm standard errors
 }

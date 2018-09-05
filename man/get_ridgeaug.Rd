@@ -2,8 +2,13 @@
 % Please edit documentation in R/ridge.R
 \name{get_ridgeaug}
 \alias{get_ridgeaug}
+\alias{get_ridgeaug}
 \title{Fit synthetic controls on outcomes}
 \usage{
+get_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
+
 get_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
   cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
   "treated"))
@@ -21,10 +26,27 @@ get_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
+
+\item{outcomes}{Tidy dataframe with the outcomes and meta data}
+
+\item{metadata}{Dataframe of metadata}
+
+\item{trt_unit}{Unit that is treated (target for regression), default: 0}
+
+\item{lambda}{Ridge hyper-parameter, if NULL use CV}
+
+\item{scm}{Include SCM or not}
+
+\item{cols}{Column names corresponding to the units,
+time variable, outcome, and treated indicator}
 }
 \value{
 outcomes with additional synthetic control added and weights
+
+outcomes with additional synthetic control added and weights
 }
 \description{
+Fit synthetic controls on outcomes
+
 Fit synthetic controls on outcomes
 }

@@ -5,7 +5,8 @@
 \title{Get the permutation distribution of the test stat
 assuming equal probability of treatment}
 \usage{
-firpo_inf(metadata, fitfunc, units, trt_unit, pretimes, posttimes, statfuncs)
+firpo_inf(metadata, fitfunc, units, trt_unit, pretimes, posttimes, statfuncs,
+  include_treat)
 }
 \arguments{
 \item{metadata}{with treatment time}
@@ -22,6 +23,8 @@ the number of the treated unit}
 \item{posttimes}{Vector of times in post-period}
 
 \item{statfuncs}{Function to compute test stats}
+
+\item{include_treat}{Whether to include the treated unit}
 }
 \value{
 att estimates, test statistics, p-values
