@@ -1019,7 +1019,12 @@ bootstrap_ridgeaug <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=
 
         new_ipw_out <- ipw_out
         new_ipw_out$X[ipw_out$trt==0,] <- ipw_out$X[ipw_out$trt==0,][ctrls,]
-        new_ipw_out$y[ipw_out$trt==0,] <- ipw_out$y[ipw_out$trt==0,][ctrls,]
+        if(ncol(ipw_out$y) == 1) {
+            new_ipw_out$y[ipw_out$trt==0] <- ipw_out$y[ipw_out$trt==0][ctrls]
+        } else {
+            new_ipw_out$y[ipw_out$trt==0,] <- ipw_out$y[ipw_out$trt==0,][ctrls,]
+        }
+        
         ## get synth weights
         aug <- fit_ridgeaug_formatted(new_ipw_out, new_data_out, lambda, scm)
 
