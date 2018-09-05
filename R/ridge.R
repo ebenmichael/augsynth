@@ -147,24 +147,24 @@ fit_ridgeaug_cov_formatted <- function(ipw_format, syn_format,Z,
 
     res_t <- syn_format$synth_data$Z1  - t(t(X1_hat))
     res_c <- syn_format$synth_data$Z0  - t(Xc_hat)
-
+    new_synth_format <- syn_format
+    new_syn_format$synth_data$Z1 <- res_t
+    new_syn_format$synth_data$Z0 <- res_c
     ## get ridge weights
-    ridge_w <- t(X_1 - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)
+    ridge_w <- t(X_1 - t(Z_c) %*% syn) %*% solve(t(Z_c) %*% Z_c + lambda * diag(ncol(Z_c))) %*% t(Z_c)
 
     ## if SCM fit scm
     if(scm) {
-        syn <- fit_synth_formatted(syn_format)$weights
+        syn <- fit_synth_formatted(new_syn_format)$weights
     } else {
         ## else sue uniform weights
         syn <- rep(1/sum(trt==0), sum(trt==0))
     }
 
-    ## combine weights
-    ridge_w <- t(X_1 - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)
     weights <- syn + t(ridge_w)
 
     data_out <- syn_format$synth_data
-    
+
 
     primal_obj <- sqrt(sum((data_out$Z0 %*% weights - data_out$Z1)^2))
     ## primal objective value scaled by least squares difference for mean
@@ -182,13 +182,14 @@ fit_ridgeaug_cov_formatted <- function(ipw_format, syn_format,Z,
 
 
 
-get_ridgeaug <- function(outcomes, metadata, trt_unit=1,
-                         lambda=NULL, scm=T,
-                         cols=list(unit="unit", time="time",
-                                   outcome="outcome", treated="treated")) {
+get_ridgeaug_cov <- function(outcomes, metadata, covariates, trt_unit=1,
+                             lambda=NULL, scm=T,
+                             cols=list(unit="unit", time="time",
+                                       outcome="outcome", treated="treated")) {
     #' Fit synthetic controls on outcomes
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
+    #' @param covaraites Dataframe of covariates
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param lambda Ridge hyper-parameter, if NULL use CV
     #' @param scm Include SCM or not

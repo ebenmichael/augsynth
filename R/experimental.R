@@ -66,7 +66,7 @@ get_svd_bal <- function(outcomes, metadata, trt_unit=1, r, hyperparam,
 
 
 
-get_svd_syn <- function(outcomes, metadata, trt_unit=1, r, 
+get_svd_syn <- function(outcomes, metadata, trt_unit=1, r, unit_mean=F,
                         outcome_col=NULL,
                         cols=list(unit="unit", time="time",
                                   outcome="outcome", treated="treated")) {
@@ -75,6 +75,7 @@ get_svd_syn <- function(outcomes, metadata, trt_unit=1, r,
     #' @param metadata Dataframe of metadata
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param r Rank of matrix for SVD
+    #' @param unit_mean Whether to take out the unit means
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
     #' @param cols Column names corresponding to the units,
@@ -83,18 +84,12 @@ get_svd_syn <- function(outcomes, metadata, trt_unit=1, r,
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
-    ## format data, reduce dim with SVD and get weights
-    ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)
-
-    ## lowdim <- svd(ipw_dat$X)$u[,1:r,drop=FALSE]
-
+    
     ## format into synth
     data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
 
-    ## data_out$synth_data$Z0 <- t(lowdim[ipw_dat$trt==0,,drop=FALSE])
-    ## data_out$synth_data$Z1 <- matrix(colMeans(lowdim[ipw_dat$trt==1,,drop=FALSE]))
+    out <- fit_svd_formatted(data_out, r, unit_mean)
 
-    out <- fit_svd_formatted(data_out, r)
     ## match outcome types to synthetic controls
     if(!is.null(outcome_col)) {
         data_out$outcomes[[outcome_col]] <- factor(outcomes[[outcome_col]],
@@ -120,23 +115,44 @@ get_svd_syn <- function(outcomes, metadata, trt_unit=1, r,
 
 
 
-fit_svd_formatted <- function(data_out, r) {
+fit_svd_formatted <- function(data_out, r, unit_mean) {
     #' Fit synthetic controls on outcomes after performing SVD
     #' @param data_out Panel data formatted by Synth::dataprep
     #' @param r Rank of matrix for SVD
-
+    #' @param unit_mean Whether to take out the unit means
     
     is_treated <- data_out$is_treated
     data_out <- data_out$synth_data
 
     ## SVD on lagged outcomes
 
-    svd_out <- svd(t(cbind(data_out$Z1, data_out$Z0)))
-    lowdim <- svd_out$u[,1:r,drop=FALSE] %*% diag(svd_out$d)[1:r, 1:r] %*% svd_out$u[1:r,]
+    ## take out column means
+    comb <- t(cbind(data_out$Z1, data_out$Z0))
+    comb <- apply(comb, 2, function(x) x - mean(x))
+    
+    if(unit_mean) {
+        ## take out unit means separately
+        unit_means <- rowMeans(comb)
+
+        comb <- comb - unit_means
+        svd_obj <- svd(comb)        
+        if(r != 0) {
+            low_dim <- (svd_obj$u %*% diag(svd_obj$d))[,1:r,drop=F]
+            low_dim <- cbind(unit_means, low_dim)
+        } else {
+            low_dim <- t(t(unit_means))
+        }
+
+        
+    } else {
+        svd_obj <- svd(comb)
+        low_dim <- (svd_obj$u %*% diag(svd_obj$d))[,1:r,drop=F]
+    }
 
     ## change the "predictors" to be the pre period outcomes
-    data_out$X0 <- t(lowdim[-1,,drop=FALSE])
-    data_out$X1 <- t(lowdim[1,,drop=FALSE])
+    data_out$X0 <- t(low_dim[-1,,drop=FALSE])
+    data_out$X1 <- t(low_dim[1,,drop=FALSE])
+
 
     ## set weights on predictors to be 0
     custom.v <- rep(1, dim(data_out$X0)[1])
@@ -146,6 +162,8 @@ fit_svd_formatted <- function(data_out, r) {
                                              custom.v=custom.v,
                                              quadopt="LowRankQP"))
     weights <- synth_out$solution.w
+
+
     loss <- synth_out$loss.w
     primal_obj <- sqrt(sum((data_out$Z0 %*% weights - data_out$Z1)^2))
     ## primal objective value scaled by least squares difference for mean

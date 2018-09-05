@@ -4,12 +4,14 @@
 \alias{fit_svd_formatted}
 \title{Fit synthetic controls on outcomes after performing SVD}
 \usage{
-fit_svd_formatted(data_out, r)
+fit_svd_formatted(data_out, r, unit_mean)
 }
 \arguments{
 \item{data_out}{Panel data formatted by Synth::dataprep}
 
 \item{r}{Rank of matrix for SVD}
+
+\item{unit_mean}{Whether to take out the unit means}
 }
 \description{
 Fit synthetic controls on outcomes after performing SVD
