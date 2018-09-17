@@ -4,7 +4,7 @@
 \alias{wls_se_}
 \title{Compute model-based weighted least squares SE estimates of the ATT}
 \usage{
-wls_se_(X = NULL, y, trt, weights, pred_int)
+wls_se_(X = NULL, y, trt, weights, pred_int, hc)
 }
 \arguments{
 \item{X}{Matrix of pre-period outcomes}
@@ -16,6 +16,8 @@ wls_se_(X = NULL, y, trt, weights, pred_int)
 \item{weights}{Balancing weights}
 
 \item{pred_int}{Whether to add outcome control variance to make pred interval}
+
+\item{hc}{Type of HC variance estimate (-1 for homoskedastic)}
 }
 \description{
 Compute model-based weighted least squares SE estimates of the ATT

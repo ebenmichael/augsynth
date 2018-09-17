@@ -1185,7 +1185,8 @@ bootstrap_bal <- function(outcomes, metadata, n_boot, hyperparam, trt_unit=1,
 #' @param trt Treatment indicator
 #' @param weights Balancing weights
 #' @param pred_int Whether to add outcome control variance to make pred interval
-wls_se_ <- function(X=NULL, y, trt, weights, pred_int) {
+#' @param hc Type of HC variance estimate (-1 for homoskedastic)
+wls_se_ <- function(X=NULL, y, trt, weights, pred_int, hc) {
 
 
     ## ## combine back into a panel structure
@@ -1253,7 +1254,22 @@ wls_se_ <- function(X=NULL, y, trt, weights, pred_int) {
     att <- as.numeric(colMeans(comb[trt==1,,drop=F]) - yhat)
 
     comb <- comb[trt==0,]
-    se <- sqrt(sapply(1:length(att), function(i) sum(weights^2 * (comb[,i] - yhat[i])^2)))
+
+    if(hc == 0) {
+        ## heteroskedastic robust variance estimate (huber white)
+        se <- sqrt(sapply(1:length(att),
+                          function(i) sum(weights^2 * (comb[,i] - yhat[i])^2)))
+    } else if(hc == 2) {
+        se <- sqrt(sapply(1:length(att),
+                          function(i) sum(weights^2/(1-weights) * (comb[,i] - yhat[i])^2)))
+    } else if(hc == 3) {
+        se <- sqrt(sapply(1:length(att),
+                          function(i) sum((weights/(1-weights))^2 * (comb[,i] - yhat[i])^2)))
+    }else if(hc == -1){
+        ## homoskedastic estimate, different for each time
+        vars_t <- sapply(1:length(att), function(i) var(comb[,i]))
+        se <- sqrt(vars_t * sum(weights^2))
+    }
 
     if(pred_int) {
         sig2 <- sapply(1:length(att), function(i) sum(weights * (comb[,i] - yhat[i])^2))
@@ -1275,12 +1291,14 @@ wls_se_ <- function(X=NULL, y, trt, weights, pred_int) {
 #' @param metadata Dataframe of metadata
 #' @param trt_unit Treated unit
 #' @param pred_int Whether to add outcome control variance to make pred interval
+#' @param hc Type of HC variance estimate (-1 for homoskedastic)
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #'
 #' @return outcomes with additional synthetic control added and weights
 #' @export
 wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
+                         hc=0, 
                          cols=list(unit="unit", time="time",
                                    outcome="outcome", treated="treated")) {
     
@@ -1291,7 +1309,7 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
     ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
 
     ## get att and standard error estimates
-    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights, pred_int)
+    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, syn$weights, pred_int, hc)
 
     ## 
     ## combine into dataframe
@@ -1317,12 +1335,13 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @param metadata Dataframe of metadata
 #' @param trt_unit Treated unit
 #' @param pred_int Whether to add outcome control variance to make pred interval
+#' @param hc Type of HC variance estimate (-1 for homoskedastic)
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #'
 #' @return outcomes with additional synthetic control added and weights
 #' @export
-wls_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, pred_int=F,
+wls_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, pred_int=F, hc=0,
                             lambda=NULL, scm=T, 
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
@@ -1334,7 +1353,7 @@ wls_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, pred_int=F,
     ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
 
     ## get att and standard error estimates
-    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, aug$weights, pred_int)
+    att_se <- wls_se_(ipw_dat$X, ipw_dat$y, ipw_dat$trt, aug$weights, pred_int, hc)
 
     ## 
     ## combine into dataframe

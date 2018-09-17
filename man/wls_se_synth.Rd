@@ -4,7 +4,7 @@
 \alias{wls_se_synth}
 \title{Weighted Least Squares Standard Errors}
 \usage{
-wls_se_synth(outcomes, metadata, trt_unit = 1, pred_int = F,
+wls_se_synth(outcomes, metadata, trt_unit = 1, pred_int = F, hc = 0,
   cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
   "treated"))
 }
@@ -16,6 +16,8 @@ wls_se_synth(outcomes, metadata, trt_unit = 1, pred_int = F,
 \item{trt_unit}{Treated unit}
 
 \item{pred_int}{Whether to add outcome control variance to make pred interval}
+
+\item{hc}{Type of HC variance estimate (-1 for homoskedastic)}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
