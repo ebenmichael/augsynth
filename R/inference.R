@@ -522,9 +522,13 @@ weighted_test <- function(metadata, fitfunc, units, probs, trt_unit,
     probs <- probs / sum(probs)
     ## compute the p value
     pvals <- lapply(stats,
-                   function(stat) {
-                       notrt <- stat[-trt_unit]
-                       sum((notrt >= stat[trt_unit]) * probs)
+                    function(stat) {
+                        if(length(probs) == length(units) - 1) {
+                            notrt <- stat[-trt_unit]
+                            sum((notrt >= stat[trt_unit]) * probs)
+                        } else {
+                            sum((stat >= stat[trt_unit]) * probs)
+                        }
                    })
 
     return(list(atts=atts, stats=stats, pvals=pvals, probs=probs))
@@ -611,9 +615,64 @@ weighted_test_sc <- function(outcomes, metadata, trt_unit,
 
     ## get estimated propensity scores
     probs <- sc$weights / (1 + sc$weights)    
-
     units <- unique(sc$outcomes$unit)
     times <- unique(sc$outcomes$time)
+    pretimes <- times[which(times < metadata$t_int)]
+    posttimes <- times[which(times >= metadata$t_int)]
+    
+    ## permute treatment label
+    inf <- weighted_test(metadata, synfunc, units, probs, trt_unit,
+                         pretimes, posttimes, statfuncs)
+
+    return(inf)
+
+}
+
+
+weighted_test_bal <- function(outcomes, metadata, trt_unit, hyperparam,
+                             link=c("logit", "linear", "pos-linear"),
+                             regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                             normalized=TRUE,
+                             statfuncs=c(rmse_ratio, mean_abs, abs_tstat),
+                             cols=list(unit="unit", time="time",
+                                       outcome="outcome", treated="treated")) {
+    #' Get the weighted permutation distribution of SC estimate test statistics
+    #' estimating p-scores with logit-link synth
+    #' @param outcomes Tidy dataframe with the outcomes and meta data
+    #' @param metadata Dataframe of metadata
+    #' @param trt_unit Unit that is treated (target for regression), default: 0
+    #' @param statfuncs Function to compute test stats
+    #' @param n_sim Number of montecarlo samples
+    #' @param cols Column names corresponding to the units,
+    #'             time variable, outcome, and treated indicator
+    #'
+    #' @return att estimates, test statistics, p-values
+    #' @export
+
+    ipw <- format_ipw(outcomes, metadata, cols=cols)
+    ## create a fitting function for synth
+    synfunc <- function(u) {
+        if(u == trt_unit) {
+            get_synth(outcomes,
+                      metadata, u, cols=cols)
+        } else {
+            get_synth(outcomes[outcomes[cols$unit] != trt_unit,],
+                      metadata, u, cols=cols)
+        }
+    }
+
+    ## fit synth once
+
+    bal <- get_balancer(outcomes, metadata, trt_unit, hyperparam,
+                        link, regularizer, normalized, cols=cols)
+    ## get back the intercept
+    alpha <- -logsumexp(ipw$X[ipw$trt==0,] %*% bal$dual)
+
+    ## get estimated p scores
+    probs <- 1 / (1 + exp(-alpha - ipw$X %*% bal$dual))
+    
+    units <- unique(bal$outcomes$unit)
+    times <- unique(bal$outcomes$time)
     pretimes <- times[which(times < metadata$t_int)]
     posttimes <- times[which(times >= metadata$t_int)]
     
@@ -884,6 +943,11 @@ di_standard_error <- function(outcomes, metadata, trt_unit=1, use_weights=FALSE,
     
     return(out)
 }
+
+
+
+
+
 
 
 #### BOOTSTRAP
@@ -1252,7 +1316,6 @@ wls_se_ <- function(X=NULL, y, trt, weights, pred_int, hc) {
     comb <- cbind(X, y)
     yhat <- as.numeric(t(comb[trt==0,]) %*% weights)
     att <- as.numeric(colMeans(comb[trt==1,,drop=F]) - yhat)
-
     comb <- comb[trt==0,]
 
     if(hc == 0) {
@@ -1585,5 +1648,85 @@ svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
     ## out$se <- c(rep(NA, ncol(ipw_dat$X)),
     ##             att_se$se)
 
+    return(out)
+}
+
+
+
+#' Use leave out one estimates (placebo gaps) to estimate unit-level variance
+#' Do this for ridge-augmented synth
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param trt_unit Treated unit
+#' @param lambda Ridge hyper-parameter, if NULL use CV
+#' @param scm Include SCM or not
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' 
+#' @return att estimates, test statistics, p-values
+#' @export
+loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
+                            scm=T,
+                            cols=list(unit="unit", time="time",
+                                      outcome="outcome", treated="treated")) {
+
+
+    ## format data once
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
+    ipw_dat <- format_ipw(outcomes, metadata, cols=cols)
+
+    n_c <- dim(data_out$synth_data$Z0)[2]
+
+    t0 <- dim(data_out$synth_data$Z0)[1]
+    t_final <- dim(data_out$synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    ## att on actual sample
+    aug <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm)
+    att <- as.numeric(data_out$synth_data$Y1plot -
+            data_out$synth_data$Y0plot %*% aug$weights)
+
+    lam <- aug$lambda
+    
+    ## iterate over control units
+    for(i in 1:n_c) {
+
+        ## reset synth data to make a control a treated
+        new_data_out <- data_out
+        new_data_out$synth_data$Z0 <- data_out$synth_data$Z0[, -i]
+        new_data_out$synth_data$Y0plot <- data_out$synth_data$Y0plot[, -i]
+
+        new_data_out$synth_data$Z1 <- data_out$synth_data$Z0[, i, drop=FALSE]
+        new_data_out$synth_data$Y1plot <- data_out$synth_data$Y0plot[, i, drop=FALSE]
+
+        ## reset ipw data to change treatment assignment
+        new_ipw_dat <- ipw_dat
+        new_ipw_dat$X <- ipw_dat$X[ipw_dat$trt==0,]
+        new_ipw_dat$y <- ipw_dat$y[ipw_dat$trt==0,]
+        new_ipw_dat$trt <- numeric(nrow(new_ipw_dat$X))
+        new_ipw_dat$trt[i] <- 1
+
+        ## get ridge_aug weights
+        aug <- fit_ridgeaug_formatted(new_ipw_dat, new_data_out, lam, scm)
+
+        ## estimate satt
+        errs[i,] <- new_data_out$synth_data$Y1plot[(t0+1):t_final,] -
+            new_data_out$synth_data$Y0plot[(t0+1):t_final,] %*% aug$weights
+    }
+
+    
+    ## standard errors
+    if(use_weights) {
+        se <- sqrt(t(errs^2) %*% syn$weights^2)
+    } else {
+        se <- sqrt(apply(errs^2, 2, mean))
+    }
+
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$att <- att
+
+    out$se <- c(rep(NA, t0), se)
+    
     return(out)
 }
