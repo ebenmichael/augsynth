@@ -1661,13 +1661,14 @@ svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param scm Include SCM or not
 #' @param use_weights Whether to use weights in se estimate, default: FALSE
+#' @param hc Type of HC variance estimate (-1 for homoskedastic)
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
 #' @export
 loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
-                            scm=T, use_weights=T,
+                            scm=T, use_weights=T, hc=0,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
 
@@ -1717,7 +1718,11 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
 
     ## standard errors
     if(use_weights) {
-        se <- sqrt(t(errs^2) %*% aug_t$weights^2)
+        if(hc == 0) {
+            se <- sqrt(t(errs^2) %*% aug_t$weights^2)
+        } else if(hc ==-1) {
+            se <- sqrt(apply(errs^2, 2, mean)) * sqrt(sum(aug_t$weights^2))
+        }
     } else {
         se <- sqrt(apply(errs^2, 2, mean))
     }

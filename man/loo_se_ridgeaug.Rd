@@ -6,8 +6,8 @@
 Do this for ridge-augmented synth}
 \usage{
 loo_se_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
-  use_weights = T, cols = list(unit = "unit", time = "time", outcome =
-  "outcome", treated = "treated"))
+  use_weights = T, hc = 0, cols = list(unit = "unit", time = "time",
+  outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -21,6 +21,8 @@ loo_se_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
 \item{scm}{Include SCM or not}
 
 \item{use_weights}{Whether to use weights in se estimate, default: FALSE}
+
+\item{hc}{Type of HC variance estimate (-1 for homoskedastic)}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
