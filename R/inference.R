@@ -1683,9 +1683,9 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
     errs <- matrix(0, n_c, t_final - t0)
 
     ## att on actual sample
-    aug <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm)
+    aug_t <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm)
     att <- as.numeric(data_out$synth_data$Y1plot -
-            data_out$synth_data$Y0plot %*% aug$weights)
+            data_out$synth_data$Y0plot %*% aug_t$weights)
 
     lam <- aug$lambda
     
@@ -1715,10 +1715,9 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
             new_data_out$synth_data$Y0plot[(t0+1):t_final,] %*% aug$weights
     }
 
-    
     ## standard errors
     if(use_weights) {
-        se <- sqrt(t(errs^2) %*% syn$weights^2)
+        se <- sqrt(t(errs^2) %*% aug_t$weights^2)
     } else {
         se <- sqrt(apply(errs^2, 2, mean))
     }
