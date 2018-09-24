@@ -1687,7 +1687,7 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
     att <- as.numeric(data_out$synth_data$Y1plot -
             data_out$synth_data$Y0plot %*% aug_t$weights)
 
-    lam <- aug$lambda
+    lam <- aug_t$lambda
     
     ## iterate over control units
     for(i in 1:n_c) {
