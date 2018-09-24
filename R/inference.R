@@ -1660,13 +1660,14 @@ svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @param trt_unit Treated unit
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param scm Include SCM or not
+#' @param use_weights Whether to use weights in se estimate, default: FALSE
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
 #' @export
 loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
-                            scm=T,
+                            scm=T, use_weights=T,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
 

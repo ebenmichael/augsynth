@@ -6,8 +6,8 @@
 Do this for ridge-augmented synth}
 \usage{
 loo_se_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
-  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
-  "treated"))
+  use_weights = T, cols = list(unit = "unit", time = "time", outcome =
+  "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -19,6 +19,8 @@ loo_se_ridgeaug(outcomes, metadata, trt_unit = 1, lambda = NULL, scm = T,
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
 \item{scm}{Include SCM or not}
+
+\item{use_weights}{Whether to use weights in se estimate, default: FALSE}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
