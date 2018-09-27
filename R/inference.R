@@ -1042,13 +1042,14 @@ bootstrap_sc <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=F,
 #' @param pred_int Whether to add outcome control variance to make pred interval
 #' @param lambda Ridge hyper-parameter, if NULL then CV
 #' @param scm Whether to augment SCM with ridge
+#' @param ridge Include ridge or not
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
 #' @export
 bootstrap_ridgeaug <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=F,
-                               lambda=NULL, scm=T, 
+                               lambda=NULL, scm=T, ridge=T,
                                cols=list(unit="unit", time="time",
                                          outcome="outcome", treated="treated")) {
 
@@ -1062,7 +1063,7 @@ bootstrap_ridgeaug <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=
     t_final <- dim(data_out$synth_data$Y0plot)[1]
 
     ## att on actual sample
-    aug <- fit_ridgeaug_formatted(ipw_out, data_out, lambda, scm)
+    aug <- fit_ridgeaug_formatted(ipw_out, data_out, lambda, scm, ridge)
     att <- as.numeric(data_out$synth_data$Y1plot -
                       data_out$synth_data$Y0plot %*% aug$weights)
     yhat <- as.numeric(data_out$synth_data$Y0plot %*% aug$weights)    
@@ -1090,7 +1091,7 @@ bootstrap_ridgeaug <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=
         }
         
         ## get synth weights
-        aug <- fit_ridgeaug_formatted(new_ipw_out, new_data_out, lambda, scm)
+        aug <- fit_ridgeaug_formatted(new_ipw_out, new_data_out, lambda, scm, ridge)
 
         ## estimate satt
         atts[b,] <- new_data_out$synth_data$Y1plot[t0:t_final,] -
@@ -1115,7 +1116,7 @@ bootstrap_ridgeaug <- function(outcomes, metadata, n_boot, trt_unit=1, pred_int=
     ## combine into dataframe
     out <- outcomes %>% distinct(time)
     out$att <- att
-
+    out$yhat <- yhat
     out$se <- c(rep(NA, t0-1), se)
     out$bias <- c(rep(NA, t0-1), bias)
 
@@ -1344,7 +1345,7 @@ wls_se_ <- function(X=NULL, y, trt, weights, pred_int, hc) {
     ## sig2 <- summary(fit)$sigma^2 / sum(trt==1)
     se <- sqrt(se^2 + sapply(sig2, function(x) max(x,0)))
 
-    return(list(att=att, se=se))    
+    return(list(yhat=yhat, att=att, se=se))    
 }
 
 
@@ -1380,6 +1381,7 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 
     out$att <- att_se$att
     out$se <- att_se$se
+    out$yhat <- att_se$yhat
     ## out$att <- c(rep(NA, ncol(ipw_dat$X)),
     ##              att_se$att)
 
@@ -1399,18 +1401,21 @@ wls_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @param trt_unit Treated unit
 #' @param pred_int Whether to add outcome control variance to make pred interval
 #' @param hc Type of HC variance estimate (-1 for homoskedastic)
+#' @param lambda Ridge hyperparemter, default NULL
+#' @param scm Include SCM or not
+#' @param ridge Include ridge or not
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #'
 #' @return outcomes with additional synthetic control added and weights
 #' @export
 wls_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, pred_int=F, hc=0,
-                            lambda=NULL, scm=T, 
+                            lambda=NULL, scm=T, ridge=T,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
     
     ## fit synth
-    aug <- get_ridgeaug(outcomes, metadata, trt_unit, lambda, scm, cols)
+    aug <- get_ridgeaug(outcomes, metadata, trt_unit, lambda, scm, ridge, cols)
 
     ## format for WLS
     ipw_dat <- format_ipw(outcomes, metadata, NULL, cols)
@@ -1424,6 +1429,7 @@ wls_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, pred_int=F, hc=0,
 
     out$att <- att_se$att
     out$se <- att_se$se
+    out$yhat <- att_se$yhat
     ## out$att <- c(rep(NA, ncol(ipw_dat$X)),
     ##              att_se$att)
 
@@ -1481,7 +1487,7 @@ wls_se_bal <- function(outcomes, metadata, hyperparam, trt_unit=1,
     out$att <- att_se$att
 
     out$se <- att_se$se
-
+    out$yhat <- att_se$yhat
     return(out)
     }
 
@@ -1660,6 +1666,7 @@ svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @param trt_unit Treated unit
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param scm Include SCM or not
+#' @param ridge Include ridge or not
 #' @param use_weights Whether to use weights in se estimate, default: FALSE
 #' @param hc Type of HC variance estimate (-1 for homoskedastic)
 #' @param cols Column names corresponding to the units,
@@ -1668,7 +1675,7 @@ svyglm_se_synth <- function(outcomes, metadata, trt_unit=1, pred_int=F,
 #' @return att estimates, test statistics, p-values
 #' @export
 loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
-                            scm=T, use_weights=T, hc=0,
+                            scm=T, ridge=T, use_weights=T, hc=0,
                             cols=list(unit="unit", time="time",
                                       outcome="outcome", treated="treated")) {
 
@@ -1684,7 +1691,7 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
     errs <- matrix(0, n_c, t_final - t0)
 
     ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm)
+    aug_t <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm, ridge)
     att <- as.numeric(data_out$synth_data$Y1plot -
             data_out$synth_data$Y0plot %*% aug_t$weights)
 
@@ -1709,7 +1716,7 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
         new_ipw_dat$trt[i] <- 1
 
         ## get ridge_aug weights
-        aug <- fit_ridgeaug_formatted(new_ipw_dat, new_data_out, lam, scm)
+        aug <- fit_ridgeaug_formatted(new_ipw_dat, new_data_out, lam, scm, ridge)
 
         ## estimate satt
         errs[i,] <- new_data_out$synth_data$Y1plot[(t0+1):t_final,] -
@@ -1729,6 +1736,55 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
 
     ## combine into dataframe
     out <- outcomes %>% distinct(time)
+    out$yhat <- as.numeric(data_out$synth_data$Y0plot %*% aug_t$weights)
+    out$att <- att
+
+    out$se <- c(rep(NA, t0), se)
+    
+    return(out)
+}
+
+
+
+#' Use closed form weighted variance estiamte for ridge-augmented
+#' @param outcomes Tidy dataframe with the outcomes and meta data
+#' @param metadata Dataframe of metadata
+#' @param trt_unit Treated unit
+#' @param lambda Ridge hyper-parameter, if NULL use CV
+#' @param scm Include SCM or not
+#' @param ridge Include ridge or not
+#' @param cols Column names corresponding to the units,
+#'             time variable, outcome, and treated indicator
+#' 
+#' @return att estimates, test statistics, p-values
+#' @export
+wvar_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
+                            scm=T, ridge=T,
+                            cols=list(unit="unit", time="time",
+                                      outcome="outcome", treated="treated")) {
+
+
+    ## format data once
+    data_out <- format_data(outcomes, metadata, trt_unit, cols=cols)
+    ipw_dat <- format_ipw(outcomes, metadata, cols=cols)
+
+    n_c <- dim(data_out$synth_data$Z0)[2]
+
+    t0 <- dim(data_out$synth_data$Z0)[1]
+    t_final <- dim(data_out$synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    ## att on actual sample
+    aug_t <- fit_ridgeaug_formatted(ipw_dat, data_out, lambda, scm, ridge)
+    att <- as.numeric(data_out$synth_data$Y1plot -
+            data_out$synth_data$Y0plot %*% aug_t$weights)
+
+    ## weighted variance estimate
+    se <- apply(ipw_dat$y, 2, function(y) sd(aug_t$weights * y[ipw_dat$trt==0]))
+    
+    ## combine into dataframe
+    out <- outcomes %>% distinct(time)
+    out$yhat <- as.numeric(data_out$synth_data$Y0plot %*% aug_t$weights)
     out$att <- att
 
     out$se <- c(rep(NA, t0), se)

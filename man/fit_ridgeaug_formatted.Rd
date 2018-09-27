@@ -4,7 +4,8 @@
 \alias{fit_ridgeaug_formatted}
 \title{Ridge augmented weights}
 \usage{
-fit_ridgeaug_formatted(ipw_format, syn_format, lambda = NULL, scm = T)
+fit_ridgeaug_formatted(ipw_format, syn_format, lambda = NULL, scm = T,
+  ridge = T)
 }
 \arguments{
 \item{ipw_format}{Output of `format_ipw`}
@@ -14,6 +15,8 @@ fit_ridgeaug_formatted(ipw_format, syn_format, lambda = NULL, scm = T)
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
 \item{scm}{Include SCM or not}
+
+\item{ridge}{Include ridge or not}
 }
 \value{
 inverse of predicted propensity scores

@@ -5,13 +5,14 @@
 
 
 fit_ridgeaug_formatted <- function(ipw_format, syn_format,
-                                   lambda=NULL, scm=T) {
+                                   lambda=NULL, scm=T, ridge=T) {
     #' Ridge augmented weights
     #'
     #' @param ipw_format Output of `format_ipw`
     #' @param syn_format Output of `syn_format`
     #' @param lambda Ridge hyper-parameter, if NULL use CV
     #' @param scm Include SCM or not
+    #' @param ridge Include ridge or not
     #' 
     #' @return inverse of predicted propensity scores
     #'         outcome regression parameters
@@ -28,24 +29,30 @@ fit_ridgeaug_formatted <- function(ipw_format, syn_format,
     X_c <- X_cent[trt==0,,drop=FALSE]
     X_1 <- colMeans(X_cent[trt==1,,drop=FALSE])
     ## use CV to choose lambda if it's null
-    if(is.null(lambda)) {
-        if(ncol(y) > 1) {
-            lambda <- glmnet::cv.glmnet(X_c, y[trt==0,,drop=FALSE], alpha=0, family="mgaussian")$lambda.min
-        } else {
-            lambda <- glmnet::cv.glmnet(X_c, y[trt==0], alpha=0, family="gaussian")$lambda.min
+    if(ridge) {
+        if(is.null(lambda)) {
+            if(ncol(y) > 1) {
+                lambda <- glmnet::cv.glmnet(X_c, y[trt==0,,drop=FALSE], alpha=0, family="mgaussian")$lambda.min
+            } else {
+                lambda <- glmnet::cv.glmnet(X_c, y[trt==0], alpha=0, family="gaussian")$lambda.min
+            }
         }
     }
-
     ## if SCM fit scm
     if(scm) {
         syn <- fit_synth_formatted(syn_format)$weights
     } else {
-        ## else sue uniform weights
+        ## else use uniform weights
         syn <- rep(1/sum(trt==0), sum(trt==0))
     }
 
+    ## if ridge fit ridge
+    if(ridge) {
+        ridge_w <- t(X_1 - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)
+    } else {
+        ridge_w <- matrix(0, ncol=sum(trt==0), nrow=1)
+    }
     ## combine weights
-    ridge_w <- t(X_1 - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)
     weights <- syn + t(ridge_w)
 
     data_out <- syn_format$synth_data
@@ -68,7 +75,7 @@ fit_ridgeaug_formatted <- function(ipw_format, syn_format,
 
 
 get_ridgeaug <- function(outcomes, metadata, trt_unit=1,
-                         lambda=NULL, scm=T,
+                         lambda=NULL, scm=T, ridge=T,
                          cols=list(unit="unit", time="time",
                                    outcome="outcome", treated="treated")) {
     #' Fit synthetic controls on outcomes
@@ -77,6 +84,7 @@ get_ridgeaug <- function(outcomes, metadata, trt_unit=1,
     #' @param trt_unit Unit that is treated (target for regression), default: 0
     #' @param lambda Ridge hyper-parameter, if NULL use CV
     #' @param scm Include SCM or not
+    #' @param ridge Include ridge or not
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
     #'
@@ -86,7 +94,7 @@ get_ridgeaug <- function(outcomes, metadata, trt_unit=1,
     ## get the synthetic controls weights
     syn_data <- format_data(outcomes, metadata, trt_unit, cols=cols)
     ipw_data <- format_ipw(outcomes, metadata, cols=cols)
-    out <- fit_ridgeaug_formatted(ipw_data, syn_data, lambda, scm)
+    out <- fit_ridgeaug_formatted(ipw_data, syn_data, lambda, scm, ridge)
 
     ctrls <- impute_controls(syn_data$outcomes, out, syn_data$trt_unit)
     ctrls$primal_obj <- out$primal_obj

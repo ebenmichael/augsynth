@@ -5,8 +5,8 @@
 \title{Bootstrap standard errors for estimated counterfactual with synth}
 \usage{
 bootstrap_ridgeaug(outcomes, metadata, n_boot, trt_unit = 1, pred_int = F,
-  lambda = NULL, scm = T, cols = list(unit = "unit", time = "time",
-  outcome = "outcome", treated = "treated"))
+  lambda = NULL, scm = T, ridge = T, cols = list(unit = "unit", time =
+  "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -22,6 +22,8 @@ bootstrap_ridgeaug(outcomes, metadata, n_boot, trt_unit = 1, pred_int = F,
 \item{lambda}{Ridge hyper-parameter, if NULL then CV}
 
 \item{scm}{Whether to augment SCM with ridge}
+
+\item{ridge}{Include ridge or not}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}

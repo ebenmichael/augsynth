@@ -5,8 +5,8 @@
 \title{Weighted Least Squares Standard Errors}
 \usage{
 wls_se_ridgeaug(outcomes, metadata, trt_unit = 1, pred_int = F, hc = 0,
-  lambda = NULL, scm = T, cols = list(unit = "unit", time = "time",
-  outcome = "outcome", treated = "treated"))
+  lambda = NULL, scm = T, ridge = T, cols = list(unit = "unit", time =
+  "time", outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
@@ -18,6 +18,12 @@ wls_se_ridgeaug(outcomes, metadata, trt_unit = 1, pred_int = F, hc = 0,
 \item{pred_int}{Whether to add outcome control variance to make pred interval}
 
 \item{hc}{Type of HC variance estimate (-1 for homoskedastic)}
+
+\item{lambda}{Ridge hyperparemter, default NULL}
+
+\item{scm}{Include SCM or not}
+
+\item{ridge}{Include ridge or not}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}
