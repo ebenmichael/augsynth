@@ -337,217 +337,225 @@ sep_lasso <- function(outcomes, metadata, trt_unit=1, by=.1,
 }
 
 
-cv_di <- function(outcomes, metadata, trt_unit=1, eps,
-                   outcome_col=NULL, lasso=FALSE,
-                   cols=list(unit="unit", time="time",
-                             outcome="outcome", treated="treated"),
-                   max_iters=1000, tol=1e-8) {
-    #' Cross validation for l2_entropy regularized synthetic controls
+cv_di_bal <- function(outcomes, metadata,
+                      hyperparams,
+                      link=c("logit", "linear", "pos-linear"),
+                      regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                      normalized=TRUE,
+                      outcome_col=NULL,
+                      cols=list(unit="unit", time="time",
+                                   outcome="outcome", treated="treated"),
+                      opts=list()) {
+    #' Cross validation for balancing weights, DI style
     #' Uses the CV procedure from Doudchenko-Imbens (2017)
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param eps vector of regularization parameters to consider
+    #' @param hyperparams Vector of hyper-parameter settings to consider
+    #' @param regularizer Dual of balance criterion
+    #' @param normalized Whether to normalize the weights
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
-    #' @param lasso Whether to do lasso (every covariate is separate)
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
-    #' @param max_iters Maximum number of iterations
-    #' @param tol Convergence tolerance
+    #' @param opts Optimization options
+    #'        \itemize{
+    #'          \item{MAX_ITERS }{Maximum number of iterations to run}
+    #'          \item{EPS }{Error tolerance}}
     #'
     #' @return outcomes with additional synthetic control added and weights
     #' @export
 
 
     ## format data correctly
-    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
-    
-    nc <- dim(data_out$synth_data$Z0)[2]
-    t0 <- dim(data_out$synth_data$Z0)[1]
+    ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)    
+    nc <- sum(ipw_dat$trt==0)
+    t0 <- ncol(ipw_dat$X)
 
     ## collect errors here
-    errs <- matrix(0, nrow=nc, ncol=length(eps))
+    errs <- matrix(0, nrow=nc, ncol=length(hyperparams))
     
     ## iterate over control units
     for(i in 1:nc) {
-        newdat <- data_out
+        newdat <- ipw_dat
         ## remove the last pre-period for validation
         ## set the treated unit to i
-        newdat$synth_data$Z0 <- data_out$synth_data$Z0[-t0, -i, drop=FALSE]
-        newdat$synth_data$Z1 <- data_out$synth_data$Z0[-t0, i, drop=FALSE]
-
-        ctrls <- data_out$synth_data$Z0[t0,-i]
-        trt <- data_out$synth_data$Z0[t0,i]
-
+        newdat$X <- ipw_dat$X[ipw_dat$trt==0,-t0]
+        newdat$trt <- numeric(nc)
+        newdat$trt[i] <- 1
+        
         ## iterate over hyper-parameter choices
-        for(j in 1:length(eps)) {
-            ## fit max ent SC
+        for(j in 1:length(hyperparams)) {
+            ## fit weights
             suppressMessages(
-                ent <- fit_entropy_formatted(newdat, eps[j],
-                                             lasso, max_iters, tol)
+                bal <- fit_balancer_formatted(newdat$X, newdat$trt, link,
+                                              regularizer, hyperparam=hyperparams[j],
+                                              normalized=normalized, opts=opts)
             )
             ## get the error
-            errs[i,j] <- trt - ctrls %*% ent$weights
+            errs[i,j] <- ipw_dat$X[ipw_dat$trt==0,t0][i] -
+                t(ipw_dat$X[ipw_dat$trt==0,t0][-i]) %*% bal$weights
         }
         
     }
-    ## get the epsilon with the best balance and refit
-    best_eps <- eps[which.min(apply(errs, 2, function(x) mean(x^2)))]
-
-    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
-                       lasso, cols, max_iters, tol)
-    ent$best_eps <- best_eps
-    return(ent)
+    ## get the hyperparam with the best balance and refit
+    best_lam <- hyperparams[which.min(apply(errs, 2, function(x) mean(x^2)))]
+    return(best_lam)
+    ## bal <- get_balancer(outcomes, metadata, trt_unit, best_lam, link, regularizer, normalized, opts)
+    ## bal$best_lam <- best_lam
+    ## return(bal)
 
 
 }
 
 
 
-cv_kfold <- function(outcomes, metadata, trt_unit, eps,
+cv_kfold_bal <- function(outcomes, metadata,
                   n_folds,
-                  outcome_col=NULL, lasso=FALSE,
+                  hyperparams,
+                  link=c("logit", "linear", "pos-linear"),
+                  regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                  normalized=TRUE,
+                  outcome_col=NULL,
                   cols=list(unit="unit", time="time",
                             outcome="outcome", treated="treated"),
-                  max_iters=1000, tol=1e-8) {
-    #' Cross validation for l2_entropy regularized synthetic controls
+                  opts=list()) {
+    #' Cross validation for balancing weights
     #' K-fold cross validation, fit on K-1 folds, evaluate balance on Kth fold
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param eps vector of regularization parameters to consider
-    #' @param n_folds Number of CV folds
+    #' @param hyperparams Vector of hyper-parameter settings to consider
+    #' @param regularizer Dual of balance criterion
+    #' @param normalized Whether to normalize the weights
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
-    #' @param lasso Whether to do lasso (every covariate is separate)
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
-    #' @param max_iters Maximum number of iterations
-    #' @param tol Convergence tolerance
+    #' @param opts Optimization options
+    #'        \itemize{
+    #'          \item{MAX_ITERS }{Maximum number of iterations to run}
+    #'          \item{EPS }{Error tolerance}}
     #'
-    #' @return outcomes with additional synthetic control added and weights
+    #' @return best hyper parameter
     #' @export
 
+
     ## format data correctly
-    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
-    
-    nc <- dim(data_out$synth_data$Z0)[2]
-    t0 <- dim(data_out$synth_data$Z0)[1]
+    ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)    
+    nc <- sum(ipw_dat$trt==0)
+    t0 <- ncol(ipw_dat$X)
 
     ## collect errors here
-    errs <- matrix(0, nrow=n_folds, ncol=length(eps))
+    errs <- matrix(0, nrow=nc, ncol=length(hyperparams))
 
     ## shuffle controls
-    Z0 <- data_out$synth_data$Z0
-    Z0 <- Z0[,sample(nc)]
+    X0 <- ipw_dat$X[ipw_dat$trt==0,,drop=F]
+    X0 <- X0[sample(nc),]
+    X1 <- ipw_dat$X[ipw_dat$trt==1,,drop=F]
 
     ## get folds
     folds <- cut(1:nc, breaks=n_folds, labels=FALSE)
 
     ## iterate over folds
     for(i in 1:n_folds) {
-        newdat <- data_out
+        newdat <- ipw_dat
 
         ## remove the ith fold
-        ## set the treated unit to i
         fold_inds <- which(folds == i)
-        newdat$synth_data$Z0 <- Z0[, -fold_inds]
-
-        ctrls <- Z0[,fold_inds]
-        trt <- data_out$synth_data$Z1
+        newdat$X <- rbind(X1, X0[-fold_inds, ])
+        newdat$trt <- c(rep(1, nrow(X1)), rep(0, nrow(X0[-fold_inds, ])))
+        ctrls <- X0[fold_inds, ]
 
         
         ## iterate over hyper-parameter choices
-        for(j in 1:length(eps)) {
-            ## fit max ent SC
+        for(j in 1:length(hyperparams)) {
+            ## fit weights
             suppressMessages(
-                ent <- fit_entropy_formatted(newdat, eps[j],
-                                             lasso, max_iters, tol)
+                bal <- fit_balancer_formatted(newdat$X, newdat$trt, link,
+                                              regularizer, hyperparam=hyperparams[j],
+                                              normalized=normalized, opts=opts)
             )
-            ## get weights for new controls
-            eta <- t(ctrls) %*% ent$dual
-            m <- max(eta)
-            weights <- exp(eta - m) / sum(exp(eta - m))
-            ## get the error
-            errs[i,j] <- sum((trt - ctrls %*% weights)^2)
+            ## get the error using held out units
+            ## TODO generalize for other link functions
+            new_w <- exp(ctrls %*% bal$dual)
+            new_w <- new_w / sum(new_w)
+            errs[i,j] <- sum((t(X1) - 
+                t(ctrls)%*% new_w)^2)
         }
         
     }
-    ## get the epsilon with the best balance and refit
-    best_eps <- eps[which.min(apply(errs, 2, sum))]
-
-    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
-                       lasso, cols, max_iters, tol)
-    ent$best_eps <- best_eps
-    return(ent)
+    ## get the hyperparameter with the best balance and refit
+    best_lam <- hyperparams[which.min(apply(errs, 2, sum))]
+    return(best_lam)
 
 }
 
 
 
-cv_wz <- function(outcomes, metadata, trt_unit, eps,
+cv_wz_bal <- function(outcomes, metadata,
                   n_boot,
-                  outcome_col=NULL, lasso=FALSE,
+                  hyperparams,
+                  link=c("logit", "linear", "pos-linear"),
+                  regularizer=c(NULL, "l1", "l2", "ridge", "linf"),
+                  normalized=TRUE,
+                  outcome_col=NULL,
                   cols=list(unit="unit", time="time",
                             outcome="outcome", treated="treated"),
-                  max_iters=1000, tol=1e-8) {
+                  opts=list()) {
     #' Cross validation for l2_entropy regularized synthetic controls
     #' Take bootstrap samples over the controls and evaluate balance
     #' Modified version of Wang & Zubizaretta (2018)
     #' @param outcomes Tidy dataframe with the outcomes and meta data
     #' @param metadata Dataframe of metadata
-    #' @param trt_unit Unit that is treated (target for regression), default: 0
-    #' @param eps vector of regularization parameters to consider
-    #' @param n_boot Number of bootstrap samples
+    #' @param hyperparams Vector of hyper-parameter settings to consider
+    #' @param regularizer Dual of balance criterion
+    #' @param normalized Whether to normalize the weights
     #' @param outcome_col Column name which identifies outcomes, if NULL then
     #'                    assume only one outcome
-    #' @param lasso Whether to do lasso (every covariate is separate)
     #' @param cols Column names corresponding to the units,
     #'             time variable, outcome, and treated indicator
-    #' @param max_iters Maximum number of iterations
-    #' @param tol Convergence tolerance
+    #' @param opts Optimization options
+    #'        \itemize{
+    #'          \item{MAX_ITERS }{Maximum number of iterations to run}
+    #'          \item{EPS }{Error tolerance}}
     #'
-    #' @return outcomes with additional synthetic control added and weights
+    #' @return best hyperparameter
     #' @export
 
     ## format data correctly
-    data_out <- format_data(outcomes, metadata, trt_unit, outcome_col, cols)
-    
-    nc <- dim(data_out$synth_data$Z0)[2]
-    t0 <- dim(data_out$synth_data$Z0)[1]
+    ipw_dat <- format_ipw(outcomes, metadata, outcome_col, cols)    
+    nc <- sum(ipw_dat$trt==0)
+    t0 <- ncol(ipw_dat$X)
 
     ## collect errors here
-    errs <- matrix(0, nrow=n_boot, ncol=length(eps))
+    errs <- matrix(0, nrow=n_boot, ncol=length(hyperparams))
 
 
-    Z0 <- data_out$synth_data$Z0
+    X0 <- ipw_dat$X[ipw_dat$trt==0,,drop=F]
+    X1 <- ipw_dat$X[ipw_dat$trt==1,,drop=F]
 
     ## iterate over hyper-parameter choices
-    for(j in 1:length(eps)) {
-        ## fit max ent SC once
+    for(j in 1:length(hyperparams)) {
+        ## fit weights
         suppressMessages(
-            ent <- fit_entropy_formatted(data_out, eps[j],
-                                         lasso, max_iters, tol)
+            bal <- fit_balancer_formatted(ipw_dat$X, ipw_dat$trt, link,
+                                          regularizer, hyperparam=hyperparams[j],
+                                          normalized=normalized, opts=opts)
         )
         ## get bootstrap samples
         for(b in 1:n_boot) {
             boots <- sample(nc, replace=TRUE)
-            ctrls <- Z0[,boots]
-            ## get weights for new controls
-            eta <- t(ctrls) %*% ent$dual
-            m <- max(eta)
-            weights <- exp(eta - m) / sum(exp(eta - m))
-            ## get the error
-            errs[b,j] <- sqrt(sum((data_out$synth_data$Z1 - ctrls %*% weights)^2))
+            ctrls <- X0[boots,]
+            
+            ## TODO generalize for other link functions
+            new_w <- exp(ctrls %*% bal$dual)
+            new_w <- new_w / sum(new_w)
+            errs[b,j] <- sum((t(X1) - 
+                t(ctrls)%*% new_w)^2)
+
+
         }
     }
-    ## get the epsilon with the best balance and refit
-    best_eps <- eps[which.min(apply(errs, 2, mean))]
-
-    ent <- get_entropy(outcomes, metadata, trt_unit, eps=best_eps, outcome_col,
-                       lasso, cols, max_iters, tol)
-    ent$best_eps <- best_eps
-    return(ent)
-
+    ## get the hyperparameter with the best balance and refit
+    best_lam <- hyperparams[which.min(apply(errs, 2, sum))]
+    return(best_lam)
 }
