@@ -1729,6 +1729,10 @@ loo_se_ridgeaug <- function(outcomes, metadata, trt_unit=1, lambda=NULL,
             se <- sqrt(t(errs^2) %*% aug_t$weights^2)
         } else if(hc ==-1) {
             se <- sqrt(apply(errs^2, 2, mean)) * sqrt(sum(aug_t$weights^2))
+        } else if(hc == "scm") {
+            ## use synth weights on DI
+            sc <- fit_synth_formatted(data_out)
+            se <- sqrt(t(errs^2) %*% sc$weights)
         }
     } else {
         se <- sqrt(apply(errs^2, 2, mean))
