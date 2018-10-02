@@ -5,8 +5,8 @@
 \title{Weighted Least Squares Standard Errors}
 \usage{
 cherno_test(outcomes, metadata, ns = 1000, q = c(2, 1), trt_unit = 1,
-  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
-  "treated"))
+  permtype = c("iid", "block"), cols = list(unit = "unit", time = "time",
+  outcome = "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
