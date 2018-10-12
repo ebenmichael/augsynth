@@ -4,7 +4,6 @@
 ## 2. Fitting E[Y(0)|X] and inputting into synth/maxent
 ## 3. DR approach: Fit E[Y(0)|X] and use synth/maxent to balance the residuals
 ################################################################################
-
 #### Fitting and balancing the prognostic score
 
 fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
@@ -416,6 +415,71 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 
 
 
+
+
+fit_prog_causalimpact <- function(X, y, trt) {
+    #' Fit a bayesian structural time series
+    #' to fit E[Y(0)|X]
+    #'
+    #' @param X Matrix of covariates/lagged outcomes
+    #' @param y Matrix of post-period outcomes
+    #' @param trt Vector of treatment indicator
+    #'
+    #' @return \itemize{
+    #'           \item{y0hat }{Predicted outcome under control}
+    #'           \item{params }{Model parameters}}
+
+    if(!require("CausalImpact")) {
+        stop("In order to use CausalImpact to fit an outcome model, you must install it.")
+    }
+    ## structure data accordingly
+    ids <- 1:nrow(X)
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+    n <- nrow(X)
+
+    comb <- cbind(X, y)
+
+    imp_dat <- t(rbind(colMeans(comb[trt==1,,drop=F]), comb[trt==0,,drop=F]))
+
+    
+    ## get predicted post-period outcomes
+    ## TODO: is this the way to use CausalImpact??
+    ci_func <- function(i) {
+        ## fit causal impact using controls
+        CausalImpact::CausalImpact(t(rbind(comb[i,], comb[-i,][trt[-i]==0,])),
+                                   pre.period=c(1, t0), post.period=c(t0+1, t_final)
+                                   )$series$point.pred
+        
+    }
+
+    y0hat <- t(sapply(1:n, ci_func))
+
+    params <- list()
+
+    
+    ## add treated prediction for whole pre-period
+    params$Y.ct <- t(y0hat[trt==1,,drop=F])
+
+    ## and control prediction
+    ctrl_pred <- y0hat[trt==0,,drop=F]
+
+    ## control and treated residuals
+    params$ctrl_resids <- t(cbind(X[trt==0,,drop=FALSE],
+                                y[trt==0,,drop=FALSE])) - 
+        t(ctrl_pred)
+    
+    params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                            y[trt==1,,drop=FALSE])) -
+        rowMeans(params$Y.ct)
+    
+    return(list(y0hat=y0hat[,(t0+1):t_final],
+                params=params))
+    
+}
+
+
+
 fit_progsyn_formatted <- function(ipw_format, syn_format,
                                   fit_progscore, fit_weights,
                                   opts.prog=NULL, opts.weights=NULL) {
@@ -463,7 +527,7 @@ fit_progsyn_formatted <- function(ipw_format, syn_format,
 }
 
 get_progsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN"),
+                        progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -497,8 +561,12 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_gsynth
     } else if(progfunc == "COMP"){
         progf <- fit_prog_complete
+    } else if(progfunc == "CITS"){
+        progf <- fit_prog_cits
+    } else if(progfunc == "CausalImpact"){
+        progf <- fit_prog_causalimpact
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'CITS', 'CausalImpact'")
     }
 
     
@@ -903,7 +971,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_augsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP","CITS"),
+                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP","CITS", "CausalImpact"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -942,8 +1010,10 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_mcpanel
     } else if(progfunc == "CITS") {
         progf <- fit_prog_cits
+    } else if(progfunc == "CausalImpact") {
+        progf <- fit_prog_causalimpact
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP', 'CITS'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP', 'CITS', 'CausalImpact'")
     }
 
     if(weightfunc == "SC") {
@@ -1133,7 +1203,7 @@ impute_residaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_residaug <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("GSYN", "COMP", "MCP"),
+                        progfunc=c("GSYN", "COMP", "MCP", "CITS", "CausalImpact"),
                         weightfunc=c("SC","ENT", "SVD", "NONE"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -1169,8 +1239,10 @@ get_residaug <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_mcpanel
     } else if(progfunc == "CITS") {
         progf <- fit_prog_cits
+    } else if(progfunc == "CausalImpact") {
+        progf <- fit_prog_causalimpact
     } else {
-        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP', 'CITS'")
+        stop("progfunc must be one of 'GSYN', 'COMP', 'MCP', 'CITS', 'CausalImpact'")
     }
 
     

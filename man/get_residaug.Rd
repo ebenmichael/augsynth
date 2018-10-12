@@ -5,9 +5,10 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 get_residaug(outcomes, metadata, trt_unit = 1, progfunc = c("GSYN", "COMP",
-  "MCP"), weightfunc = c("SC", "ENT", "SVD", "NONE"), opts.prog = NULL,
-  opts.weights = NULL, outcome_col = NULL, cols = list(unit = "unit", time
-  = "time", outcome = "outcome", treated = "treated"))
+  "MCP", "CITS", "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"),
+  opts.prog = NULL, opts.weights = NULL, outcome_col = NULL,
+  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
+  "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
