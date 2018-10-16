@@ -472,8 +472,7 @@ fit_prog_causalimpact <- function(X, y, trt) {
     params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
                                             y[trt==1,,drop=FALSE])) -
         rowMeans(params$Y.ct)
-    
-    return(list(y0hat=y0hat[,(t0+1):t_final],
+    return(list(y0hat=y0hat[,(t0+1):t_final, drop=F],
                 params=params))
     
 }
