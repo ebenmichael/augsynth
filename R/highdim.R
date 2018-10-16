@@ -485,7 +485,8 @@ fit_prog_seq2seq <- function(X, y, trt,
                              layers=list(c(50, "relu"), c(5, "relu")),
                              epochs=500,
                              patience=5,
-                             val_split=0.2) {
+                             val_split=0.2,
+                             verbose=F) {
     #' Fit a seq2seq model with a feedforward net
     #' to fit E[Y(0)|X]
     #'
@@ -496,6 +497,7 @@ fit_prog_seq2seq <- function(X, y, trt,
     #' @param epochs Number of epochs for training
     #' @param patience Number of epochs to wait before early stopping
     #' @param val_split Proportion of control units to use for validation
+    #' @param verbose Whether to print training progress
     #'
     #' @return \itemize{
     #'           \item{y0hat }{Predicted outcome under control}
@@ -537,7 +539,8 @@ fit_prog_seq2seq <- function(X, y, trt,
             epochs=epochs,
             batch_size=nrow(Xctrl),
             validation_split=val_split,
-            callbacks=list(callback_early_stopping(patience=patience)))
+            callbacks=list(callback_early_stopping(patience=patience)),
+            verbose=verbose)
 
     ## predict for everything
     y0hat <- model %>% predict(X)
