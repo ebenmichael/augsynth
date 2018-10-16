@@ -512,8 +512,8 @@ fit_prog_seq2seq <- function(X, y, trt,
     n <- nrow(X)
 
 
-    Xctrl <- X[trt==0,]
-    yctrl <- y[trt==0,]
+    Xctrl <- X[trt==0,,drop=F]
+    yctrl <- y[trt==0,,drop=F]
 
     ## create first layer
     model <- keras_model_sequential() %>%
