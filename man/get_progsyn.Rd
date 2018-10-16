@@ -5,7 +5,7 @@
 \title{Fit synthetic controls on estimated outcomes under control}
 \usage{
 get_progsyn(outcomes, metadata, trt_unit = 1, progfunc = c("EN", "RF",
-  "GSYN", "CITS", "CausalImpact"), weightfunc = c("SC", "ENT"),
+  "GSYN", "CITS", "CausalImpact", "seq2seq"), weightfunc = c("SC", "ENT"),
   opts.prog = NULL, opts.weights = NULL, outcome_col = NULL,
   cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
   "treated"))

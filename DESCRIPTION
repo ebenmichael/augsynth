@@ -34,4 +34,5 @@ LazyData: true
 RoxygenNote: 6.0.1
 Suggests:
     testthat,
-    CausalImpact
+    CausalImpact,
+    keras

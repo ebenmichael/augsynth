@@ -480,6 +480,77 @@ fit_prog_causalimpact <- function(X, y, trt) {
 
 
 
+
+
+fit_prog_seq2seq <- function(X, y, trt,
+                             layers=list(c(50, "relu"), c(5, "relu")),
+                             epochs=500,
+                             patience=5,
+                             val_split=0.2) {
+    #' Fit a seq2seq model with a feedforward net
+    #' to fit E[Y(0)|X]
+    #'
+    #' @param X Matrix of covariates/lagged outcomes
+    #' @param y Matrix of post-period outcomes
+    #' @param trt Vector of treatment indicator
+    #' @param layers List of (n_hidden_units, activation function) pairs to define layers
+    #' @param epochs Number of epochs for training
+    #' @param patience Number of epochs to wait before early stopping
+    #' @param val_split Proportion of control units to use for validation
+    #'
+    #' @return \itemize{
+    #'           \item{y0hat }{Predicted outcome under control}
+    #'           \item{params }{Model parameters}}
+
+    if(!require("keras")) {
+        stop("In order to use keras to fit an outcome model, you must install it.")
+    }
+    
+    ## structure data accordingly
+    ids <- 1:nrow(X)
+    t0 <- dim(X)[2]
+    t_final <- t0 + dim(y)[2]
+    n <- nrow(X)
+
+
+    Xctrl <- X[trt==0,]
+    yctrl <- y[trt==0,]
+
+    ## create first layer
+    model <- keras_model_sequential() %>%
+        layer_dense(units = layers[[1]][1], activation = layers[[1]][2],
+                    input_shape = ncol(Xctrl))
+
+    ## add layers
+    for(layer in layers[-1]) {
+        model %>% layer_dense(units = layer[1], activation = layer[2])
+    }
+
+    ## output lyaer
+    model %>% layer_dense(units=ncol(yctrl))
+
+    ## compile
+    model %>% compile(optimizer="rmsprop", loss="mse", metrics=c("mae")) 
+
+    ## fit model
+    learn <- model %>%
+        fit(x=Xctrl, y=yctrl,
+            epochs=epochs,
+            batch_size=nrow(Xctrl),
+            validation_split=val_split,
+            callbacks=list(callback_early_stopping(patience=patience)))
+
+    ## predict for everything
+    y0hat <- model %>% predict(X)
+    params=list(model=model, learn=learn)
+    
+    return(list(y0hat=y0hat,
+                params=params))
+}
+
+
+
+
 fit_progsyn_formatted <- function(ipw_format, syn_format,
                                   fit_progscore, fit_weights,
                                   opts.prog=NULL, opts.weights=NULL) {
@@ -527,7 +598,7 @@ fit_progsyn_formatted <- function(ipw_format, syn_format,
 }
 
 get_progsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact"),
+                        progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact", "seq2seq"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -565,8 +636,10 @@ get_progsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_cits
     } else if(progfunc == "CausalImpact"){
         progf <- fit_prog_causalimpact
+    } else if(progfunc == "seq2seq"){
+        progf <- fit_prog_seq2seq
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'CITS', 'CausalImpact'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'CITS', 'CausalImpact', 'seq2seq'")
     }
 
     
@@ -971,7 +1044,7 @@ impute_synaug <- function(outcomes, metadata, fit, trt_unit) {
 
 
 get_augsyn <- function(outcomes, metadata, trt_unit=1,
-                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP","CITS", "CausalImpact"),
+                        progfunc=c("EN", "RF", "GSYN", "COMP", "MCP","CITS", "CausalImpact", "seq2seq"),
                         weightfunc=c("SC","ENT"),
                         opts.prog = NULL,
                         opts.weights = NULL,
@@ -1012,8 +1085,10 @@ get_augsyn <- function(outcomes, metadata, trt_unit=1,
         progf <- fit_prog_cits
     } else if(progfunc == "CausalImpact") {
         progf <- fit_prog_causalimpact
+    } else if(progfunc == "seq2seq"){
+        progf <- fit_prog_seq2seq
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP', 'CITS', 'CausalImpact'")
+        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'COMP', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
     }
 
     if(weightfunc == "SC") {

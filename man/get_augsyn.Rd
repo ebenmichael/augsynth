@@ -5,10 +5,10 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 get_augsyn(outcomes, metadata, trt_unit = 1, progfunc = c("EN", "RF",
-  "GSYN", "COMP", "MCP", "CITS", "CausalImpact"), weightfunc = c("SC", "ENT"),
-  opts.prog = NULL, opts.weights = NULL, outcome_col = NULL,
-  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
-  "treated"))
+  "GSYN", "COMP", "MCP", "CITS", "CausalImpact", "seq2seq"),
+  weightfunc = c("SC", "ENT"), opts.prog = NULL, opts.weights = NULL,
+  outcome_col = NULL, cols = list(unit = "unit", time = "time", outcome =
+  "outcome", treated = "treated"))
 }
 \arguments{
 \item{outcomes}{Tidy dataframe with the outcomes and meta data}
