@@ -6,7 +6,7 @@
 to fit E[Y(0)|X]}
 \usage{
 fit_prog_seq2seq(X, y, trt, layers = list(c(50, "relu"), c(5, "relu")),
-  epochs = 500, patience = 5, val_split = 0.2)
+  epochs = 500, patience = 5, val_split = 0.2, verbose = F)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -22,6 +22,8 @@ fit_prog_seq2seq(X, y, trt, layers = list(c(50, "relu"), c(5, "relu")),
 \item{patience}{Number of epochs to wait before early stopping}
 
 \item{val_split}{Proportion of control units to use for validation}
+
+\item{verbose}{Whether to print training progress}
 }
 \value{
 \itemize{
