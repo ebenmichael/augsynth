@@ -9,6 +9,7 @@
 #'          \item{"weights"}{Synth weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
+#' }
 fit_synth_formatted <- function(synth_data) {
 
     
@@ -27,7 +28,7 @@ fit_synth_formatted <- function(synth_data) {
     uni_w <- matrix(1/ncol(synth_data$Z0), nrow=ncol(synth_data$Z0), ncol=1)
     unif_l2_imbalance <- sqrt(sum((synth_data$Z0 %*% uni_w - synth_data$Z1)^2))
     scaled_l2_imabalance <- l2_imbalance / unif_l2_imbalance
-
+    
     return(list(weights=weights,
                 l2_imbalance=l2_imbalance,
                 scaled_l2_imabalance=scaled_l2_imabalance))
