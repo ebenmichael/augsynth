@@ -2,29 +2,32 @@
 % Please edit documentation in R/ridge.R
 \name{fit_ridgeaug_formatted}
 \alias{fit_ridgeaug_formatted}
-\title{Ridge augmented weights}
+\title{Ridge augmented weights (possibly with covariates)}
 \usage{
-fit_ridgeaug_formatted(ipw_format, syn_format, lambda = NULL, scm = T,
-  ridge = T)
+fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
+  ridge = T, scm = T)
 }
 \arguments{
-\item{ipw_format}{Output of `format_ipw`}
+\item{wide_data}{Output of `format_data`}
 
-\item{syn_format}{Output of `syn_format`}
+\item{synth_data}{Output of `format_synth`}
+
+\item{Z}{Matrix of covariates, default is  NULL}
 
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
-\item{scm}{Include SCM or not}
-
 \item{ridge}{Include ridge or not}
+
+\item{scm}{Include SCM or not}
 }
 \value{
-inverse of predicted propensity scores
-        outcome regression parameters
-        control outcomes
-        treated outcomes
-        boolean for treated
+\itemize{
+         \item{"weights"}{Ridge ASCM weights}
+         \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
+         \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
+         \item{"mhat"}{Outcome model estimate (zero in this case)}
+}
 }
 \description{
-Ridge augmented weights
+Ridge augmented weights (possibly with covariates)
 }

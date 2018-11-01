@@ -2,21 +2,20 @@
 % Please edit documentation in R/format.R
 \name{format_synth}
 \alias{format_synth}
-\title{Get the outcomes data into the correct form for Synth::synth}
+\title{Format program eval matrices into synth form}
 \usage{
-format_synth(outcomes, metadata, trt_unit = 1)
+format_synth(X, trt, y)
 }
 \arguments{
-\item{outcomes}{Tidy dataframe with the outcomes and meta data}
+\item{X}{Matrix of pre-treatment outcomes}
 
-\item{metadata}{Dataframe of metadata}
+\item{trt}{Vector of treatment assignments}
 
-\item{trt_unit}{Unit that is treated (target for regression), default: 0}
+\item{y}{Matrix of post-treatment outcomes}
 }
 \value{
-List of data to use as an argument for Synth::synth,
-        whether the unit was actually treated
+List with data formatted as Synth::dataprep
 }
 \description{
-Get the outcomes data into the correct form for Synth::synth
+Format program eval matrices into synth form
 }

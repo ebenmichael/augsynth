@@ -4,10 +4,17 @@
 \alias{fit_synth_formatted}
 \title{Fit synthetic controls on outcomes after formatting data}
 \usage{
-fit_synth_formatted(data_out)
+fit_synth_formatted(synth_data)
 }
 \arguments{
-\item{data_out}{Panel data formatted by Synth::dataprep}
+\item{synth_data}{Panel data in format of Synth::dataprep}
+}
+\value{
+\itemize{
+         \item{"weights"}{Synth weights}
+         \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
+         \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
+}
 }
 \description{
 Fit synthetic controls on outcomes after formatting data

@@ -2,29 +2,30 @@
 % Please edit documentation in R/format.R
 \name{format_data}
 \alias{format_data}
-\title{Format "long" panel data into "wide" matrices to fit synthetic controls}
+\title{Format "long" panel data into "wide" program evaluation matrices}
 \usage{
-format_data(outcomes, metadata, trt_unit = 1, outcome_col = NULL,
-  cols = list(unit = "unit", time = "time", outcome = "outcome", treated =
-  "treated"))
+format_data(outcome, trt, unit, time, t_int, data)
 }
 \arguments{
-\item{outcomes}{Tidy dataframe with the outcomes and meta data}
+\item{outcome}{Name of outcome column}
 
-\item{metadata}{Dataframe of metadata}
+\item{trt}{Name of treatment column}
 
-\item{trt_unit}{Unit that is treated (target for regression), default: 1}
+\item{unit}{Name of unit column}
 
-\item{outcome_col}{Column name which identifies outcomes,
-if NULL then only one outcome is assumed}
+\item{time}{Name of time column}
 
-\item{cols}{Column names corresponding to the units,
-time variable, outcome, and treated indicator}
+\item{t_int}{Time of intervention}
+
+\item{data}{Panel data as dataframe}
 }
 \value{
-List of data to use as an argument for Synth::synth,
-        whether the unit was actually treated
+\itemize{
+         \item{"X"}{Matrix of pre-treatment outcomes}
+         \item{"trt"}{Vector of treatment assignments}
+         \item{"y"}{Matrix of post-treatment outcomes}
+        }
 }
 \description{
-Format "long" panel data into "wide" matrices to fit synthetic controls
+Format "long" panel data into "wide" program evaluation matrices
 }
