@@ -1,8 +1,8 @@
-Package: ents
-Title: Maximum Entropy Synthetic Controls
+Package: augsynth
+Title: The Augmented Synthetic Control Method
 Version: 0.1
 Authors@R: person("Eli", "Ben-Michael", email = "ebenmichael@berkeley.edu", role = c("aut", "cre"))
-Description: Fits synthetic controls with maximum entropy weights.
+Description: A package implementing the Augmented Synthetic Controls Method
 Depends:
     R (>= 3.4.2)
 Imports:

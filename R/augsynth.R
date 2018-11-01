@@ -2,6 +2,19 @@
 ## Main functions for augmented synthetic controls Method
 ################################################################################
 
+#' augsynth: A package implementing the Augmented Synthetic Controls Method
+#' @docType package
+#' @name augsynth
+#' @import magrittr
+#' @import dplyr
+#' @import LowRankQP
+#' @import ggplot2
+#' @import tidyr
+#' @import LiblineaR
+#' @import glmnet
+NULL
+
+
 #' Fit Augmented SCM
 #' @param formula outcome ~ treatment
 #' @param unit Name of unit column
@@ -21,6 +34,7 @@
 #'          \item{"mhat"}{Outcome model estimate}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
+#' @export
 augsynth <- function(formula, unit, time, t_int, data,
                      progfunc="Ridge", weightfunc="SCM",
                      opts.prog=list(), opts.weights=list()) {
