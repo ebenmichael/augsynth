@@ -37,7 +37,7 @@ NULL
 #' @export
 augsynth <- function(formula, unit, time, t_int, data,
                      progfunc="Ridge", weightfunc="SCM",
-                     opts.prog=list(), opts.weights=list()) {
+                     opts.prog=NULL, opts.weights=NULL) {
 
     unit <- enquo(unit)
     time <- enquo(time)
@@ -49,11 +49,33 @@ augsynth <- function(formula, unit, time, t_int, data,
     synth_data <- do.call(format_synth, wide)
     
     ## fit augsynth
-    asyn <- fit_ridgeaug_formatted(wide, synth_data)
-
+    if(progfunc == "Ridge") {
+        asyn <- do.call(fit_ridgeaug_formatted,
+                        c(list(wide_data=wide, synth_data=synth_data), opts.weights))
+    } else {
+        asyn <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts.prog, opts.weights)
+    }
     asyn$data <- wide
-    
+    asyn$progfunc <- progfunc
+    asyn$weightfunc <- weightfunc
     ##format output
     class(asyn) <- "augsynth"
     return(asyn)
+}
+
+#' Get prediction of average outcome under control
+#' @param asyn augsynth object
+#'
+#' @return Vector of predicted post-treatment control averages
+predict.augsynth <- function(asyn) {
+
+    y <- asyn$data$y
+    trt <- asyn$data$trt
+    mhat <- asyn$mhat
+    
+    m1 <- colMeans(mhat[trt==1,,drop=F])
+
+    resid <- (y[trt==0,,drop=F] - mhat[trt==0,drop=F])
+
+    return(m1 + t(resid) %*% asyn$weights)
 }

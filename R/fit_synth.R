@@ -12,7 +12,9 @@
 #' }
 fit_synth_formatted <- function(synth_data) {
 
-    
+    if(!require("LowRankQP")) {
+        stop("In order to use Synth, you must install LowRankQP")
+    }
     ## set weights on predictors to be 0
     custom.v <- rep(1, dim(synth_data$Z0)[1])
 

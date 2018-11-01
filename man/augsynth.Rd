@@ -8,7 +8,7 @@
 \title{augsynth: A package implementing the Augmented Synthetic Controls Method}
 \usage{
 augsynth(formula, unit, time, t_int, data, progfunc = "Ridge",
-  weightfunc = "SCM", opts.prog = list(), opts.weights = list())
+  weightfunc = "SCM", opts.prog = NULL, opts.weights = NULL)
 }
 \arguments{
 \item{formula}{outcome ~ treatment}

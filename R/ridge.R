@@ -92,8 +92,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
             syn <- rep(1/sum(trt==0), sum(trt==0))
         }
 
-        print(dim(t(X_c) %*% syn))
-        print(dim(X_1))
+
         ## if ridge fit ridge
         if(ridge) {
             ridge_w <- t(t(X_1) - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)

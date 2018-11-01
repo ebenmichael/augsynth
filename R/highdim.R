@@ -43,7 +43,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
     if(is.null(opts.weights)) {
         syn <- fit_weights(synth_data)
     }
-    syn <- do.call(fit_weights, c(list(data_out=synth_data), opts.weights))
+    syn <- do.call(fit_weights, c(list(synth_data=synth_data), opts.weights))
 
     syn$params <- fitout$params
 
@@ -97,7 +97,7 @@ fit_progsyn <- function(wide_data, synth_data,
     }
 
     
-    if(weightfunc == "SC") {
+    if(weightfunc == "SCM") {
         weightf <- fit_synth_formatted
     } else {
         stop("weightfunc must be 'SCM'")
@@ -147,7 +147,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
         syn <- fit_weights(synth_data)
     } else {
         syn <- do.call(fit_weights,
-                       c(list(data_out=synth_data),
+                       c(list(synth_data=synth_data),
                          opts.weights))
     }
 
@@ -203,17 +203,17 @@ fit_augsyn <- function(wide_data, synth_data,
         stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
     }
 
-    if(weightfunc == "SC") {
+    if(weightfunc == "SCM") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "NONE") {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
         weightf <- fit_synth_formatted
     } else {
-        stop("weightfunc must be one of `SC`, `NONE`")
+        stop("weightfunc must be one of `SCM`, `NONE`")
     }
     return(fit_augsyn_formatted(wide_data, synth_data,
-                                fit_progscore, fit_weights,
+                                progf, weightf,
                                 opts.prog, opts.weights))
 }
 
@@ -271,7 +271,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
         syn <- fit_weights(synth_data)
     } else {
         syn <- do.call(fit_weights,
-                       c(list(data_out=synth_data),
+                       c(list(synth_data=synth_data),
                          opts.weights))
     }
 
@@ -323,18 +323,18 @@ fit_residaug <- function(wide_data, synth_data,
 
     
     ## weight function to use
-    if(weightfunc == "SC") {
+    if(weightfunc == "SCM") {
         weightf <- fit_synth_formatted
     } else if(weightfunc == "NONE") {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
         weightf <- fit_synth_formatted
     } else {
-        stop("weightfunc must be one of 'SC', 'NONE'")
+        stop("weightfunc must be one of 'SCM', 'NONE'")
     }
 
     return(fit_residaug_formatted(wide_data, synth_data,
-                                  fit_progscore, fit_weights,
+                                  progf, weightf,
                                   opts.prog, opts.weights))
 }
 
