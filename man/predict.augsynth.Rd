@@ -4,10 +4,10 @@
 \alias{predict.augsynth}
 \title{Get prediction of average outcome under control}
 \usage{
-\method{predict}{augsynth}(asyn)
+\method{predict}{augsynth}(augsynth)
 }
 \arguments{
-\item{asyn}{augsynth object}
+\item{augsynth}{augsynth object}
 }
 \value{
 Vector of predicted post-treatment control averages

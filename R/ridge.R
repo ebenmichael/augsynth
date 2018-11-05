@@ -17,6 +17,7 @@
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #'          \item{"mhat"}{Outcome model estimate (zero in this case)}
 #'          \item{"lambda"}{Value of the ridge hyperparameter}
+#'          \item{"ridge_mhat"}{The ridge regression predictions (for estimating the bias)}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T) {
@@ -31,6 +32,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     X_c <- X_cent[trt==0,,drop=FALSE]
     X_1 <- matrix(colMeans(X_cent[trt==1,,drop=FALSE]), nrow=1)
     y_cent <- apply(y, 2, function(x) x - mean(x[trt==0]))
+    y_c <- y_cent[trt==0,,drop=FALSE]
 
     ## if there are auxiliary covariates, use them
     if(!is.null(Z) & ridge) {
@@ -106,18 +108,26 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
     }
 
-    l2_imbalance <- sqrt(sum((synth_data$Z0 %*% weights - synth_data$Z1)^2))
+    l2_imbalance <- sqrt(sum((synth_data$X0 %*% weights - synth_data$X1)^2))
     
     ## primal objective value scaled by least squares difference for mean
-    uni_w <- matrix(1/ncol(synth_data$Z0), nrow=ncol(synth_data$Z0), ncol=1)
-    unif_l2_imbalance <- sqrt(sum((synth_data$Z0 %*% uni_w - synth_data$Z1)^2))
+    uni_w <- matrix(1/ncol(synth_data$X0), nrow=ncol(synth_data$X0), ncol=1)
+    unif_l2_imbalance <- sqrt(sum((synth_data$X0 %*% uni_w - synth_data$X1)^2))
     scaled_l2_imabalance <- l2_imbalance / unif_l2_imbalance
 
+    
     ## no outcome model
     mhat <- matrix(0, nrow=nrow(y), ncol=ncol(y))
+
+    if(ridge) {
+        ridge_mhat <- X_cent %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c) %*% y_c
+    } else {
+        ridge_mhat <- NULL
+    }
     return(list(weights=weights,
                 l2_imbalance=l2_imbalance,
-                scaled_l2_imabalance=scaled_l2_imabalance,
+                scaled_l2_imbalance=scaled_l2_imabalance,
                 mhat=mhat,
-                lambda=lambda))
+                lambda=lambda,
+                ridge_mhat=ridge_mhat))
 }

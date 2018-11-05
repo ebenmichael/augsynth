@@ -27,6 +27,7 @@ fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
          \item{"mhat"}{Outcome model estimate (zero in this case)}
          \item{"lambda"}{Value of the ridge hyperparameter}
+         \item{"ridge_mhat"}{The ridge regression predictions (for estimating the bias)}
 }
 }
 \description{

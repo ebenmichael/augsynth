@@ -48,6 +48,7 @@ augsynth <- function(form, unit, time, t_int, data,
                      opts_prog=NULL, opts_weights=NULL,
                      cov_agg=NULL) {
 
+    call_name <- match.call()
     
     form <- Formula::Formula(form)
     unit <- enquo(unit)
@@ -85,48 +86,69 @@ augsynth <- function(form, unit, time, t_int, data,
     if(progfunc == "Ridge") {
         if(weightfunc == "SCM") {
             ## Ridge ASCM
-            asyn <- do.call(fit_ridgeaug_formatted,
+            augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data, Z=Z),
                               opts_weights))
         } else if(weightfunc == "None") {
             ## Just ridge regression
-            asyn <- do.call(fit_ridgeaug_formatted,
+            augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data,
                                    Z=Z, ridge=T, scm=F), opts_weights))
         }
     } else if(progfunc == "None") {
         ## Just SCM
-        asyn <- do.call(fit_ridgeaug_formatted,
+        augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data=wide, synth_data=synth_data, Z=Z, ridge=F, scm=T), opts_weights))
     } else {
         ## Other outcome models
-        asyn <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts_prog, opts_weights)
+        augsynth <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts_prog, opts_weights)
     }
-    asyn$data <- wide
-    asyn$data$time <- data %>% distinct(!!time) %>% pull(!!time)
-    asyn$t_int <- t_int
-    asyn$progfunc <- progfunc
-    asyn$weightfunc <- weightfunc
+    augsynth$data <- wide
+    augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    augsynth$t_int <- t_int
+    augsynth$progfunc <- progfunc
+    augsynth$weightfunc <- weightfunc
+    augsynth$call <- call_name
     ##format output
-    class(asyn) <- "augsynth"
-    return(asyn)
+    class(augsynth) <- "augsynth"
+    return(augsynth)
 }
 
 #' Get prediction of average outcome under control
-#' @param asyn augsynth object
+#' @param augsynth augsynth object
 #'
 #' @return Vector of predicted post-treatment control averages
-predict.augsynth <- function(asyn) {
+predict.augsynth <- function(augsynth) {
 
-    y <- asyn$data$y
-    trt <- asyn$data$trt
-    mhat <- asyn$mhat
+    y <- augsynth$data$y
+    trt <- augsynth$data$trt
+    mhat <- augsynth$mhat
     
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
     resid <- (y[trt==0,,drop=F] - mhat[trt==0,drop=F])
 
-    return(m1 + t(resid) %*% asyn$weights)
+    return(m1 + t(resid) %*% augsynth$weights)
+}
+
+
+
+print.augsynth <- function(augsynth) {
+    ## straight from lm
+    cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
+
+    ## print att estimates
+    att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
+        predict(augsynth)
+
+    cat(paste("Average ATT Estimate: ",
+              format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
+}
+
+
+
+plot.augsynth <- function(augsynth) {
+    plot(summary(augsynth))
 }
 
 
@@ -170,8 +192,63 @@ summary.augsynth <- function(augsynth) {
     }
 
     summ$t_int <- augsynth$t_int
+    summ$call <- augsynth$call
+    summ$l2_imbalance <- augsynth$l2_imbalance
+    summ$scaled_l2_imbalance <- augsynth$scaled_l2_imbalance
+
+    ## get estimated bias
+
+    if(augsynth$progfunc == "Ridge") {
+        mhat <- augsynth$ridge_mhat
+    } else {
+        mhat <- augsynth$mhat
+    }
+    y <- augsynth$data$y
+    trt <- augsynth$data$trt
+    m1 <- colMeans(mhat[trt==1,,drop=F])
+
+    summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% augsynth$weights
+    if(augsynth$progfunc == "None" | augsynth$weightfunc == "None") {
+        summ$bias_est <- NA
+    }
+    
     class(summ) <- "summary.augsynth"
     return(summ)
+}
+
+
+print.summary.augsynth <- function(summ) {
+    ## straight from lm
+    cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
+
+    ## distinction between pre and post treatment
+    att_est <- summ$att$Estimate
+    t_total <- length(att_est)
+    t_int <- summ$att %>% filter(Time <= summ$t_int) %>% nrow()
+    
+    att_pre <- att_est[1:(t_int-1)]
+    att_post <- att_est[t_int:t_total]
+
+    ## pool the standard error estimates to summarise it
+    se_est <- summ$att$Std.Error
+
+    se_pool <- sqrt(mean(se_est[t_int:t_total]^2))
+    cat(paste("Average ATT Estimate (Pooled Std. Error): ",
+              format(round(mean(att_post),3), nsmall=3), "  (",
+              format(round(se_pool,3)), ")\t",
+              "Std. Deviation: ",
+              format(round(summ$sigma,3)),
+              "\n\n",
+              "L2 Imbalance (Scaled): ",
+              format(round(summ$l2_imbalance,3), nsmall=3), "  (",
+              format(round(summ$scaled_l2_imbalance,3), nsmall=3), ")\t",
+              "Avg Estimated Bias: ",
+              format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
+              sep=""))
+
+
+    print(summ$att[t_int:t_total,], row.names=F)
+    
 }
 
 
@@ -187,8 +264,4 @@ plot.summary.augsynth <- function(summ) {
         geom_hline(yintercept=0, lty=2) + 
         theme_bw()
     
-}
-
-plot.augsynth <- function(augsynth) {
-    plot(summary(augsynth))
 }
