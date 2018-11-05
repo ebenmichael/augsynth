@@ -5,7 +5,7 @@
 \title{Fit E[Y(0)|X] and for each post-period and balance pre-period}
 \usage{
 fit_augsyn_formatted(wide_data, synth_data, fit_progscore, fit_weights,
-  opts.prog = NULL, opts.weights = NULL)
+  opts_prog = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_ipw`}
@@ -16,9 +16,9 @@ fit_augsyn_formatted(wide_data, synth_data, fit_progscore, fit_weights,
 
 \item{fit_weights}{Function to fit synth weights}
 
-\item{opts.prog}{Optional options for fitting prognostic score}
+\item{opts_prog}{Optional options for fitting prognostic score}
 
-\item{opts.weights}{Optional options for fitting synth weights}
+\item{opts_weights}{Optional options for fitting synth weights}
 }
 \value{
 \itemize{

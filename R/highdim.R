@@ -8,8 +8,8 @@
 #' @param synth_data Output of `format_synth`
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
-#' @param opts.prog Optional options for fitting prognostic score
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -19,18 +19,18 @@
 #' }
 fit_progsyn_formatted <- function(wide_data, synth_data,
                                   fit_progscore, fit_weights,
-                                  opts.prog=NULL, opts.weights=NULL) {
+                                  opts_prog=NULL, opts_weights=NULL) {
 
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts.prog)) {
+    if(is.null(opts_prog)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
-                          c(list(X=X, y=y, trt=trt), opts.prog))
+                          c(list(X=X, y=y, trt=trt), opts_prog))
     }
 
     y0hat <- fitout$y0hat
@@ -40,10 +40,10 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
     synth_data$Z1 <- as.matrix(colMeans(as.matrix(y0hat[wide_data$trt == 1,,drop=FALSE])))
 
     ## fit synth/maxent weights
-    if(is.null(opts.weights)) {
+    if(is.null(opts_weights)) {
         syn <- fit_weights(synth_data)
     }
-    syn <- do.call(fit_weights, c(list(synth_data=synth_data), opts.weights))
+    syn <- do.call(fit_weights, c(list(synth_data=synth_data), opts_weights))
 
     syn$params <- fitout$params
 
@@ -66,8 +66,8 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 #' @param weightfunc What function to use to fit weights
 #'                   SCM=Vanilla Synthetic Controls
 #' @param fit_weights Function to fit synth weights
-#' @param opts.prog Optional options for fitting prognostic score
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -78,7 +78,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 fit_progsyn <- function(wide_data, synth_data,
                         progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact", "seq2seq"),
                         weightfunc=c("SCM"),
-                        opts.prog=NULL, opts.weights=NULL) {
+                        opts_prog=NULL, opts_weights=NULL) {
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
         progf <- fit_prog_reg
@@ -115,8 +115,8 @@ fit_progsyn <- function(wide_data, synth_data,
 #' @param synth_data Output of `synth_data`
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
-#' @param opts.prog Optional options for fitting prognostic score
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -126,7 +126,7 @@ fit_progsyn <- function(wide_data, synth_data,
 #' }
 fit_augsyn_formatted <- function(wide_data, synth_data,
                                 fit_progscore, fit_weights,
-                                opts.prog=NULL, opts.weights=NULL) {
+                                opts_prog=NULL, opts_weights=NULL) {
 
 
     X <- wide_data$X
@@ -134,21 +134,21 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts.prog)) {
+    if(is.null(opts_prog)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
                           c(list(X=X, y=y, trt=trt),
-                            opts.prog))
+                            opts_prog))
     }
     
     ## fit synth
-    if(is.null(opts.weights)) {        
+    if(is.null(opts_weights)) {        
         syn <- fit_weights(synth_data)
     } else {
         syn <- do.call(fit_weights,
                        c(list(synth_data=synth_data),
-                         opts.weights))
+                         opts_weights))
     }
 
     syn$params <- fitout$params
@@ -169,8 +169,8 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc What function to use to fit weights
 #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
-#' @param opts.prog Optional options for fitting prognostic score
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -180,9 +180,9 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #' }
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
-                       weightfunc=c("SC"),
-                       opts.prog = NULL,
-                       opts.weights = NULL) {
+                       weightfunc=c("SCM"),
+                       opts_prog = NULL,
+                       opts_weights = NULL) {
 
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
@@ -214,7 +214,7 @@ fit_augsyn <- function(wide_data, synth_data,
     }
     return(fit_augsyn_formatted(wide_data, synth_data,
                                 progf, weightf,
-                                opts.prog, opts.weights))
+                                opts_prog, opts_weights))
 }
 
 
@@ -227,7 +227,7 @@ fit_augsyn <- function(wide_data, synth_data,
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
 #' @param opts.gsyn Optional options for gsynth
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -237,7 +237,7 @@ fit_augsyn <- function(wide_data, synth_data,
 #' }
 fit_residaug_formatted <- function(wide_data, synth_data,
                                   fit_progscore, fit_weights,
-                                  opts.prog=NULL, opts.weights=NULL) {
+                                  opts_prog=NULL, opts_weights=NULL) {
 
 
     X <- wide_data$X
@@ -245,12 +245,12 @@ fit_residaug_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
 
     ## fit prognostic scores
-    if(is.null(opts.prog)) {
+    if(is.null(opts_prog)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
                           c(list(X=X, y=y, trt=trt),
-                            opts.prog))
+                            opts_prog))
     }
 
     
@@ -267,12 +267,12 @@ fit_residaug_formatted <- function(wide_data, synth_data,
     synth_data$Z1 <- as.matrix(trt_resids[1:t0])
     
     ## fit synth weights
-    if(is.null(opts.weights)) {
+    if(is.null(opts_weights)) {
         syn <- fit_weights(synth_data)
     } else {
         syn <- do.call(fit_weights,
                        c(list(synth_data=synth_data),
-                         opts.weights))
+                         opts_weights))
     }
 
     syn$params <- fitout$params    
@@ -294,7 +294,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
 #'                   SCM=Vanilla Synthetic Controls
 #'                   NONE=No reweighting, just outcome model
 #' @param opts.gsyn Optional options for gsynth
-#' @param opts.weights Optional options for fitting synth weights
+#' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -305,8 +305,8 @@ fit_residaug_formatted <- function(wide_data, synth_data,
 fit_residaug <- function(wide_data, synth_data,
                         progfunc=c("GSYN", "MCP", "CITS", "CausalImpact"),
                         weightfunc=c("SC","ENT", "SVD", "NONE"),
-                        opts.prog = NULL,
-                        opts.weights = NULL) {
+                        opts_prog = NULL,
+                        opts_weights = NULL) {
 
     ## prognostic score and weight functions to use
     if(progfunc == "GSYN"){
@@ -335,6 +335,6 @@ fit_residaug <- function(wide_data, synth_data,
 
     return(fit_residaug_formatted(wide_data, synth_data,
                                   progf, weightf,
-                                  opts.prog, opts.weights))
+                                  opts_prog, opts_weights))
 }
 

@@ -5,8 +5,8 @@
 \title{Fit E[Y(0)|X] and for each post-period and balance these}
 \usage{
 fit_progsyn(wide_data, synth_data, progfunc = c("EN", "RF", "GSYN", "CITS",
-  "CausalImpact", "seq2seq"), weightfunc = c("SCM"), opts.prog = NULL,
-  opts.weights = NULL)
+  "CausalImpact", "seq2seq"), weightfunc = c("SCM"), opts_prog = NULL,
+  opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
@@ -22,9 +22,9 @@ seq2seq=Sequence to sequence learning with feedforward nets}
 \item{weightfunc}{What function to use to fit weights
 SCM=Vanilla Synthetic Controls}
 
-\item{opts.prog}{Optional options for fitting prognostic score}
+\item{opts_prog}{Optional options for fitting prognostic score}
 
-\item{opts.weights}{Optional options for fitting synth weights}
+\item{opts_weights}{Optional options for fitting synth weights}
 
 \item{fit_weights}{Function to fit synth weights}
 }

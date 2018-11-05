@@ -7,11 +7,13 @@
 \alias{augsynth}
 \title{augsynth: A package implementing the Augmented Synthetic Controls Method}
 \usage{
-augsynth(formula, unit, time, t_int, data, progfunc = "Ridge",
-  weightfunc = "SCM", opts.prog = NULL, opts.weights = NULL)
+augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None", "EN",
+  "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
+  weightfunc = c("SCM", "None"), opts_prog = NULL, opts_weights = NULL,
+  cov_agg = NULL)
 }
 \arguments{
-\item{formula}{outcome ~ treatment}
+\item{form}{outcome ~ treatment | auxillary covariates}
 
 \item{unit}{Name of unit column}
 
@@ -21,13 +23,21 @@ augsynth(formula, unit, time, t_int, data, progfunc = "Ridge",
 
 \item{data}{Panel data as dataframe}
 
-\item{progfunc}{Outcome model to us, default is ridge regression}
+\item{progfunc}{What function to use to impute control outcomes
+Ridge=Ridge regression (allows for standard errors),
+None=No outcome model,
+EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
+Comp=softImpute, MCP=MCPanel, CITS=CITS
+CausalImpact=Bayesian structural time series with CausalImpact
+seq2seq=Sequence to sequence learning with feedforward nets}
 
 \item{weightfunc}{Weighting function to use, default is SCM}
 
-\item{opts.prog}{Optional options for fitting outcome model}
+\item{opts_prog}{Optional options for fitting outcome model}
 
-\item{opts.weights}{Optional options for fitting synth weights}
+\item{opts_weights}{Optional options for fitting synth weights}
+
+\item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 }
 \value{
 augsynth object that contains:

@@ -22,7 +22,8 @@ Imports:
     balancer,
     softImpute,
     MCPanel,
-    sandwich
+    sandwich,
+    Formula
 Remotes:
     jpvert/apg,
     xuyiqing/gsynth,

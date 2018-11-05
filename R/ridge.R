@@ -16,11 +16,11 @@
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #'          \item{"mhat"}{Outcome model estimate (zero in this case)}
+#'          \item{"lambda"}{Value of the ridge hyperparameter}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T) {
-
-
+    
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
@@ -33,7 +33,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     y_cent <- apply(y, 2, function(x) x - mean(x[trt==0]))
 
     ## if there are auxiliary covariates, use them
-    if(!is.null(Z)) {
+    if(!is.null(Z) & ridge) {
         ## center covariates
         Z_cent <- apply(Z, 2, function(x) x - mean(x[trt==0]))
         Z_c <- Z_cent[trt==0,,drop=FALSE]
@@ -117,5 +117,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     return(list(weights=weights,
                 l2_imbalance=l2_imbalance,
                 scaled_l2_imabalance=scaled_l2_imabalance,
-                mhat=mhat))
+                mhat=mhat,
+                lambda=lambda))
 }

@@ -6,7 +6,7 @@
 \usage{
 fit_residaug(wide_data, synth_data, progfunc = c("GSYN", "MCP", "CITS",
   "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"),
-  opts.prog = NULL, opts.weights = NULL)
+  opts_prog = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
@@ -22,7 +22,7 @@ CausalImpact=Bayesian structural time series with CausalImpact}
 SCM=Vanilla Synthetic Controls
 NONE=No reweighting, just outcome model}
 
-\item{opts.weights}{Optional options for fitting synth weights}
+\item{opts_weights}{Optional options for fitting synth weights}
 
 \item{opts.gsyn}{Optional options for gsynth}
 }

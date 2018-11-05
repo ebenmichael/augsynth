@@ -5,21 +5,10 @@
 \title{Use leave out one estimates (placebo gaps) to estimate unit-level variance
 Do this for ridge-augmented synth}
 \usage{
-loo_se_ridgeaug(outcomes, metadata, covs = NULL, trt_unit = 1,
-  lambda = NULL, scm = T, ridge = T, use_weights = T, hc = -1,
-  trt_effect = T, cols = list(unit = "unit", time = "time", outcome =
-  "outcome", treated = "treated"))
+loo_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL, scm = T,
+  ridge = T)
 }
 \arguments{
-\item{outcomes}{Tidy dataframe with the outcomes and meta data}
-
-\item{metadata}{Dataframe of metadata}
-
-\item{covs}{Dataframe of covariates if not null then uses
-covariates in outcome model; default NULL}
-
-\item{trt_unit}{Treated unit}
-
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
 \item{scm}{Include SCM or not}
