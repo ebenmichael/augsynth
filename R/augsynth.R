@@ -66,8 +66,9 @@ augsynth <- function(form, unit, time, t_int, data,
         ## if no aggregation functions, use the mean (omitting NAs)
         cov_agg <- c(function(x) mean(x, na.rm=T))
         
-        cov_form <- update(formula(terms(form, rhs=2)),
+        cov_form <- update(formula(terms(form, rhs=2, data=data)),
                            ~. - 1) ## ensure that there is no intercept
+
         ## pull out relevant covariates and aggregate
         model.matrix(cov_form,
                      model.frame(cov_form, data, na.action=NULL) ) %>%

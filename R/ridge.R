@@ -42,11 +42,12 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
         ## use CV to choose lambda if it's null
         if(is.null(lambda)) {
+            ## do CV with the intercept!
             if(ncol(y) > 1) {
-                lambda <- glmnet::cv.glmnet(Z_c, cbind(X_c, y_cent[trt==0,,drop=FALSE]),
+                lambda <- glmnet::cv.glmnet(cbind(1, Z_c), cbind(X_c, y_cent[trt==0,,drop=FALSE]),
                                             alpha=0, family="mgaussian")$lambda.min
             } else {
-                lambda <- glmnet::cv.glmnet(Z_c, cbind(X_c, y_cent[trt==0]),
+                lambda <- glmnet::cv.glmnet(cbind(1, Z_c), cbind(X_c, y_cent[trt==0]),
                                             alpha=0, family="mgaussian")$lambda.min
             }        
         }
