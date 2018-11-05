@@ -104,6 +104,7 @@ augsynth <- function(form, unit, time, t_int, data,
     }
     asyn$data <- wide
     asyn$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    asyn$t_int <- t_int
     asyn$progfunc <- progfunc
     asyn$weightfunc <- weightfunc
     ##format output
@@ -132,21 +133,62 @@ predict.augsynth <- function(asyn) {
 summary.augsynth <- function(augsynth) {
 
     summ <- list()
-    if(augsynth$progfunc == "Ridge") {
+    if(augsynth$progfunc == "Ridge" |
+       augsynth$progfunc == "None" & augsynth$weightfunc == "SCM") {
+        ridge <- augsynth$progfunc == "Ridge"
+        scm <- augsynth$weightfunc == "SCM"
+
         ## get standard errors
         synth_data <- format_synth(augsynth$data$X, augsynth$data$trt,
                                    augsynth$data$y)
 
-        att_se <- loo_se_ridgeaug(augsynth$data, synth_data, lambda=augsynth$lambda)
+        att_se <- loo_se_ridgeaug(augsynth$data, synth_data, lambda=augsynth$lambda,
+                                  ridge=ridge, scm=scm)
         att <- data.frame(augsynth$data$time,
                           att_se$att,
                           att_se$se)
-        names(att) <- c("Time", "Estimate", "Std. Error")
+        names(att) <- c("Time", "Estimate", "Std.Error")
 
         summ$att <- att
         summ$sigma <- att_se$sigma
+    } else {
+        ## no standard errors
+
+        ## post treatment estimate
+        att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
+            predict(augsynth)
+
+        ## pre treatment estimate
+        att_pre <- colMeans(augsynth$data$X[augsynth$data$trt == 1,,drop=F]) -
+            t(augsynth$data$X[augsynth$data$trt==0,,drop=F]) %*% augsynth$weights
+        
+        att <- data.frame(Time=augsynth$data$time,
+                          Estimate=c(att_pre, att_post))
+        att$Std.Error <- NA
+        summ$att <- att
+        summ$sigma <- NA
     }
 
+    summ$t_int <- augsynth$t_int
     class(summ) <- "summary.augsynth"
     return(summ)
+}
+
+
+plot.summary.augsynth <- function(summ) {
+
+    summ$att %>%
+        ggplot(aes(x=Time, y=Estimate)) +
+        geom_ribbon(aes(ymin=Estimate-2*Std.Error,
+                        ymax=Estimate+2*Std.Error),
+                    alpha=0.2) +
+        geom_line() +
+        geom_vline(xintercept=summ$t_int, lty=2) +
+        geom_hline(yintercept=0, lty=2) + 
+        theme_bw()
+    
+}
+
+plot.augsynth <- function(augsynth) {
+    plot(summary(augsynth))
 }

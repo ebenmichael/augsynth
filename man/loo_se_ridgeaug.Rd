@@ -5,22 +5,15 @@
 \title{Use leave out one estimates (placebo gaps) to estimate unit-level variance
 Do this for ridge-augmented synth}
 \usage{
-loo_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL, scm = T,
-  ridge = T)
+loo_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL, ridge = T,
+  scm = T)
 }
 \arguments{
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
-\item{scm}{Include SCM or not}
-
 \item{ridge}{Include ridge or not}
 
-\item{use_weights}{Whether to use weights in se estimate, default: FALSE}
-
-\item{hc}{Type of HC variance estimate (-1 for homoskedastic)}
-
-\item{trt_effect}{Whether to compute standard errors for treatment effect
-or counterfactual mean}
+\item{scm}{Include SCM or not}
 
 \item{cols}{Column names corresponding to the units,
 time variable, outcome, and treated indicator}

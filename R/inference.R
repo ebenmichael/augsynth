@@ -5,12 +5,8 @@
 #' Use leave out one estimates (placebo gaps) to estimate unit-level variance
 #' Do this for ridge-augmented synth
 #' @param lambda Ridge hyper-parameter, if NULL use CV
-#' @param scm Include SCM or not
 #' @param ridge Include ridge or not
-#' @param use_weights Whether to use weights in se estimate, default: FALSE
-#' @param hc Type of HC variance estimate (-1 for homoskedastic)
-#' @param trt_effect Whether to compute standard errors for treatment effect
-#'                   or counterfactual mean
+#' @param scm Include SCM or not
 #' @param cols Column names corresponding to the units,
 #'             time variable, outcome, and treated indicator
 #' 
@@ -18,7 +14,7 @@
 #' @export
 loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
-                            scm=T, ridge=T) {
+                            ridge=T, scm=T) {
 
     n_c <- dim(synth_data$Z0)[2]
 
@@ -27,7 +23,7 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     errs <- matrix(0, n_c, t_final - t0)
 
     ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, lambda, scm, ridge)
+    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, lambda, ridge, scm)
     att <- as.numeric(synth_data$Y1plot -
             synth_data$Y0plot %*% aug_t$weights)
     lam <- aug_t$lambda
@@ -50,7 +46,7 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
         new_wide_data$y <- wide_data$y[wide_data$trt==0,,drop=F]
         new_wide_data$trt <- numeric(nrow(new_wide_data$X))
         new_wide_data$trt[i] <- 1
-        aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, Z, lam, scm, ridge)
+        aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, Z, lam, ridge, scm)
 
         ## estimate satt
         errs[i,] <- new_synth_data$Y1plot[(t0+1):t_final,] -

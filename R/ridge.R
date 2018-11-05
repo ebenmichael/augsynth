@@ -20,7 +20,7 @@
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T) {
-    
+
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
