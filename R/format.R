@@ -24,7 +24,7 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
         select(!!unit, !!time, !!outcome) %>%
         spread(!!time, !!outcome) %>%
         select(-!!unit) %>%
-        as.matrix
+        as.matrix()
 
     ## post treatment outcomes
     y <- data %>%

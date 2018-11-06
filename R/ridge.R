@@ -63,7 +63,9 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
         new_synth_data <- synth_data
         new_synth_data$Z1 <- res_t
+        new_synth_data$X1 <- res_t
         new_synth_data$Z0 <- res_c
+        new_synth_data$X0 <- res_c
         ## if SCM fit scm
         if(scm) {
             syn <- fit_synth_formatted(new_synth_data)$weights
@@ -120,7 +122,15 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     mhat <- matrix(0, nrow=nrow(y), ncol=ncol(y))
 
     if(ridge) {
-        ridge_mhat <- X_cent %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c) %*% y_c
+        if(is.null(Z)) {
+            ridge_mhat <- X_cent %*% solve(t(X_c) %*% X_c +
+                                           lambda * diag(ncol(X_c))) %*%
+                t(X_c) %*% y_c
+        } else {
+            ridge_mhat <- Z_cent %*% solve(t(Z_c) %*% Z_c +
+                                           lambda * diag(ncol(Z_c))) %*%
+                t(Z_c) %*% y_c
+        }
     } else {
         ridge_mhat <- NULL
     }

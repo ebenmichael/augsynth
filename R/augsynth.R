@@ -52,7 +52,6 @@ augsynth <- function(form, unit, time, t_int, data,
     
     form <- Formula::Formula(form)
     unit <- enquo(unit)
-    
     time <- enquo(time)
     
     ## format data
@@ -67,14 +66,17 @@ augsynth <- function(form, unit, time, t_int, data,
         ## if no aggregation functions, use the mean (omitting NAs)
         cov_agg <- c(function(x) mean(x, na.rm=T))
         
-        cov_form <- update(formula(terms(form, rhs=2, data=data)),
+        cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
                            ~. - 1) ## ensure that there is no intercept
 
         ## pull out relevant covariates and aggregate
+        pre_data <- data %>% 
+            filter(!! (time) < t_int)
         model.matrix(cov_form,
-                     model.frame(cov_form, data, na.action=NULL) ) %>%
+                     model.frame(cov_form, pre_data,
+                                 na.action=NULL) ) %>%
             data.frame() %>%
-            mutate(unit=pull(data, !!unit)) %>%
+            mutate(unit=pull(pre_data, !!unit)) %>%
             group_by(unit) %>%
             summarise_all(cov_agg) %>%
             select(-unit) %>%
@@ -88,12 +90,12 @@ augsynth <- function(form, unit, time, t_int, data,
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data, Z=Z),
-                              opts_weights))
+                              opts_prog, opts_weights))
         } else if(weightfunc == "None") {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data,
-                                   Z=Z, ridge=T, scm=F), opts_weights))
+                                   Z=Z, ridge=T, scm=F), opts_prog, opts_weights))
         }
     } else if(progfunc == "None") {
         ## Just SCM
@@ -105,6 +107,7 @@ augsynth <- function(form, unit, time, t_int, data,
     }
     augsynth$data <- wide
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    augsynth$data$Z <- Z
     augsynth$t_int <- t_int
     augsynth$progfunc <- progfunc
     augsynth$weightfunc <- weightfunc
@@ -164,7 +167,8 @@ summary.augsynth <- function(augsynth) {
         synth_data <- format_synth(augsynth$data$X, augsynth$data$trt,
                                    augsynth$data$y)
 
-        att_se <- loo_se_ridgeaug(augsynth$data, synth_data, lambda=augsynth$lambda,
+        att_se <- loo_se_ridgeaug(augsynth$data, synth_data, augsynth$data$Z,
+                                  lambda=augsynth$lambda,
                                   ridge=ridge, scm=scm)
         att <- data.frame(augsynth$data$time,
                           att_se$att,
@@ -237,7 +241,7 @@ print.summary.augsynth <- function(summ) {
               format(round(mean(att_post),3), nsmall=3), "  (",
               format(round(se_pool,3)), ")\t",
               "Std. Deviation: ",
-              format(round(summ$sigma,3)),
+              format(round(sqrt(mean(summ$sigma^2)),3)),
               "\n\n",
               "L2 Imbalance (Scaled): ",
               format(round(summ$l2_imbalance,3), nsmall=3), "  (",

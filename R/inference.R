@@ -27,6 +27,17 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     att <- as.numeric(synth_data$Y1plot -
             synth_data$Y0plot %*% aug_t$weights)
     lam <- aug_t$lambda
+
+    new_wide_data <- wide_data
+    new_wide_data$X <- wide_data$X[wide_data$trt==0,,drop=F]
+    new_wide_data$y <- wide_data$y[wide_data$trt==0,,drop=F]
+
+
+    new_Z <- Z
+    if(!is.null(new_Z)) {
+        new_Z <- Z[wide_data$trt==0,,drop=F]
+    }
+    
     
     ## iterate over control units
     for(i in 1:n_c) {
@@ -41,12 +52,10 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
         new_synth_data$Y1plot <- synth_data$Y0plot[, i, drop=FALSE]
 
         ## reset ipw data to change treatment assignment
-        new_wide_data <- wide_data
-        new_wide_data$X <- wide_data$X[wide_data$trt==0,,drop=F]
-        new_wide_data$y <- wide_data$y[wide_data$trt==0,,drop=F]
         new_wide_data$trt <- numeric(nrow(new_wide_data$X))
         new_wide_data$trt[i] <- 1
-        aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, Z, lam, ridge, scm)
+        
+        aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, new_Z, lam, ridge, scm)
 
         ## estimate satt
         errs[i,] <- new_synth_data$Y1plot[(t0+1):t_final,] -
@@ -54,15 +63,22 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     }
 
     ## standard errors
-    sig <- sqrt(sum(aug_t$weights^2)) ## estimate of variance
-    se <- (1 / sqrt(sum(wide_data$trt==1)) + ## contribution from treated unit
-           sqrt(apply(errs^2, 2, mean))) * ## contribution from weights
-        sig
+
+    sig2 <- apply(errs^2, 2, mean) ## estimate of variance
+
+    se2 <- (1 / sum(wide_data$trt==1) + ## contribution from treated unit
+           sum(aug_t$weights^2)) * ## contribution from weights
+        sig2
+
+    se <- sqrt(se2)
+    ## se <- (1 / sqrt(sum(wide_data$trt==1)) + 
+    ##        sqrt(sum(aug_t$weights^2))) * 
+    ##     sig
 
     out <- list()
     out$att <- att
 
     out$se <- c(rep(NA, t0), se)
-    out$sigma <- sig
+    out$sigma <- sqrt(sig2)
     return(out)
 }
