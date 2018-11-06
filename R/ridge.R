@@ -18,6 +18,7 @@
 #'          \item{"mhat"}{Outcome model estimate (zero in this case)}
 #'          \item{"lambda"}{Value of the ridge hyperparameter}
 #'          \item{"ridge_mhat"}{The ridge regression predictions (for estimating the bias)}
+#'          \item{"synw"}{The synth weights(for estimating the bias)}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T) {
@@ -139,5 +140,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                 scaled_l2_imbalance=scaled_l2_imabalance,
                 mhat=mhat,
                 lambda=lambda,
-                ridge_mhat=ridge_mhat))
+                ridge_mhat=ridge_mhat,
+                synw=syn))
 }

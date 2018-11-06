@@ -204,14 +204,15 @@ summary.augsynth <- function(augsynth) {
 
     if(augsynth$progfunc == "Ridge") {
         mhat <- augsynth$ridge_mhat
+        w <- augsynth$synw
     } else {
         mhat <- augsynth$mhat
+        w <- augsynth$weights
     }
-    y <- augsynth$data$y
     trt <- augsynth$data$trt
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
-    summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% augsynth$weights
+    summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
     if(augsynth$progfunc == "None" | augsynth$weightfunc == "None") {
         summ$bias_est <- NA
     }
