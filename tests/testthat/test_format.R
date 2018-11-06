@@ -1,36 +1,42 @@
 context("Test data formatting")
 
-test_that("format_synth creates matrices of the right dimensions", {
+library(Synth)
+data(basque)
+basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                            regionno != 17 ~0,
+                                            regionno == 17 ~ 1)) %>%
+    filter(regionno != 1)
+                            
+test_that("format_data creates matrices with the right dimensions", {
     
-    ## simulate data
-    mo <- sim_factor_model(20, 25, 15, 10, 1)
-    data_out <- format_synth(mo$outcomes %>% filter(outcome_id == 1),
-                             mo$metadata)
+    dat <- format_data(quo(gdpcap), quo(trt), quo(regionno), quo(year),1975, basque)
+
     test_dim <- function(obj, d) {
         expect_equivalent(dim(obj), d)
         }
-    test_dim(data_out$synth_data$Z0,
-                      c(14, 19))
-    test_dim(data_out$synth_data$Z1,
-                      c(14, 1))
-    test_dim(data_out$synth_data$Y0plot,
-                      c(25, 19))
-    test_dim(data_out$synth_data$Y1plot,
-             c(25, 1))
-    }
-    )
 
-test_that("format_synth and format_synth_multi have the same output with one outcome", {
-    ## simulate data
-    mo <- sim_factor_model(20, 25, 15, 10, 1)
-    data_out1 <- format_data(mo$outcomes %>% filter(outcome_id == 1),
-                              mo$metadata)
-    data_out2 <- format_data(mo$outcomes %>% filter(outcome_id == 1),
-                                    mo$metadata,
-                                    outcome_col = "outcome_id")
+    test_dim(dat$X, c(17, 20))
+    expect_equivalent(length(dat$trt), 17)
+    test_dim(dat$y, c(17, 23))
+}
+)
 
-    expect_equivalent(data_out1$synth_data$Z0, data_out2$synth_data$Z0)
-    expect_equivalent(data_out1$synth_data$Z1, data_out2$synth_data$Z1)
-    expect_equivalent(data_out1$synth_data$Y0plot, data_out2$synth_data$Y0plot)
-    expect_equivalent(data_out1$synth_data$Y1plot, data_out2$synth_data$Y1plot)
-})
+
+test_that("format_synth creates matrices with the right dimensions", {
+    
+    dat <- format_data(quo(gdpcap), quo(trt), quo(regionno), quo(year),1975, basque)
+    syn_dat <- format_synth(dat$X, dat$trt, dat$y)
+    test_dim <- function(obj, d) {
+        expect_equivalent(dim(obj), d)
+        }
+
+    test_dim(syn_dat$Z0, c(20, 16))
+    test_dim(syn_dat$Z1, c(20, 1))
+
+    test_dim(syn_dat$Y0plot, c(43, 16))
+    test_dim(syn_dat$Y1plot, c(43, 1))
+
+    expect_equivalent(syn_dat$Z1, syn_dat$X1)
+    expect_equivalent(syn_dat$Z0, syn_dat$X0)
+}
+)

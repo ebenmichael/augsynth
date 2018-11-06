@@ -1,4 +1,4 @@
 library(testthat)
-library(ents)
+library(augsynth)
 
-test_check("ents")
+test_check("augsynth")

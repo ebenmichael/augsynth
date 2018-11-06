@@ -1,5 +1,5 @@
 ################################################################################
-## Methods to use flixbile outcome models
+## Methods to use flexible outcome models
 ################################################################################
 
 #' Fit E[Y(0)|X] and for each post-period and balance these

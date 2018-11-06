@@ -79,6 +79,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
+#' @param avg Predict the average post-treatment outcome
 #' @param opts List of options for randomForest
 #'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}}
 #'

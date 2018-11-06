@@ -1,44 +1,74 @@
 context("Generally testing the workflow")
 
 
-test_that("No errors in fitting a one outcome model", {
+library(Synth)
+data(basque)
+basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                            regionno != 17 ~0,
+                                            regionno == 17 ~ 1)) %>%
+    filter(regionno != 1)
 
-    run_one <- function() {
-        set.seed(12345)
-        ## simulate data
-        mo <- sim_factor_model(50, 50, 40, 10, 1)
-        ## fit synthetic controls for one outcome
-        out <- get_entropy(mo$outcomes %>% filter(outcome_id == 1),
-                              mo$metadata, eps=100)
-    }
-    expect_error(run_one(), NA)
-    })
 
-test_that("No errors in fitting a multi outcome model", {
+                            
+test_that("SCM gives the right answer", {
 
-    run_multi <- function() {
-        set.seed(12345)
-        ## simulate data
-        mo <- sim_factor_model(50, 50, 40, 10, 1)
-        ## fit synthetic controls for one outcome
-        out <- get_entropy(mo$outcomes,
-                           mo$metadata,
-                           eps=100,
-                           outcome_col="outcome_id")
-    }
-    expect_error(run_multi(), NA)
-    })
+    syn <- augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="None", weightfunc="SCM")
 
-test_that("get_entropy says when problem is infeasible", {
+    ## average att estimate is as expected
+    expect_equal(-.36, mean(summary(syn)$att$Estimate), tolerance=1e-4)
 
-    set.seed(12345)
-    ## simulate data
-    mo <- sim_factor_model(10, 50, 40, 10, 1)
-    ## fit synthetic controls for one outcome
-    out <- get_entropy(mo$outcomes,
-                       mo$metadata,
-                       eps=0,
-                       outcome_col="outcome_id")
-  
-    expect_true(!out$feasible)
-    })
+    ## average se estimate is as expected
+    expect_equal(0.747,
+                 mean(summary(syn)$att$Std.Error, na.rm=T),
+                 tolerance=1e-3)
+
+    ## level of balance is as expected
+    expect_equal(.377, syn$l2_imbalance, tolerance=1e-3)
+
+}
+)
+
+
+test_that("Ridge ASCM gives the right answer", {
+
+    asyn <- augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="Ridge",
+                     weightfunc="SCM", opts_prog=list(lambda=8))
+
+    ## average att estimate is as expected
+    expect_equal(-.363, mean(summary(asyn)$att$Estimate), tolerance=1e-3)
+
+    ## average se estimate is as expected
+    expect_equal(0.597,
+                 mean(summary(asyn)$att$Std.Error, na.rm=T),
+                 tolerance=1e-3)
+
+    ## level of balance is as expected
+    expect_equal(.373, asyn$l2_imbalance, tolerance=1e-3)
+
+}
+)
+
+
+
+
+test_that("Ridge ASCM with covariates gives the right answer", {
+
+    covsyn <- augsynth(gdpcap ~ trt| invest + popdens, regionno, year, 1975, basque, progfunc="Ridge",
+                     weightfunc="SCM", opts_prog=list(lambda=0))
+
+    ## average att estimate is as expected
+    expect_equal(-.089, mean(summary(covsyn)$att$Estimate), tolerance=1e-3)
+
+    ## average se estimate is as expected
+    expect_equal(0.825,
+                 mean(summary(covsyn)$att$Std.Error, na.rm=T),
+                 tolerance=1e-3)
+
+    ## level of balance is as expected
+    expect_equal(.376, covsyn$l2_imbalance, tolerance=1e-3)
+
+}
+)
+
+
+
