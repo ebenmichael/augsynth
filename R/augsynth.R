@@ -191,7 +191,6 @@ summary.augsynth <- function(augsynth) {
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
     summ$scaled_l2_imbalance <- augsynth$scaled_l2_imbalance
-
     ## get estimated bias
 
     if(augsynth$progfunc == "Ridge") {
