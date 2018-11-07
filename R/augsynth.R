@@ -233,7 +233,7 @@ print.summary.augsynth <- function(summ) {
     se_pool <- sqrt(mean(se_est[t_int:t_total]^2))
     cat(paste("Average ATT Estimate (Pooled Std. Error): ",
               format(round(mean(att_post),3), nsmall=3), "  (",
-              format(round(se_pool,3)), ")\t",
+              format(round(se_pool,3)), ")\n",
               "Std. Deviation: ",
               format(round(sqrt(mean(summ$sigma^2)),3)),
               "\n\n",
