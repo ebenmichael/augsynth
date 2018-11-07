@@ -4,9 +4,9 @@
 \alias{fit_progsyn}
 \title{Fit E[Y(0)|X] and for each post-period and balance these}
 \usage{
-fit_progsyn(wide_data, synth_data, progfunc = c("EN", "RF", "GSYN", "CITS",
-  "CausalImpact", "seq2seq"), weightfunc = c("SCM"), opts_prog = NULL,
-  opts_weights = NULL)
+fit_progsyn(wide_data, synth_data, progfunc = c("EN", "RF", "GSYN",
+  "CITS", "CausalImpact", "seq2seq"), weightfunc = c("SCM"),
+  opts_prog = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}

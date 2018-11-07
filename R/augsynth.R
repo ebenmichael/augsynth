@@ -2,18 +2,6 @@
 ## Main functions for augmented synthetic controls Method
 ################################################################################
 
-#' augsynth: A package implementing the Augmented Synthetic Controls Method
-#' @docType package
-#' @name augsynth
-#' @import magrittr
-#' @import dplyr
-#' @import LowRankQP
-#' @import ggplot2
-#' @import tidyr
-#' @import LiblineaR
-#' @import glmnet
-NULL
-
 
 #' Fit Augmented SCM
 #' @param form outcome ~ treatment | auxillary covariates
@@ -135,7 +123,8 @@ predict.augsynth <- function(augsynth) {
 }
 
 
-
+#' Print function for augsynth
+#' @export
 print.augsynth <- function(augsynth) {
     ## straight from lm
     cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
@@ -149,12 +138,15 @@ print.augsynth <- function(augsynth) {
 }
 
 
-
+#' Plot function for augsynth
+#' @export
 plot.augsynth <- function(augsynth) {
     plot(summary(augsynth))
 }
 
 
+#' Summary function for augsynth
+#' @export
 summary.augsynth <- function(augsynth) {
 
     summ <- list()
@@ -221,7 +213,8 @@ summary.augsynth <- function(augsynth) {
     return(summ)
 }
 
-
+#' Print function for summary function for augsynth
+#' @export
 print.summary.augsynth <- function(summ) {
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
@@ -256,7 +249,8 @@ print.summary.augsynth <- function(summ) {
     
 }
 
-
+#' Plot function for summary function for augsynth
+#' @export
 plot.summary.augsynth <- function(summ) {
 
     summ$att %>%
@@ -270,3 +264,17 @@ plot.summary.augsynth <- function(summ) {
         theme_bw()
     
 }
+
+
+
+#' augsynth: A package implementing the Augmented Synthetic Controls Method
+#' @docType package
+#' @name augsynth-package
+#' @importFrom magrittr "%>%"
+#' @import dplyr
+#' @import LowRankQP
+#' @import ggplot2
+#' @import tidyr
+#' @import LiblineaR
+#' @import glmnet
+NULL
