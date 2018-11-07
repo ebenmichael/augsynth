@@ -12,4 +12,4 @@ r_binary_packages:
     - ggplot2
     - glmnet
     - plyr
-                   
+    - kableExtra
