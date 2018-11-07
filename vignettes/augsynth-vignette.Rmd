@@ -1,7 +1,4 @@
 ---
-title: "Augmented Synthetic Controls"
-author: "Eli Ben-Michael"
-date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Vignette Title}
@@ -85,21 +82,30 @@ summary(syn)
 
 It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
 
+```{r fig_syn_hide, fig.show="hide"}
+plot(syn)
+```
+
 ```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(syn)
 ```
 
 ### Augmenting synth with an outcome model
-In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda` in the option list of outcome model arguments `opts_prog`:
+In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda` in the option list of outcome model arguments `opts_out`:
 ```{r fit_asynth, message=F, warning=F}
 asyn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
-                progfunc="Ridge", weightfunc="SCM", opts_prog=list(lambda=8))
+                progfunc="Ridge", weightfunc="SCM", opts_out=list(lambda=8))
 ```
 
 We can look at the summary and plot the results. Now in the summary output we see an estimate of the overall bias of synth; we measure this with the average amount that augmentation changes the synth estimate. Notice that the estimates don't change very much, but the standard errors are tighter.
 ```{r summ_asyn}
 summary(asyn)
 ```
+
+```{r fig_asyn_hide, fig.show="hide"}
+plot(asyn)
+```
+
 
 ```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(asyn)
@@ -111,12 +117,16 @@ There are also several auxiliary covariates. We can include these in the augment
 ```{r fit_covsynth, message=F, warning=F}
 covsyn <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
                    regionno, year, 1975, basque,
-                   progfunc="Ridge", weightfunc="SCM", opts_prog=list(lambda=0))
+                   progfunc="Ridge", weightfunc="SCM", opts_out=list(lambda=0))
 ```
 
 Again we can look at the summary and plot the results.
 ```{r summ_cvsyn}
 summary(covsyn)
+```
+
+```{r fig_covsyn_hide, fig.show="hide"}
+plot(covsyn)
 ```
 
 ```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
@@ -137,8 +147,12 @@ For the other outcome models we do not (yet) supply standard error estimates.
 summary(mcpsyn)
 ```
 
+```{r fig_mcpsyn_hide, fig.show="hide"}
+plot(mcpsyn)
+```
+
 ```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(mcpsyn)
 ```
 
-Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and the generalized synthetic control method `gsynth`. For each outcome model you can supply an optional set of parameters `opts_prog`, see documentation for details.
+Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and the generalized synthetic control method `gsynth`. For each outcome model you can supply an optional set of parameters `opts_out`, see documentation for details.
