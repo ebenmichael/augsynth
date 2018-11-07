@@ -1,0 +1,144 @@
+---
+title: "Augmented Synthetic Controls"
+author: "Eli Ben-Michael"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+library(kableExtra)
+```
+
+
+# `augsynth`: The Augmented Synthetic Control Method
+
+## Installation
+
+You can install `augsynth` from github using `devtools`.
+
+```{r install, results="hide", message=F}
+## Install devtools if noy already installed
+install.packages("devtools", repos='http://cran.us.r-project.org')
+## Install augsynth from github
+devtools::install_github("ebenmichael/augsynth")
+```
+
+
+## Example: The economic costs of conflict
+
+### The data
+To show the usage and features of `augsynth`, we'll use data on the impact of terrorism in the Basque country supplied in the `Synth` package. Our interest is in estimating the effect of increased terrorism in the Basque country on GDP per capita.
+
+
+```{r load_data, results="hide", warning=F, message=F}
+library(magrittr)
+library(dplyr)
+library(Synth)
+data(basque)
+```
+
+The `basque` dataset contains the GDP per capita (the outcome measure) for the regions of Spain from 1955 to 1997, as well as data on several auxiliary covariates at a few time points in the study period.
+```{r, echo=F}
+basque %>%
+    select(regionno, regionname, year, gdpcap) %>%
+    head() %>%
+    kable() %>%
+    kable_styling(bootstrap_options =c("hover", "responsive"))
+```
+
+
+To run `augsynth`, we need to include a treatment status column that indicates which region was treated and at what time. As in the original study, we'll mark 1975 as the start of increased terrorism in the Basque country. We'll also drop the data for the whole country of Spain.
+
+```{r trt_status, results="hide"}
+basque %>%
+    mutate(
+        treatment=case_when(year < 1975 ~ 0,
+                            regionno != 17 ~ 0,
+                            regionno == 17 ~ 1) # Basque after 1975 is treated
+    ) %>%
+    filter(regionno != 1) -> basque
+```
+
+
+### Synth
+Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are and when the intervention took place, and specify that we don't want to fit an outcome model
+
+```{r fit_synth, message=F, warning=F}
+library(augsynth)
+syn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
+                progfunc="None", weightfunc="SCM")
+```
+
+We can then look at the ATT estimates for each post-intervention time period and overall. We'll also see standard errors estimated using leave-out-one estimates of the noise and the quality of the synthetic control fit measured by the L2 distance between Basque and its synthetic control.
+
+```{r summ_syn}
+summary(syn)
+```
+
+It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
+
+```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(syn)
+```
+
+### Augmenting synth with an outcome model
+In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda` in the option list of outcome model arguments `opts_prog`:
+```{r fit_asynth, message=F, warning=F}
+asyn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
+                progfunc="Ridge", weightfunc="SCM", opts_prog=list(lambda=8))
+```
+
+We can look at the summary and plot the results. Now in the summary output we see an estimate of the overall bias of synth; we measure this with the average amount that augmentation changes the synth estimate. Notice that the estimates don't change very much, but the standard errors are tighter.
+```{r summ_asyn}
+summary(asyn)
+```
+
+```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(asyn)
+```
+
+
+
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values. We also set `lambda=0` to fit OLS.
+```{r fit_covsynth, message=F, warning=F}
+covsyn <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
+                   regionno, year, 1975, basque,
+                   progfunc="Ridge", weightfunc="SCM", opts_prog=list(lambda=0))
+```
+
+Again we can look at the summary and plot the results.
+```{r summ_cvsyn}
+summary(covsyn)
+```
+
+```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(covsyn)
+```
+
+
+Finally, we can augment synth with many different outcome models, this is as easy as changing the `progfunc`. For instance, we can augment synth with matrix completion using `mcpanel`.
+
+```{r fit_mcp, message=F, warning=F}
+mcpsyn <- augsynth(gdpcap ~ treatment,
+                   regionno, year, 1975, basque,
+                   progfunc="MCP", weightfunc="SCM")
+```
+
+For the other outcome models we do not (yet) supply standard error estimates.
+```{r summ_mcpsyn}
+summary(mcpsyn)
+```
+
+```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(mcpsyn)
+```
+
+Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and the generalized synthetic control method `gsynth`. For each outcome model you can supply an optional set of parameters `opts_prog`, see documentation for details.

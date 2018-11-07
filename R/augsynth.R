@@ -13,7 +13,7 @@
 #'                 Ridge=Ridge regression (allows for standard errors),
 #'                 None=No outcome model,
 #'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 Comp=softImpute, MCP=MCPanel, CITS=CITS
+#'                 MCP=MCPanel, CITS=CITS
 #'                 CausalImpact=Bayesian structural time series with CausalImpact
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc Weighting function to use, default is SCM
