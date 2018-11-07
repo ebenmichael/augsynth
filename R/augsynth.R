@@ -17,7 +17,7 @@
 #'                 CausalImpact=Bayesian structural time series with CausalImpact
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc Weighting function to use, default is SCM
-#' @param opts_prog Optional options for fitting outcome model
+#' @param opts_out Optional options for fitting outcome model
 #' @param opts_weights Optional options for fitting synth weights
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #'
@@ -33,7 +33,7 @@
 augsynth <- function(form, unit, time, t_int, data,
                      progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
                      weightfunc=c("SCM", "None"),
-                     opts_prog=NULL, opts_weights=NULL,
+                     opts_out=NULL, opts_weights=NULL,
                      cov_agg=NULL) {
 
     call_name <- match.call()
@@ -78,12 +78,12 @@ augsynth <- function(form, unit, time, t_int, data,
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data, Z=Z),
-                              opts_prog, opts_weights))
+                              opts_out, opts_weights))
         } else if(weightfunc == "None") {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data=wide, synth_data=synth_data,
-                                   Z=Z, ridge=T, scm=F), opts_prog, opts_weights))
+                                   Z=Z, ridge=T, scm=F), opts_out, opts_weights))
         }
     } else if(progfunc == "None") {
         ## Just SCM
@@ -91,7 +91,7 @@ augsynth <- function(form, unit, time, t_int, data,
                         c(list(wide_data=wide, synth_data=synth_data, Z=Z, ridge=F, scm=T), opts_weights))
     } else {
         ## Other outcome models
-        augsynth <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts_prog, opts_weights)
+        augsynth <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts_out, opts_weights)
     }
     augsynth$data <- wide
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)

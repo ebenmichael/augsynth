@@ -5,7 +5,7 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 fit_residaug_formatted(wide_data, synth_data, fit_progscore, fit_weights,
-  opts_prog = NULL, opts_weights = NULL)
+  opts_out = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}

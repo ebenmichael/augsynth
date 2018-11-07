@@ -6,7 +6,7 @@
 \usage{
 fit_augsyn(wide_data, synth_data, progfunc = c("EN", "RF", "GSYN", "MCP",
   "CITS", "CausalImpact", "seq2seq"), weightfunc = c("SCM"),
-  opts_prog = NULL, opts_weights = NULL)
+  opts_out = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_ipw`}
@@ -22,7 +22,7 @@ seq2seq=Sequence to sequence learning with feedforward nets}
 \item{weightfunc}{What function to use to fit weights
 SC=Vanilla Synthetic Controls, ENT=Maximum Entropy}
 
-\item{opts_prog}{Optional options for fitting prognostic score}
+\item{opts_out}{Optional options for fitting prognostic score}
 
 \item{opts_weights}{Optional options for fitting synth weights}
 }

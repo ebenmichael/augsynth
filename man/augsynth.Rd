@@ -6,7 +6,7 @@
 \usage{
 augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None",
   "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
-  weightfunc = c("SCM", "None"), opts_prog = NULL,
+  weightfunc = c("SCM", "None"), opts_out = NULL,
   opts_weights = NULL, cov_agg = NULL)
 }
 \arguments{
@@ -30,7 +30,7 @@ seq2seq=Sequence to sequence learning with feedforward nets}
 
 \item{weightfunc}{Weighting function to use, default is SCM}
 
-\item{opts_prog}{Optional options for fitting outcome model}
+\item{opts_out}{Optional options for fitting outcome model}
 
 \item{opts_weights}{Optional options for fitting synth weights}
 

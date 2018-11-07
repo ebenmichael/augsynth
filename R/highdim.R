@@ -8,7 +8,7 @@
 #' @param synth_data Output of `format_synth`
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
-#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_out Optional options for fitting prognostic score
 #' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
@@ -19,18 +19,18 @@
 #' }
 fit_progsyn_formatted <- function(wide_data, synth_data,
                                   fit_progscore, fit_weights,
-                                  opts_prog=NULL, opts_weights=NULL) {
+                                  opts_out=NULL, opts_weights=NULL) {
 
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts_prog)) {
+    if(is.null(opts_out)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
-                          c(list(X=X, y=y, trt=trt), opts_prog))
+                          c(list(X=X, y=y, trt=trt), opts_out))
     }
 
     y0hat <- fitout$y0hat
@@ -66,7 +66,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 #' @param weightfunc What function to use to fit weights
 #'                   SCM=Vanilla Synthetic Controls
 #' @param fit_weights Function to fit synth weights
-#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_out Optional options for fitting prognostic score
 #' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
@@ -78,7 +78,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 fit_progsyn <- function(wide_data, synth_data,
                         progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact", "seq2seq"),
                         weightfunc=c("SCM"),
-                        opts_prog=NULL, opts_weights=NULL) {
+                        opts_out=NULL, opts_weights=NULL) {
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
         progf <- fit_prog_reg
@@ -115,7 +115,7 @@ fit_progsyn <- function(wide_data, synth_data,
 #' @param synth_data Output of `synth_data`
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
-#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_out Optional options for fitting prognostic score
 #' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
@@ -126,7 +126,7 @@ fit_progsyn <- function(wide_data, synth_data,
 #' }
 fit_augsyn_formatted <- function(wide_data, synth_data,
                                 fit_progscore, fit_weights,
-                                opts_prog=NULL, opts_weights=NULL) {
+                                opts_out=NULL, opts_weights=NULL) {
 
 
     X <- wide_data$X
@@ -134,12 +134,12 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts_prog)) {
+    if(is.null(opts_out)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
                           c(list(X=X, y=y, trt=trt),
-                            opts_prog))
+                            opts_out))
     }
     
     ## fit synth
@@ -169,7 +169,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc What function to use to fit weights
 #'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
-#' @param opts_prog Optional options for fitting prognostic score
+#' @param opts_out Optional options for fitting prognostic score
 #' @param opts_weights Optional options for fitting synth weights
 #' 
 #' @return \itemize{
@@ -181,7 +181,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
                        weightfunc=c("SCM"),
-                       opts_prog = NULL,
+                       opts_out = NULL,
                        opts_weights = NULL) {
 
     ## prognostic score and weight functions to use
@@ -214,7 +214,7 @@ fit_augsyn <- function(wide_data, synth_data,
     }
     return(fit_augsyn_formatted(wide_data, synth_data,
                                 progf, weightf,
-                                opts_prog, opts_weights))
+                                opts_out, opts_weights))
 }
 
 
@@ -237,7 +237,7 @@ fit_augsyn <- function(wide_data, synth_data,
 #' }
 fit_residaug_formatted <- function(wide_data, synth_data,
                                   fit_progscore, fit_weights,
-                                  opts_prog=NULL, opts_weights=NULL) {
+                                  opts_out=NULL, opts_weights=NULL) {
 
 
     X <- wide_data$X
@@ -245,12 +245,12 @@ fit_residaug_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
 
     ## fit prognostic scores
-    if(is.null(opts_prog)) {
+    if(is.null(opts_out)) {
         fitout <- fit_progscore(X, y, trt)
     } else {
         fitout <- do.call(fit_progscore,
                           c(list(X=X, y=y, trt=trt),
-                            opts_prog))
+                            opts_out))
     }
 
     
@@ -305,7 +305,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
 fit_residaug <- function(wide_data, synth_data,
                         progfunc=c("GSYN", "MCP", "CITS", "CausalImpact"),
                         weightfunc=c("SC","ENT", "SVD", "NONE"),
-                        opts_prog = NULL,
+                        opts_out = NULL,
                         opts_weights = NULL) {
 
     ## prognostic score and weight functions to use
@@ -335,6 +335,6 @@ fit_residaug <- function(wide_data, synth_data,
 
     return(fit_residaug_formatted(wide_data, synth_data,
                                   progf, weightf,
-                                  opts_prog, opts_weights))
+                                  opts_out, opts_weights))
 }
 

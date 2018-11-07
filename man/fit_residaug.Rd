@@ -6,7 +6,7 @@
 \usage{
 fit_residaug(wide_data, synth_data, progfunc = c("GSYN", "MCP", "CITS",
   "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"),
-  opts_prog = NULL, opts_weights = NULL)
+  opts_out = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
