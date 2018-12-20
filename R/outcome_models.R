@@ -20,7 +20,6 @@
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
                          poly_order=1, type="sep") {
 
@@ -91,7 +90,6 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 
     if(!requireNamespace("randomForest", quietly = TRUE)) {
@@ -163,7 +161,6 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
@@ -223,7 +220,6 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 
 
@@ -284,7 +280,6 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 
     ## combine back into a panel structure
@@ -391,7 +386,6 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
-#' @export
 fit_prog_causalimpact <- function(X, y, trt) {
 
 
@@ -462,7 +456,6 @@ fit_prog_causalimpact <- function(X, y, trt) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
-#' @export
 fit_prog_seq2seq <- function(X, y, trt,
                              layers=list(c(50, "relu"), c(5, "relu")),
                              epochs=500,
