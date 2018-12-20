@@ -11,7 +11,6 @@
 #'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
-#' @export
 loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
                             ridge=T, scm=T) {

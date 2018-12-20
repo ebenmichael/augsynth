@@ -2,7 +2,7 @@ Package: augsynth
 Title: The Augmented Synthetic Control Method
 Version: 0.1.0
 Authors@R: person("Eli", "Ben-Michael", email = "ebenmichael@berkeley.edu", role = c("aut", "cre"))
-Description: A package implementing the Augmented Synthetic Controls Method
+Description: A package implementing the Augmented Synthetic Controls Method.
 Depends:
     R (>= 3.4.2)
 Imports:
@@ -13,21 +13,12 @@ Imports:
     ggplot2,
     MASS,
     Synth,
-    apg,
-    glmnet,
     plyr,
     LiblineaR,
-    randomForest,
     gsynth,
-    balancer,
-    softImpute,
-    MCPanel,
-    sandwich,
     Formula
 Remotes:
-    jpvert/apg,
     xuyiqing/gsynth,
-    ebenmichael/balancer,
     susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -38,5 +29,9 @@ Suggests:
     CausalImpact,
     keras,
     knitr,
-    rmarkdown
+    rmarkdown,
+    softImpute,
+    MCPanel,
+    glmnet,
+    randomForest
 VignetteBuilder: knitr

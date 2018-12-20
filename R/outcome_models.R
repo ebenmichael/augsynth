@@ -20,10 +20,13 @@
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
                          poly_order=1, type="sep") {
 
+    if(!requireNamespace("glmnet", quietly = TRUE)) {
+        stop("In order to fit an elastic net outcome model, you must install the glmnet package.")
+    }
+    
     X <- matrix(poly(matrix(X),degree=poly_order), nrow=dim(X)[1])
 
     ## helper function to fit regression with CV
@@ -87,9 +90,13 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 
+    if(!requireNamespace("randomForest", quietly = TRUE)) {
+        stop("In order to fit a random forest outcome model, you must install the randomForest package.")
+    }
+
+    
     ## helper function to fit RF
     outfit <- function(x, y) {
             fit <- randomForest::randomForest(x, y)
@@ -154,9 +161,13 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 
+    if(!requireNamespace("gsynth", quietly = TRUE)) {
+        stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
+    }
+
+    
     ## matrix with start of treatment
     t0 <- dim(X)[2]
     t_final <- t0 + dim(y)[2]
@@ -209,10 +220,14 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 
 
+    if(!requireNamespace("MCPanel", quietly = TRUE)) {
+        stop("In order to fit matrix completion, you must install the MCPanel package.")
+    }
+
+    
     ## create matrix and missingness matrix
 
     t0 <- dim(X)[2]
@@ -265,7 +280,6 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-#' @export
 fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 
     ## combine back into a panel structure
@@ -372,12 +386,13 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
-#' @export
 fit_prog_causalimpact <- function(X, y, trt) {
 
-    if(!require("CausalImpact")) {
-        stop("In order to use CausalImpact to fit an outcome model, you must install it.")
+
+    if(!requireNamespace("CausalImpact", quietly = TRUE)) {
+        stop("In order to fit bayesian structural time series, you must install the CausalImpact package.")
     }
+
     ## structure data accordingly
     ids <- 1:nrow(X)
     t0 <- dim(X)[2]
@@ -441,7 +456,6 @@ fit_prog_causalimpact <- function(X, y, trt) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
-#' @export
 fit_prog_seq2seq <- function(X, y, trt,
                              layers=list(c(50, "relu"), c(5, "relu")),
                              epochs=500,
@@ -449,8 +463,8 @@ fit_prog_seq2seq <- function(X, y, trt,
                              val_split=0.2,
                              verbose=F) {
 
-    if(!require("keras")) {
-        stop("In order to use keras to fit an outcome model, you must install it.")
+    if(!requireNamespace("keras", quietly = TRUE)) {
+        stop("In order to fit a neural network, you must install the keras package.")
     }
     
     ## structure data accordingly
@@ -464,28 +478,28 @@ fit_prog_seq2seq <- function(X, y, trt,
     yctrl <- y[trt==0,,drop=F]
 
     ## create first layer
-    model <- keras_model_sequential() %>%
-        layer_dense(units = layers[[1]][1], activation = layers[[1]][2],
+    model <- keras::keras_model_sequential() %>%
+        keras::layer_dense(units = layers[[1]][1], activation = layers[[1]][2],
                     input_shape = ncol(Xctrl))
 
     ## add layers
     for(layer in layers[-1]) {
-        model %>% layer_dense(units = layer[1], activation = layer[2])
+        model %>% keras::layer_dense(units = layer[1], activation = layer[2])
     }
 
     ## output lyaer
-    model %>% layer_dense(units=ncol(yctrl))
+    model %>% keras::layer_dense(units=ncol(yctrl))
 
     ## compile
-    model %>% compile(optimizer="rmsprop", loss="mse", metrics=c("mae")) 
+    model %>% keras::compile(optimizer="rmsprop", loss="mse", metrics=c("mae")) 
 
     ## fit model
     learn <- model %>%
-        fit(x=Xctrl, y=yctrl,
+        keras::fit(x=Xctrl, y=yctrl,
             epochs=epochs,
             batch_size=nrow(Xctrl),
             validation_split=val_split,
-            callbacks=list(callback_early_stopping(patience=patience)),
+            callbacks=list(keras::callback_early_stopping(patience=patience)),
             verbose=verbose)
 
     ## predict for everything
