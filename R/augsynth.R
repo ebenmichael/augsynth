@@ -253,14 +253,14 @@ print.summary.augsynth <- function(summ) {
 plot.summary.augsynth <- function(summ) {
 
     summ$att %>%
-        ggplot(aes(x=Time, y=Estimate)) +
-        geom_ribbon(aes(ymin=Estimate-2*Std.Error,
+        ggplot2::ggplot(aes(x=Time, y=Estimate)) +
+        ggplot2::geom_ribbon(aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
                     alpha=0.2) +
-        geom_line() +
-        geom_vline(xintercept=summ$t_int, lty=2) +
-        geom_hline(yintercept=0, lty=2) + 
-        theme_bw()
+        ggplot2::geom_line() +
+        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
+        ggplot2::geom_hline(yintercept=0, lty=2) + 
+        ggplot2::theme_bw()
     
 }
 
@@ -272,6 +272,5 @@ plot.summary.augsynth <- function(summ) {
 #' @importFrom magrittr "%>%"
 #' @import dplyr
 #' @import LowRankQP
-#' @import ggplot2
 #' @import tidyr
 NULL
