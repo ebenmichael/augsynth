@@ -105,24 +105,3 @@ test_that("Augmenting synth with CausalImpact runs", {
                  NA)    
 }
 )
-
-
-
-
-test_that("Augmenting synth with keras runs", {
-
-    if(!requireNamespace("keras", quietly = TRUE)) {
-        ## should fail because keras isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="seq2seq", weightfunc="SCM"),
-                     "you must install the keras package")
-
-        ## install keras
-        install.packages("keras")
-        keras::install_keras()
-    }
-
-    ## should run because keras is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="seq2seq", weightfunc="SCM"),
-                 NA)    
-}
-)
