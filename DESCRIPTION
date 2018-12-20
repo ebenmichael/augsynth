@@ -13,21 +13,12 @@ Imports:
     ggplot2,
     MASS,
     Synth,
-    apg,
-    glmnet,
     plyr,
     LiblineaR,
-    randomForest,
     gsynth,
-    balancer,
-    softImpute,
-    MCPanel,
-    sandwich,
     Formula
 Remotes:
-    jpvert/apg,
     xuyiqing/gsynth,
-    ebenmichael/balancer,
     susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -38,5 +29,9 @@ Suggests:
     CausalImpact,
     keras,
     knitr,
-    rmarkdown
+    rmarkdown,
+    softImpute,
+    MCPanel,
+    glmnet,
+    randomForest
 VignetteBuilder: knitr

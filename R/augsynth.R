@@ -274,6 +274,5 @@ plot.summary.augsynth <- function(summ) {
 #' @import LowRankQP
 #' @import ggplot2
 #' @import tidyr
-#' @import LiblineaR
 #' @import glmnet
 NULL
