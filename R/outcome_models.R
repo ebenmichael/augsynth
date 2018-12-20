@@ -478,28 +478,28 @@ fit_prog_seq2seq <- function(X, y, trt,
     yctrl <- y[trt==0,,drop=F]
 
     ## create first layer
-    model <- keras_model_sequential() %>%
-        layer_dense(units = layers[[1]][1], activation = layers[[1]][2],
+    model <- keras::keras_model_sequential() %>%
+        keras::layer_dense(units = layers[[1]][1], activation = layers[[1]][2],
                     input_shape = ncol(Xctrl))
 
     ## add layers
     for(layer in layers[-1]) {
-        model %>% layer_dense(units = layer[1], activation = layer[2])
+        model %>% keras::layer_dense(units = layer[1], activation = layer[2])
     }
 
     ## output lyaer
-    model %>% layer_dense(units=ncol(yctrl))
+    model %>% keras::layer_dense(units=ncol(yctrl))
 
     ## compile
-    model %>% compile(optimizer="rmsprop", loss="mse", metrics=c("mae")) 
+    model %>% keras::compile(optimizer="rmsprop", loss="mse", metrics=c("mae")) 
 
     ## fit model
     learn <- model %>%
-        fit(x=Xctrl, y=yctrl,
+        keras::fit(x=Xctrl, y=yctrl,
             epochs=epochs,
             batch_size=nrow(Xctrl),
             validation_split=val_split,
-            callbacks=list(callback_early_stopping(patience=patience)),
+            callbacks=list(keras::callback_early_stopping(patience=patience)),
             verbose=verbose)
 
     ## predict for everything
