@@ -118,6 +118,7 @@ test_that("Augmenting synth with keras runs", {
 
         ## install keras
         install.packages("keras")
+        keras::install_keras()
     }
 
     ## should run because keras is installed
