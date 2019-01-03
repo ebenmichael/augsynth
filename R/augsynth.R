@@ -253,7 +253,7 @@ print.summary.augsynth <- function(summ) {
 plot.summary.augsynth <- function(summ) {
 
     summ$att %>%
-        ggplot2::ggplot(aes(x=Time, y=Estimate)) +
+        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate)) +
         ggplot2::geom_ribbon(aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
                     alpha=0.2) +
