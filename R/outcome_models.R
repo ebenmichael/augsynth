@@ -21,7 +21,7 @@
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
 fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
-                         poly_order=1, type="sep") {
+                         poly_order=1, type="sep", ...) {
 
     if(!requireNamespace("glmnet", quietly = TRUE)) {
         stop("In order to fit an elastic net outcome model, you must install the glmnet package.")
@@ -32,12 +32,12 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
         if(is.null(lambda)) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha, ...)$lambda.min
         } else {
             lam <- lambda
         }
         fit <- glmnet::glmnet(x, y, alpha=alpha,
-                              lambda=lam)
+                              lambda=lam, ...)
         
         return(as.matrix(coef(fit)))
     }
