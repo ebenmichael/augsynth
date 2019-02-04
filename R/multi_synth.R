@@ -29,7 +29,7 @@ multisynth <- function(X, trt, mask, y=NULL,
     }
           
 
-    
+
     out <- multisynth_(X, trt, mask, weightfunc, weightptr,
                        proxfunc, balancefunc, lambda,
                        nlambda, lambda.min.ratio,
@@ -47,19 +47,32 @@ multisynth_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
     n <- dim(X)[1]
 
     d <- dim(X)[2]
+    
+    ## average over treatment times/groups
+    grps <- sort(unique(trt[is.finite(trt)]))
+    J <- length(grps)
+    x_t <- vapply(1:J,
+                  function(j) colMeans(X[(trt ==grps[j]), , drop=FALSE]) * mask[j,],
+                  numeric(d))
+    x_t <- as.matrix(x_t)
 
-    x_t <- t(X[trt==1,,drop=FALSE] * mask)
-    x_t <- cbind(rowSums(x_t), x_t)
 
-    Xc <- X[trt==0,,drop=FALSE]
+    ## pure controls
+    Xc <- X[!is.finite(trt),,drop=FALSE]
 
-    ipw_weights <- ipw_weights[trt==0,,drop=F]
+    ## global balance
+    n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
+    avg <- apply(x_t, 1, function(x) sum(x * n1)) / sum(n1)
+    x_t <- cbind(avg, x_t)
+
+    ipw_weights <- ipw_weights[!is.finite(trt),,drop=F]
     
     loss_opts = list(Xc=Xc,
                      Xt=x_t,
                      mask=mask,
                      weight_func=weightfunc_ptr,
-                     ipw_weights=ipw_weights
+                     ipw_weights=ipw_weights,
+                     n1=n1
                      )
     
 
@@ -105,14 +118,15 @@ multisynth_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
 
     ## weights and theta
     out$theta <- apgout
-
+    out$theta <- lapply(apgout,
+                        function(th) cbind(th[,1], th[,1] + th[,-1]))
     weights <- lapply(
-        apgout,
+        out$theta,
         function(theta) {
             weights <- matrix(0, nrow=dim(X), ncol=(ncol(x_t)-1))
             for(j in 1:(ncol(x_t)-1)) {
-                weights[trt==0,j] <- weightfunc(X[trt==0,,drop=F],
-                                                (theta[,1,drop=F] + theta[,(j+1),drop=F])* mask[j,],
+                weights[!is.finite(trt),j] <- weightfunc(X[!is.finite(trt),,drop=F],
+                                                (theta[,(j+1),drop=F]),
                                                 ipw_weights)
             }
             weights
@@ -239,8 +253,11 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
         proxfunc <- balancer:::make_prox_l1_nuc()
     } else if(regularizer == "multi_ridge") {
         proxfunc <- if(normalized) balancer:::make_prox_multilevel_ridge_normalized() else balancer:::make_prox_multilevel_ridge()
+        balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * (1 + balancer:::l2(x[,1]))^2
+    } else if(regularizer == "multi_ridge_nuc") {
+        proxfunc <- if(normalized) balancer:::make_prox_multilevel_ridge_nuc_normalized() else balancer:::make_prox_multilevel_ridge_nuc()
         balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * balancer:::op_norm(x[,-1])
-    } else {
+    }else {
         stop("regularizer must be one of (NULL, 'l1', 'grpl1', 'l1grpl1', 'ridge', 'linf', 'nuc', 'nucl1')")
     }
 
@@ -268,11 +285,10 @@ preprocess <- function(X, trt, ipw_weights, type, link, normalized) {
     ## }
 
     if(is.null(ipw_weights)) {
-        ipw_weights = matrix(1/sum(trt==0), length(trt), 1)    
+        ipw_weights = matrix(1, length(trt), 1)
     } else {
         ipw_weights = matrix(ipw_weights, length(trt), 1)    
     }
-    
     ## add intercept
     if(normalized) {
         ## X <- cbind(sum(trt)/sum(1-trt), X)
