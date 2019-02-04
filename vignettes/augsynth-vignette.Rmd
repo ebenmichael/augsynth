@@ -21,7 +21,7 @@ library(kableExtra)
 
 You can install `augsynth` from github using `devtools`.
 
-```{r install, results="hide", message=F}
+```{r install, results="hide", message=F, eval=F}
 ## Install devtools if noy already installed
 install.packages("devtools", repos='http://cran.us.r-project.org')
 ## Install augsynth from github

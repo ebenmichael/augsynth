@@ -6,7 +6,7 @@
 to fit E[Y(0)|X]}
 \usage{
 fit_prog_reg(X, y, trt, alpha = 1, lambda = NULL, poly_order = 1,
-  type = "sep")
+  type = "sep", ...)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}

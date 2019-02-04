@@ -109,6 +109,28 @@ fit_progsyn <- function(wide_data, synth_data,
 
 ##### Augmented SCM with general outcome models
 
+#' Use zero weights, do nothing but output everything in the right way
+#' @param synth_data Panel data in format of Synth::dataprep
+#'
+#' @return \itemize{
+#'          \item{"weights"}{Synth weights}
+#'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
+#'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
+#' }
+fit_zero_weights <- function(synth_data) {
+    
+    ## Imbalance is uniform weights imbalance
+    uni_w <- matrix(1/ncol(synth_data$Z0), nrow=ncol(synth_data$Z0), ncol=1)
+    unif_l2_imbalance <- sqrt(sum((synth_data$Z0 %*% uni_w - synth_data$Z1)^2))
+    scaled_l2_imbalance <- 1
+    
+    return(list(weights=rep(0, ncol(synth_data$Z0)),
+                l2_imbalance=unif_l2_imbalance,
+                scaled_l2_imbalance=scaled_l2_imbalance))
+}
+
+
+
 #' Fit E[Y(0)|X] and for each post-period and balance pre-period
 #'
 #' @param wide_data Output of `format_ipw`
@@ -208,7 +230,7 @@ fit_augsyn <- function(wide_data, synth_data,
     } else if(weightfunc == "NONE") {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
-        weightf <- fit_synth_formatted
+        weightf <- fit_zero_weights
     } else {
         stop("weightfunc must be one of `SCM`, `NONE`")
     }
