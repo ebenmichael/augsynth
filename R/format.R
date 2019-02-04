@@ -45,6 +45,68 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
 }
 
 
+
+
+#' Format "long" panel data into "wide" program evaluation matrices with staggered adoption
+#' @param outcome Name of outcome column
+#' @param trt Name of treatment column
+#' @param unit Name of unit column
+#' @param time Name of time column
+#' @param data Panel data as dataframe
+#'
+#' @return \itemize{
+#'          \item{"X"}{Matrix of pre-treatment outcomes}
+#'          \item{"trt"}{Vector of treatment assignments}
+#'          \item{"y"}{Matrix of post-treatment outcomes}
+#'         }
+format_data_stag <- function(outcome, trt, unit, time, data) {
+
+
+    ## get first treatment times
+    trt_time <- data %>%
+        group_by(!!unit) %>%
+        summarise(trt_time=(!!time)[(!!trt) == 1][1]) %>%
+        mutate(trt_time=replace_na(trt_time, Inf))
+
+    t_int <- trt_time %>% filter(is.finite(trt_time)) %>%
+        summarise(t_int=max(trt_time)) %>% pull(t_int)
+
+    
+    ## boolean mask of available data for treatment groups
+    mask <- data %>% inner_join(trt_time %>%
+                                filter(is.finite(trt_time))) %>%
+        filter(!!time < t_int) %>%
+        mutate(trt=1-!!trt) %>%
+        select(!!unit, !!time, trt_time, trt) %>%
+        spread(!!time, trt) %>% 
+        group_by(trt_time) %>% 
+        summarise_all(list(max)) %>%
+        arrange(trt_time) %>% 
+        select(-trt_time, -!!unit) %>%
+        as.matrix()
+
+    ## pre treatment outcomes
+    X <- data %>%
+        filter(!!time < t_int) %>%
+        select(!!unit, !!time, !!outcome) %>%
+        spread(!!time, !!outcome) %>%
+        select(-!!unit) %>%
+        as.matrix()
+
+    ## post treatment outcomes
+    y <- data %>%
+        filter(!!time >= t_int) %>%
+        select(!!unit, !!time, !!outcome) %>%
+        spread(!!time, !!outcome) %>%
+        select(-!!unit) %>%
+        as.matrix()
+
+    
+    
+    return(list(X=X, trt=trt_time$trt_time, y=y, mask=mask))
+}
+
+
 #' Format program eval matrices into synth form
 #'
 #' @param X Matrix of pre-treatment outcomes
