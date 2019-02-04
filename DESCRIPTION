@@ -4,7 +4,8 @@ Version: 0.1.0
 Authors@R: person("Eli", "Ben-Michael", email = "ebenmichael@berkeley.edu", role = c("aut", "cre"))
 Description: A package implementing the Augmented Synthetic Controls Method.
 Depends:
-    R (>= 3.4.2)
+    R (>= 3.4.2),
+    RcppArmadillo
 Imports:
     dplyr,
     tidyr,
@@ -16,7 +17,10 @@ Imports:
     plyr,
     LiblineaR,
     gsynth,
-    Formula
+    Formula,
+    Rcpp,
+    RcppArmadillo,
+    balancer
 Remotes:
     xuyiqing/gsynth,
     susanathey/MCPanel
@@ -35,3 +39,7 @@ Suggests:
     glmnet,
     randomForest
 VignetteBuilder: knitr
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo,
+    balancer

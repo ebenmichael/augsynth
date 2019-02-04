@@ -12,3 +12,9 @@ inst/doc
 # R stuff
 *.Rout
 *.Rhistory
+
+
+# C++ stuff
+*.o
+*.so
+*.dll
