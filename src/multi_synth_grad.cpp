@@ -18,6 +18,9 @@ arma::mat balancing_grad_multisynth(arma::mat theta, List opts) {
   arma::mat Xc = as<arma::mat>(opts["Xc"]);
   arma::mat Xt = as<arma::mat>(opts["Xt"]);
 
+  // number of units at each level
+  arma::vec n1 = as<arma::vec>(opts["n1"]);
+  int ntot = accu(n1);
   // mask for time periods for treated units that are pre-treatment
   arma::mat bool_mask = as<arma::mat>(opts["mask"]);
  
@@ -39,7 +42,7 @@ arma::mat balancing_grad_multisynth(arma::mat theta, List opts) {
                           ipw_weights);
     grad.col(j+1) = restrict_Xc.t() * weights;
 
-    grad.col(0) += restrict_Xc.t() * weights;
+    grad.col(0) += restrict_Xc.t() * weights * n1[j]/ntot;
   }
 
   //combine to get gradient
