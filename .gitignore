@@ -18,3 +18,9 @@ inst/doc
 
 # Mac stuff
 *.DS_store
+
+
+# C++ stuff
+*.o
+*.so
+*.dll
