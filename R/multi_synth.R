@@ -126,7 +126,7 @@ multisynth_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
             weights <- matrix(0, nrow=dim(X), ncol=(ncol(x_t)-1))
             for(j in 1:(ncol(x_t)-1)) {
                 weights[!is.finite(trt),j] <- weightfunc(X[!is.finite(trt),,drop=F],
-                                                (theta[,(j+1),drop=F]),
+                                                (theta[,(j+1),drop=F]) * mask[j,],
                                                 ipw_weights)
             }
             weights
