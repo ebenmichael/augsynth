@@ -4,7 +4,7 @@
 \alias{preprocess}
 \title{Preprocess covariates}
 \usage{
-preprocess(X, trt, ipw_weights, type, link, normalized)
+preprocess(X, trt, ipw_weights, type, link)
 }
 \arguments{
 \item{X}{n x d matrix of covariates}
