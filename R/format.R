@@ -101,9 +101,15 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
         select(-!!unit) %>%
         as.matrix()
 
+    t_vec <- data %>% pull(!!time) %>% unique() %>% sort()
+    trt <- sapply(trt_time$trt_time, function(x) which(t_vec == x)-1) %>%
+        as.numeric() %>%
+        replace_na(Inf)
     
-    
-    return(list(X=X, trt=trt_time$trt_time, y=y, mask=mask))
+    return(list(X=X,
+                trt=trt,
+                y=y,
+                mask=mask))
 }
 
 

@@ -6,8 +6,8 @@
 \usage{
 map_to_param(X, link = c("logit", "linear", "pos-linear", "pos-enet",
   "posenet"), regularizer = c(NULL, "l1", "grpl1", "l2", "ridge", "linf",
-  "nuc", "l1_all", "l1_nuc"), ipw_weights = NULL, normalized = F,
-  Q = NULL, alpha = 1)
+  "nuc", "l1_all", "l1_nuc"), ipw_weights = NULL, Q = NULL,
+  alpha = 1)
 }
 \arguments{
 \item{X}{n x d matrix of covariates}
@@ -16,8 +16,6 @@ map_to_param(X, link = c("logit", "linear", "pos-linear", "pos-enet",
 
 \item{regularizer}{Dual of balance criterion}
 
-\item{normalized}{Whether to normalize the weights}
-
 \item{Q}{Matrix for generalized ridge, if null then use inverse covariance matrix}
 
 \item{alpha}{Elastic net parameter \eqn{\frac{1-\alpha}{2}\|\beta\|_2^2 + \alpha\|\beta\|_1}, defaults to 1}
@@ -25,6 +23,8 @@ map_to_param(X, link = c("logit", "linear", "pos-linear", "pos-enet",
 \item{type}{Find balancing weights for ATT, subgroup ATTs,
 subgroup ATTs with multilevel p-score, multilevel observational studies,
 ATT with missing outcomes, and heterogeneous effects}
+
+\item{normalized}{Whether to normalize the weights}
 }
 \value{
 Parameters for balancer
