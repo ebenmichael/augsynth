@@ -7,32 +7,56 @@
 
 using namespace Rcpp;
 
-// balancing_grad_multisynth
-arma::mat balancing_grad_multisynth(arma::mat theta, List opts);
-RcppExport SEXP _augsynth_balancing_grad_multisynth(SEXP thetaSEXP, SEXP optsSEXP) {
+// grad_multisynth_absolute
+arma::mat grad_multisynth_absolute(arma::mat theta, List opts);
+RcppExport SEXP _augsynth_grad_multisynth_absolute(SEXP thetaSEXP, SEXP optsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< arma::mat >::type theta(thetaSEXP);
     Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
-    rcpp_result_gen = Rcpp::wrap(balancing_grad_multisynth(theta, opts));
+    rcpp_result_gen = Rcpp::wrap(grad_multisynth_absolute(theta, opts));
     return rcpp_result_gen;
 END_RCPP
 }
-// make_balancing_grad_multisynth
-gptr make_balancing_grad_multisynth();
-RcppExport SEXP _augsynth_make_balancing_grad_multisynth() {
+// make_grad_multisynth_absolute
+gptr make_grad_multisynth_absolute();
+RcppExport SEXP _augsynth_make_grad_multisynth_absolute() {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(make_balancing_grad_multisynth());
+    rcpp_result_gen = Rcpp::wrap(make_grad_multisynth_absolute());
+    return rcpp_result_gen;
+END_RCPP
+}
+// grad_multisynth_relative
+arma::mat grad_multisynth_relative(arma::mat theta, List opts);
+RcppExport SEXP _augsynth_grad_multisynth_relative(SEXP thetaSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type theta(thetaSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(grad_multisynth_relative(theta, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// make_grad_multisynth_relative
+gptr make_grad_multisynth_relative();
+RcppExport SEXP _augsynth_make_grad_multisynth_relative() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(make_grad_multisynth_relative());
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_augsynth_balancing_grad_multisynth", (DL_FUNC) &_augsynth_balancing_grad_multisynth, 2},
-    {"_augsynth_make_balancing_grad_multisynth", (DL_FUNC) &_augsynth_make_balancing_grad_multisynth, 0},
+    {"_augsynth_grad_multisynth_absolute", (DL_FUNC) &_augsynth_grad_multisynth_absolute, 2},
+    {"_augsynth_make_grad_multisynth_absolute", (DL_FUNC) &_augsynth_make_grad_multisynth_absolute, 0},
+    {"_augsynth_grad_multisynth_relative", (DL_FUNC) &_augsynth_grad_multisynth_relative, 2},
+    {"_augsynth_make_grad_multisynth_relative", (DL_FUNC) &_augsynth_make_grad_multisynth_relative, 0},
     {NULL, NULL, 0}
 };
 
