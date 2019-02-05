@@ -2,48 +2,62 @@
 ## Synth with multiple time periods
 ################################################################################
 
-multisynth <- function(X, trt, mask, relative=F, gap=100, y=NULL,
+#' Internal function to fit synth with staggered adoption
+#' @param X Matrix of pre-final intervention outcomes
+#' @param trt Vector of treatment levels/times
+#' @param relative Whether to re-index time according to treatment date, default T
+#' @param gap Number of time periods after treatment to impute control values.
+#'            For units treated at time T_j, all units treated after T_j + gap
+#'            will be used as control values. If larger than the number of periods,
+#'            only never never treated units (pure controls) will be used as comparison units
+#' @param link Link function/dispersion function. Default is logit, for internal use only
+#' @param regularizer Form of pooling. "multilevel_ridge" pools parameters towards the group mean.
+#'                    "mulilevel_ridge_nuc" pools parameters towards the group mean and
+#'                    imposes a low-rank restriction on the parameters.
+#' @param lambda Regularization hyper-parameter. If NULL then solutions will be computed for a
+#'               range of lambdas equally spaced on the log scale.
+#' @param nlambda Number of values of lambda to consider if lambda is NULL
+#' @param lambda.min.ratio Ratio between largest and smallest lambda values.
+#' @param alpha Hyper-parameter that controls trade-off between overall and individual balance.
+#'              Larger values of alpha place more emphasis on individual balance.
+#'              Regularization is
+#'                (1-alpha) * lambda ||global|| + alpha * lambda ||individual||
+#' @param opts Additional options for optimization
+#' 
+multisynth_ <- function(X, trt, mask, relative=T, gap=100,
                        link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
-                       regularizer=c(NULL, "l1", "grpl1", "l2", "ridge", "linf", "nuc",
-                                     "l1_all", "l1_nuc"),
+                       regularizer=c(NULL, "multilevel_ridge", "multilevel_ridge_nuc"),
                        lambda=NULL, nlambda=20, lambda.min.ratio=1e-3,
-                       interact=F, alpha=1, Q=NULL,
-                       ipw_weights=NULL, mu0=NULL,
+                       alpha=1,
                        opts=list()) {
 
     ## map string args to actual params
-    params <- map_to_param(X, link, regularizer, ipw_weights, Q, alpha)
+    params <- map_to_param(X, link, regularizer, alpha)
     weightfunc <- params[[1]]
     weightptr <- params[[2]]
     proxfunc <- params[[3]]
     balancefunc <- params[[4]]
     prox_opts <- params[[5]]
 
-    
-    prep <- preprocess(X, trt, ipw_weights, "", link)
-    X <- prep$X
-    ipw_weights <- prep$ipw_weights
-          
-
     if(!relative) {
         out <- multisynth_absolute_(X, trt, mask, weightfunc, weightptr,
                                     proxfunc, balancefunc, lambda,
                                     nlambda, lambda.min.ratio,
-                                    ipw_weights, mu0, opts, prox_opts)
+                                    opts, prox_opts)
     } else {
        out <- multisynth_relative_(X, trt, mask, gap, weightfunc, weightptr,
                                     proxfunc, balancefunc, lambda,
                                     nlambda, lambda.min.ratio,
-                                    ipw_weights, mu0, opts, prox_opts)
+                                    opts, prox_opts)
     }
     return(out)
 }
 
-
+#' Internal function to fit synth with staggered adoption according to absolute time
 multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
                                  proxfunc, balancefunc, lambda=NULL,
                                  nlambda=20, lambda.min.ratio=1e-3,
-                                 ipw_weights=NULL, mu0=NULL, opts=list(),
+                                 opts=list(),
                                  prox_opts=list()) {
 
     n <- dim(X)[1]
@@ -69,13 +83,12 @@ multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
     ## compute global average according to calendar time
     avg <- apply(x_t, 1, function(x) sum(x * n1)) / sum(n1)
     x_t <- cbind(avg, x_t)
-    ipw_weights <- ipw_weights[!is.finite(trt),,drop=F]
+
     
     loss_opts = list(Xc=Xc,
                      Xt=x_t,
                      mask=mask,
                      weight_func=weightfunc_ptr,
-                     ipw_weights=ipw_weights,
                      n1=n1
                      )
     
@@ -146,11 +159,11 @@ multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
 }
 
 
-
+#' Internal function to fit synth with staggered adoption according to time relative to treatment
 multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
                                  proxfunc, balancefunc, lambda=NULL,
                                  nlambda=20, lambda.min.ratio=1e-3,
-                                 ipw_weights=NULL, mu0=NULL, opts=list(),
+                                 opts=list(),
                                  prox_opts=list()) {
 
     n <- dim(X)[1]
@@ -183,7 +196,7 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
     avg <- apply(x_t, 1, function(x) sum(x * n1)) / sum(n1)
     x_t <- cbind(avg, x_t)
 
-    ipw_weights <- ipw_weights[!is.finite(trt),,drop=F]
+
     
     loss_opts = list(X=X,
                      Xt=x_t,
@@ -192,7 +205,6 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
                      unique_trt=grps,
                      gap=gap,
                      weight_func=weightfunc_ptr,
-                     ipw_weights=ipw_weights,
                      n1=n1
                      )
     
@@ -252,9 +264,7 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
                               function(vec) c(tail(vec * mask[j,], (d-grps[j])),
                                               head(vec * mask[j,], grps[j]))))
                 weights[trt > grps[j] + gap,j] <- weightfunc(Xmat,
-                                                             theta[,(j+1),drop=F]
-                                                             ## ipw_weights
-                                                             )
+                                                             theta[,(j+1),drop=F])
             }
             weights
         })
@@ -278,10 +288,7 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
 
 map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
                          regularizer=c(NULL, "l1", "grpl1", "l2", "ridge", "linf", "nuc",
-                                       "l1_all", "l1_nuc"),
-                         ipw_weights=NULL,
-                         ## normalized=F,
-                        Q=NULL, alpha=1) {
+                                       "l1_all", "l1_nuc"), alpha=1) {
     #' Map string choices to the proper parameters for the balancer sub-functions
     #' @param X n x d matrix of covariates
     #' @param type Find balancing weights for ATT, subgroup ATTs,
@@ -289,8 +296,6 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
     #'             ATT with missing outcomes, and heterogeneous effects
     #' @param link Link function for weights
     #' @param regularizer Dual of balance criterion
-    #' @param normalized Whether to normalize the weights
-    #' @param Q Matrix for generalized ridge, if null then use inverse covariance matrix
     #' @param alpha Elastic net parameter \eqn{\frac{1-\alpha}{2}\|\beta\|_2^2 + \alpha\|\beta\|_1}, defaults to 1
     #'
     #' @return Parameters for balancer
@@ -346,28 +351,6 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
             balancer:::make_prox_l2_sq()
         ## balancefunc <- l2sq
         balancefunc <- function(x) (1 + balancer:::l2(x))^2
-    } else if (regularizer=="mahal") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l2_sq_Q_normalized() else
-            balancer:::make_prox_l2_Q_sq()
-        if(is.null(Q)) {
-            ## use inverse covariance matrix of Q is null
-            ## just do svd once
-            Xsvd <- svd(X)
-            prox_opts$evec <- Xsvd$v
-            prox_opts$eval <- 1 / (Xsvd$d^2 / nrow(X))
-            Q <- prox_opts$evec %*% diag(prox_opts$eval) %*% t(prox_opts$evec)
-        } else {
-            ## eigendecomposition once
-            Qsvd <- eigen(Q)
-            prox_opts$evec <- Qsvd$vectors
-            prox_opts$eval <- Qsvd$values
-        }
-
-        ## if(normalized) {
-        ##     Q <- rbind(0, cbind(0, Q))
-        ## }
-        balancefunc <- function(x) l2Q(x, Q)
-
     } else if(regularizer == "enet") {
         proxfunc <- ## if(normalized) balancer:::make_prox_enet_normalized() else
             balancer:::make_prox_enet()
@@ -404,36 +387,3 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
     return(list(weightfunc, weightptr, proxfunc, balancefunc, prox_opts))
 }
 
-#' Preprocess covariates
-#' 
-#' @param X n x d matrix of covariates
-#' @param trt Vector of treatment status indicators
-#' @param ipw_weights Optional ipw weights to measure dispersion against
-#' @param type Find balancing weights for ATT, subgroup ATTs,
-#'             subgroup ATTs with multilevel p-score, multilevel observational studies,
-#'             ATT with missing outcomes, and heterogeneous effects#'
-#' @param link Link function for weights
-#' @param normalized Whether to normalize the weights
-#'
-#' @return Processed covariate matrix
-preprocess <- function(X, trt, ipw_weights, type, link##, normalized
-                       ) {
-
-    ## ## center covariates by control means
-    ## if(type == "att") {
-    ##     X <- apply(X, 2, function(x) x - mean(x[trt==0]))
-    ## }
-
-    if(is.null(ipw_weights)) {
-        ipw_weights = matrix(1, length(trt), 1)
-    } else {
-        ipw_weights = matrix(ipw_weights, length(trt), 1)    
-    }
-    ## ## add intercept
-    ## if(normalized) {
-    ##     ## X <- cbind(sum(trt)/sum(1-trt), X)
-    ##     X <- cbind(1, X)
-    ## }
-    return(list(X=X, ipw_weights=ipw_weights))
-    
-}
