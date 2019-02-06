@@ -5,8 +5,7 @@
 \title{Map string choices to the proper parameters for the balancer sub-functions}
 \usage{
 map_to_param(X, link = c("logit", "linear", "pos-linear", "pos-enet",
-  "posenet"), regularizer = c(NULL, "l1", "grpl1", "l2", "ridge", "linf",
-  "nuc", "l1_all", "l1_nuc"), alpha = 1)
+  "posenet"), regularizer = c("nuc", "ridge"), alpha = 1)
 }
 \arguments{
 \item{X}{n x d matrix of covariates}
