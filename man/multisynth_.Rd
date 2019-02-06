@@ -5,9 +5,9 @@
 \title{Internal function to fit synth with staggered adoption}
 \usage{
 multisynth_(X, trt, mask, relative = T, gap = 100, link = c("logit",
-  "linear", "pos-linear", "pos-enet", "posenet"), regularizer = c(NULL,
-  "multilevel_ridge", "multilevel_ridge_nuc"), lambda = NULL,
-  nlambda = 20, lambda.min.ratio = 0.001, alpha = 1, opts = list())
+  "linear", "pos-linear", "pos-enet", "posenet"), regularizer = c("nuc",
+  "ridge"), lambda = NULL, nlambda = 20, lambda.min.ratio = 0.001,
+  alpha = 1, opts = list())
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes}
@@ -23,9 +23,9 @@ only never never treated units (pure controls) will be used as comparison units}
 
 \item{link}{Link function/dispersion function. Default is logit, for internal use only}
 
-\item{regularizer}{Form of pooling. "multilevel_ridge" pools parameters towards the group mean.
-"mulilevel_ridge_nuc" pools parameters towards the group mean and
-imposes a low-rank restriction on the parameters.}
+\item{regularizer}{Form of pooling. "multi_ridge" pools parameters towards the group mean.
+"ridge" pools parameters towards the group mean and
+"nuc" imposes a low-rank restriction on the parameters.}
 
 \item{lambda}{Regularization hyper-parameter. If NULL then solutions will be computed for a
 range of lambdas equally spaced on the log scale.}

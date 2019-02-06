@@ -11,9 +11,9 @@
 #'            will be used as control values. If larger than the number of periods,
 #'            only never never treated units (pure controls) will be used as comparison units
 #' @param link Link function/dispersion function. Default is logit, for internal use only
-#' @param regularizer Form of pooling. "multilevel_ridge" pools parameters towards the group mean.
-#'                    "mulilevel_ridge_nuc" pools parameters towards the group mean and
-#'                    imposes a low-rank restriction on the parameters.
+#' @param regularizer Form of pooling. "multi_ridge" pools parameters towards the group mean.
+#'                    "ridge" pools parameters towards the group mean and
+#'                    "nuc" imposes a low-rank restriction on the parameters.
 #' @param lambda Regularization hyper-parameter. If NULL then solutions will be computed for a
 #'               range of lambdas equally spaced on the log scale.
 #' @param nlambda Number of values of lambda to consider if lambda is NULL
@@ -26,7 +26,7 @@
 #' 
 multisynth_ <- function(X, trt, mask, relative=T, gap=100,
                        link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
-                       regularizer=c(NULL, "multilevel_ridge", "multilevel_ridge_nuc"),
+                       regularizer=c("nuc", "ridge"),
                        lambda=NULL, nlambda=20, lambda.min.ratio=1e-3,
                        alpha=1,
                        opts=list()) {
@@ -287,8 +287,7 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
 
 
 map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
-                         regularizer=c(NULL, "l1", "grpl1", "l2", "ridge", "linf", "nuc",
-                                       "l1_all", "l1_nuc"), alpha=1) {
+                         regularizer=c("nuc", "ridge"), alpha=1) {
     #' Map string choices to the proper parameters for the balancer sub-functions
     #' @param X n x d matrix of covariates
     #' @param type Find balancing weights for ATT, subgroup ATTs,
@@ -326,61 +325,14 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
 
     prox_opts <- list(alpha=alpha)
     
-    if(is.null(regularizer)) {
-        proxfunc <- balancer:::make_no_prox()
-    } else if(regularizer == "l1") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l1_normalized() else 
-            balancer:::make_prox_l1()
-        balancefunc <- balancer:::linf
-    } else if(regularizer == "grpl1") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l1_grp_normalized() else
-            balancer:::make_prox_l1_grp()
-        balancefunc <- balancer:::linf_grp
-    } else if(regularizer == "l1grpl1") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l1_grp_l1_normalized() else
-            balancer:::make_prox_l1_grp_l1()
-        ## double the covariate matrix to include two sets of parameters
-        X <- cbind(X,X)
-        balancefunc <- balancer:::linf_grp_linf
-    } else if(regularizer == "l2") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l2_normalized() else
-            balancer:::make_prox_l2()
-        balancefunc <- balancer:::l2
-    } else if(regularizer == "ridge") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_l2_sq_normalized() else
-            balancer:::make_prox_l2_sq()
-        ## balancefunc <- l2sq
-        balancefunc <- function(x) (1 + balancer:::l2(x))^2
-    } else if(regularizer == "enet") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_enet_normalized() else
-            balancer:::make_prox_enet()
-        balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x))^2 + alpha * balancer:::linf(x)
-    }else if(regularizer == "linf") {
-        stop("L infinity regularization not implemented")
-    } else if(regularizer == "nuc") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_nuc_normalized()else
-            balancer:::make_prox_nuc()
-        balancefunc <- balancer:::op_norm
-    } else if(regularizer == "nucl1") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_nuc_l1_normalized() else
-            balancer:::make_prox_nuc_l1()
-        ## double the covariate matrix to include two sets of parameters
-        X <- cbind(X,X)
-        balancefunc <- balancer:::linf_op
-    } else if(regularizer == "l1_all") {
-        proxfunc <- balancer:::make_prox_l1_all()
-    } else if(regularizer == "l1_nuc") {
-        proxfunc <- balancer:::make_prox_l1_nuc()
-    } else if(regularizer == "multi_ridge") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_multilevel_ridge_normalized() else
-            balancer:::make_prox_multilevel_ridge()
+    if(regularizer == "ridge") {
+        proxfunc <- balancer:::make_prox_multilevel_ridge()
         balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * (1 + balancer:::l2(x[,1]))^2
-    } else if(regularizer == "multi_ridge_nuc") {
-        proxfunc <- ## if(normalized) balancer:::make_prox_multilevel_ridge_nuc_normalized() else
-            balancer:::make_prox_multilevel_ridge_nuc()
+    } else if(regularizer == "nuc") {
+        proxfunc <- balancer:::make_prox_multilevel_ridge_nuc()
         balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * balancer:::op_norm(x[,-1])
     }else {
-        stop("regularizer must be one of (NULL, 'l1', 'grpl1', 'l1grpl1', 'ridge', 'linf', 'nuc', 'nucl1')")
+        stop("regularizer must be one of ('ridge', 'nuc')")
     }
 
 
