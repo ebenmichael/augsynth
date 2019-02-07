@@ -109,7 +109,7 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
     
     ## if hyperparam is NULL, start from reference weights and decrease
     if(is.null(lambda)) {
-        lam0 <- balancefunc(balancing_grad_multisynth(init, loss_opts))
+        lam0 <- balancefunc(grad_multisynth_absolute(init, loss_opts))
         lam1 <- lam0 * lambda.min.ratio
         ## decrease on log scale
         lambda <- exp(seq(log(lam0), log(lam1), length.out=nlambda))
