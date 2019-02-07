@@ -4,7 +4,10 @@
 \alias{plot.summary.multisynth}
 \title{Plot function for summary function for multisynth}
 \usage{
-\method{plot}{summary.multisynth}(summ)
+\method{plot}{summary.multisynth}(summ, levels = NULL)
+}
+\arguments{
+\item{levels}{Treatment levels to plot for, default plots for everything}
 }
 \description{
 Plot function for summary function for multisynth

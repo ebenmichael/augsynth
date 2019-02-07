@@ -4,7 +4,12 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(multisynth)
+\method{plot}{multisynth}(multisynth, relative = NULL, levels = NULL)
+}
+\arguments{
+\item{relative}{Whether to estimate effects for time relative to treatment}
+
+\item{levels}{Treatment levels to plot for, default plots for everything}
 }
 \description{
 Plot function for multisynth
