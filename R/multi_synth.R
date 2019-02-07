@@ -143,7 +143,6 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
         function(theta) {
             weights <- matrix(0, nrow=dim(X), ncol=(ncol(x_t)-1))
             for(j in 1:(ncol(x_t)-1)) {
-                print(c(grps[j], grps[j] + gap, sum(trt > grps[j] + gap)))
                 ## restrict to units treated later than T_j + gap
                 Xmat <- X[trt > grps[j] + gap,,drop=F]
                 weights[trt > grps[j] + gap,j] <- weightfunc(Xmat,
