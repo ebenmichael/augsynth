@@ -4,10 +4,10 @@
 \alias{multisynth_}
 \title{Internal function to fit synth with staggered adoption}
 \usage{
-multisynth_(X, trt, mask, relative = T, gap = 100, link = c("logit",
-  "linear", "pos-linear", "pos-enet", "posenet"), regularizer = c("nuc",
-  "ridge"), lambda = NULL, nlambda = 20, lambda.min.ratio = 0.001,
-  alpha = 1, opts = list())
+multisynth_(X, trt, mask, relative, gap, link = c("logit", "linear",
+  "pos-linear", "pos-enet", "posenet"), regularizer = c("nuc", "ridge"),
+  lambda = NULL, nlambda = 20, lambda.min.ratio = 0.001, alpha = 1,
+  opts = list())
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes}
