@@ -230,9 +230,11 @@ print.multisynth <- function(multisynth) {
 
 
 #' Plot function for multisynth
+#' @param relative Whether to estimate effects for time relative to treatment
+#' @param levels Treatment levels to plot for, default plots for everything
 #' @export
-plot.multisynth <- function(multisynth) {
-    plot(summary(multisynth))
+plot.multisynth <- function(multisynth, relative=NULL, levels=NULL) {
+    plot(summary(multisynth, relative), levels)
 }
 
 
@@ -259,7 +261,7 @@ summary.multisynth <- function(multisynth, relative=NULL) {
 
 
     if(relative) {
-        att <- data.frame(cbind(-d:min(gap-1, ttot-grps[1]-1), att))
+        att <- data.frame(cbind(-(d-1):min(gap, ttot-grps[1]), att))
         names(att) <- c("Time", "Average", times[grps[1:J]])
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) -> att
@@ -295,16 +297,18 @@ print.summary.multisynth <- function(summ, level=NULL) {
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
     if(is.null(level)) level <- "Average"
+
+    first_lvl <- summ$att %>% filter(Level != "Average") %>% pull(Level) %>% min()
     
     ## get ATT estimates for treatment level, post treatment
-    att_est <- summ$att %>%
-        filter(Level == level)
     if(summ$relative) {
-        att_est %>% filter(Time >= 0) -> att_est
+        summ$att %>%
+            filter(Time > 0, Level==level) %>%
+            rename("Time Since Treatment"=Time) -> att_est
     } else if(level == "Average") {
-        att_est %>% filter(Time >= min(Level)) -> att_est
+        summ$att %>% filter(Time > first_lvl, Level=="Average") -> att_est
     } else {
-        att_est %>% filter(Time >= level) -> att_est
+        summ$att %>% filter(Time > level, Level==level) -> att_est
     }
 
 
@@ -323,17 +327,44 @@ print.summary.multisynth <- function(summ, level=NULL) {
 }
 
 #' Plot function for summary function for multisynth
+#' @param levels Treatment levels to plot for, default plots for everything
 #' @export
-plot.summary.multisynth <- function(summ) {
+plot.summary.multisynth <- function(summ, levels=NULL) {
 
-    summ$att %>%
-        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate)) +
-        ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                        ymax=Estimate+2*Std.Error),
-                    alpha=0.2) +
-        ggplot2::geom_line() +
-        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
-        ggplot2::geom_hline(yintercept=0, lty=2) + 
+    ## get the last time period for each level
+    summ$att %>% na.omit() %>%
+        group_by(Level) %>%
+        summarise(last_time=max(Time)) -> last_times
+
+    if(is.null(levels)) levels <- unique(summ$att$Level)
+
+    
+    
+    summ$att %>% inner_join(last_times) %>%
+        filter(Level %in% levels) %>%
+        mutate(label=ifelse(Time == last_time, Level, NA),
+               is_avg = ifelse(("Average" %in% levels) * (Level == "Average"),
+                               "A", "B")) %>%
+        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate,
+                                     group=Level,
+                                     color=is_avg,
+                                     alpha=is_avg)) +
+            ggplot2::geom_line() +
+            ggrepel::geom_label_repel(ggplot2::aes(label=label),
+                                      nudge_x=1, na.rm=T) + 
+            ggplot2::geom_hline(yintercept=0, lty=2) -> p
+
+    if(summ$relative) {
+        p <- p + ggplot2::geom_vline(xintercept=0, lty=2)
+    } else {
+        p <- p + ggplot2::geom_vline(aes(xintercept=as.numeric(Level)),
+                                     lty=2, alpha=0.5,
+                                     summ$att %>% filter(Level != "Average"))
+    }
+    p <- p + ggplot2::scale_alpha_manual(values=c(1, 0.5)) +
+        ggplot2::scale_color_manual(values=c("#333333", "#818181")) +
+        ggplot2::guides(alpha=F, color=F) + 
         ggplot2::theme_bw()
+    return(p)
     
 }
