@@ -48,11 +48,15 @@ multisynth <- function(form, unit, time, data,
                       list(link="logit",
                            regularizer="nuc",
                            nlambda=20, lambda.min.ratio=1e-3,
-                           opts=list()))
-
-    msynth <- do.call(multisynth_, c(list(X=wide$X, trt=wide$trt, mask=wide$mask, gap=gap,
-                                        relative=relative, lambda=lambda, alpha=alpha),
-                                   opts_weights))    
+                           opts=NULL))
+    
+    msynth <- multisynth_(X=wide$X, trt=wide$trt,
+                          mask=wide$mask, gap=gap,
+                          relative=relative, lambda=lambda, alpha=alpha,
+                          link=opts_weights$link, regularizer=opts_weights$regularizer,
+                          nlambda=opts_weights$nlambda,
+                          lambda.min.ratio=opts_weights$lambda.min.ratio,
+                          opts=opts_weights$opts)
     msynth$data <- wide
     msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     msynth$call <- call_name
