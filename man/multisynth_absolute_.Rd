@@ -4,9 +4,9 @@
 \alias{multisynth_absolute_}
 \title{Internal function to fit synth with staggered adoption according to absolute time}
 \usage{
-multisynth_absolute_(X, trt, mask, weightfunc, weightfunc_ptr, proxfunc,
-  balancefunc, lambda = NULL, nlambda = 20, lambda.min.ratio = 0.001,
-  opts = list(), prox_opts = list())
+multisynth_absolute_(X, trt, mask, gap, weightfunc, weightfunc_ptr,
+  proxfunc, balancefunc, lambda = NULL, nlambda = 20,
+  lambda.min.ratio = 0.001, opts = list(), prox_opts = list())
 }
 \description{
 Internal function to fit synth with staggered adoption according to absolute time

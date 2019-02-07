@@ -24,7 +24,7 @@
 #'                (1-alpha) * lambda ||global|| + alpha * lambda ||individual||
 #' @param opts Additional options for optimization
 #' 
-multisynth_ <- function(X, trt, mask, relative=T, gap=100,
+multisynth_ <- function(X, trt, mask, relative, gap,
                        link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
                        regularizer=c("nuc", "ridge"),
                        lambda=NULL, nlambda=20, lambda.min.ratio=1e-3,
@@ -39,8 +39,9 @@ multisynth_ <- function(X, trt, mask, relative=T, gap=100,
     balancefunc <- params[[4]]
     prox_opts <- params[[5]]
 
+
     if(!relative) {
-        out <- multisynth_absolute_(X, trt, mask, weightfunc, weightptr,
+        out <- multisynth_absolute_(X, trt, mask, gap, weightfunc, weightptr,
                                     proxfunc, balancefunc, lambda,
                                     nlambda, lambda.min.ratio,
                                     opts, prox_opts)
@@ -54,7 +55,7 @@ multisynth_ <- function(X, trt, mask, relative=T, gap=100,
 }
 
 #' Internal function to fit synth with staggered adoption according to absolute time
-multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
+multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
                                  proxfunc, balancefunc, lambda=NULL,
                                  nlambda=20, lambda.min.ratio=1e-3,
                                  opts=list(),
@@ -74,9 +75,6 @@ multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
 
 
 
-    ## pure controls
-    Xc <- X[!is.finite(trt),,drop=FALSE]
-
     ## global balance
     n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
 
@@ -85,13 +83,16 @@ multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
     x_t <- cbind(avg, x_t)
 
     
-    loss_opts = list(Xc=Xc,
+    loss_opts = list(X=X,
                      Xt=x_t,
                      mask=mask,
+                     trt=trt,
+                     unique_trt=grps,
+                     gap=gap,
                      weight_func=weightfunc_ptr,
                      n1=n1
                      )
-    
+        
 
     ## initialize at 0 if no initialization is passed
     init <- matrix(0, nrow=d, ncol=ncol(x_t))
@@ -142,8 +143,11 @@ multisynth_absolute_ <- function(X, trt, mask, weightfunc, weightfunc_ptr,
         function(theta) {
             weights <- matrix(0, nrow=dim(X), ncol=(ncol(x_t)-1))
             for(j in 1:(ncol(x_t)-1)) {
-                weights[!is.finite(trt),j] <- weightfunc(X[!is.finite(trt),,drop=F],
-                                                (theta[,(j+1),drop=F]) * mask[j,])
+                print(c(grps[j], grps[j] + gap, sum(trt > grps[j] + gap)))
+                ## restrict to units treated later than T_j + gap
+                Xmat <- X[trt > grps[j] + gap,,drop=F]
+                weights[trt > grps[j] + gap,j] <- weightfunc(Xmat,
+                                                             theta[,(j+1),drop=F])
             }
             weights
         })
