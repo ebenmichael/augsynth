@@ -50,8 +50,8 @@ multisynth <- function(form, unit, time, data,
                            nlambda=20, lambda.min.ratio=1e-3,
                            opts=list()))
 
-    msynth <- do.call(multisynth_, c(list(X=wide$X, trt=wide$trt, mask=wide$mask,
-                                        lambda=lambda, alpha=alpha),
+    msynth <- do.call(multisynth_, c(list(X=wide$X, trt=wide$trt, mask=wide$mask, gap=gap,
+                                        relative=relative, lambda=lambda, alpha=alpha),
                                    opts_weights))    
     msynth$data <- wide
     msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
@@ -140,6 +140,22 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
         
     } else {
 
+        ## remove all estimates for t > T_j + gap
+        lapply(mu0hat, function(x) {
+            vapply(1:J,
+                   function(j) c(x[1:min(grps[j]+gap, ttot),j],
+                                 rep(NA, max(0, ttot-(grps[j] + gap)))),
+                   numeric(ttot))
+        }) -> mu0hat
+
+        lapply(tauhat, function(x) {
+            vapply(1:J,
+                   function(j) c(x[1:min(grps[j]+gap, ttot),j],
+                                 rep(NA, max(0, ttot-(grps[j] + gap)))),
+                   numeric(ttot))
+        }) -> tauhat
+
+        
         ## only average currently treated units
         lapply(mu0hat, function(x) {
             avg1 <- rowSums(t(fullmask) *  x * n1) /
