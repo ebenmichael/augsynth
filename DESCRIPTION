@@ -41,5 +41,4 @@ Suggests:
 VignetteBuilder: knitr
 LinkingTo: 
     Rcpp,
-    RcppArmadillo,
-    balancer
+    RcppArmadillo

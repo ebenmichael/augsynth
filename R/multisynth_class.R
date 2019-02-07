@@ -47,16 +47,68 @@ multisynth <- function(form, unit, time, data,
     opts_weights <- c(opts_weights,
                       list(link="logit",
                            regularizer="nuc",
-                           nlambda=20, lambda.min.ratio=1e-3,
+                           nlambda=10, lambda.min.ratio=5e-2,
                            opts=NULL))
-    
-    msynth <- multisynth_(X=wide$X, trt=wide$trt,
-                          mask=wide$mask, gap=gap,
-                          relative=relative, lambda=lambda, alpha=alpha,
-                          link=opts_weights$link, regularizer=opts_weights$regularizer,
-                          nlambda=opts_weights$nlambda,
-                          lambda.min.ratio=opts_weights$lambda.min.ratio,
-                          opts=opts_weights$opts)
+
+    ## If no lambda or multiple lambdas, search over possible lambdas and choose the one with best balance
+    if(is.null(lambda) || length(lambda) > 1) {
+        suppressWarnings(
+            msynth <- multisynth_(X=wide$X, trt=wide$trt,
+                                  mask=wide$mask, gap=gap,
+                                  relative=relative, lambda=lambda, alpha=alpha,
+                                  link=opts_weights$link, regularizer=opts_weights$regularizer,
+                                  nlambda=opts_weights$nlambda,
+                                  lambda.min.ratio=opts_weights$lambda.min.ratio,
+                                  opts=opts_weights$opts)
+        )
+        ## Balance for aggregate estimate
+        global_l2 <- lapply(msynth$imbalance,
+                                   function(imbal) sqrt(sum(imbal[,1]^2)))
+
+        ## balance for individual estimates
+        ind_op <- lapply(msynth$imbalance,
+                                function(imbal) svd(imbal[,-1])$d[1])
+
+
+        ## get the setting of lambda with the best weighted balance
+        best <- which.min((1-alpha) * as.numeric(global_l2) +
+                          alpha * as.numeric(ind_op))
+        cbind(as.numeric(global_l2), as.numeric(ind_op)) %>% print()
+        print(best)
+        msynth$global_l2 <- global_l2[[best]]
+        msynth$ind_op <- ind_op[[best]]
+        msynth$weights <- msynth$weights[[best]]
+        msynth$theta <- msynth$theta[[best]]
+        msynth$imbalance <- msynth$imbalance[[best]]
+        msynth$lambda <- msynth$lambda[best]
+
+        
+    } else {
+        msynth <- multisynth_(X=wide$X, trt=wide$trt,
+                              mask=wide$mask, gap=gap,
+                              relative=relative, lambda=lambda, alpha=alpha,
+                              link=opts_weights$link, regularizer=opts_weights$regularizer,
+                              nlambda=opts_weights$nlambda,
+                              lambda.min.ratio=opts_weights$lambda.min.ratio,
+                              opts=opts_weights$opts)
+
+        ## Balance for aggregate estimate
+        global_l2 <- lapply(msynth$imbalance,
+                                   function(imbal) sqrt(sum(imbal[,1]^2)))
+
+        ## balance for individual estimates
+        ind_op <- lapply(msynth$imbalance,
+                         function(imbal) svd(imbal[,-1])$d[1])
+
+        
+        msynth$global_l2 <- global_l2[[1]]
+        msynth$ind_op <- ind_op[[1]]
+        msynth$weights <- msynth$weights[[1]]
+        msynth$theta <- msynth$theta[[1]]
+        msynth$imbalance <- msynth$imbalance[[1]]
+
+
+    }
     msynth$data <- wide
     msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     msynth$call <- call_name
@@ -75,11 +127,9 @@ multisynth <- function(form, unit, time, data,
                           opts=list(max_it=0))
     
     ## Balance for aggregate estimate
-    msynth$global_l2 <- sqrt(sum(msynth$imbalance[[1]][,1]^2))
-    msynth$scaled_global_l2 <- msynth$global_l2 / sqrt(sum(unif$imbalance[[1]][,1]^2))
+    msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[[1]][,1]^2))
 
     ## balance for individual estimates
-    msynth$ind_op <- svd(msynth$imbalance[[1]][,-1])$d[1]
     msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[[1]][,-1])$d[1]
     
     
@@ -113,8 +163,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     
 
     ## get weighted average estimates
-    mu0hat <- lapply(multisynth$weights,
-                     function(w) t(fulldat) %*% w)
+    mu0hat <- t(fulldat) %*% multisynth$weights
 
     ## estimate the post-treatment values to gett att estimates
     mu1hat <- vapply(1:J,
@@ -122,93 +171,73 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                                                 , drop=FALSE]),
                      numeric(ttot))
 
-    tauhat <- lapply(mu0hat, function(x) mu1hat - x)
+    tauhat <- mu1hat -mu0hat
     
     ## re-index time if relative to treatment
     if(relative) {
         total_len <- min(d + gap, ttot + d - grps[1]) ## total length of predictions
-        mu0hat <- lapply(mu0hat,
-                         function(x) {
-                             vapply(1:J,
-                                    function(j) {
-                                        vec <- c(rep(NA, d-grps[j]),
-                                          x[1:grps[j],j],
-                                          x[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
-                                        c(vec, rep(NA, total_len - length(vec)))
-                                    },
-                                    numeric(total_len))
-                         })
+        mu0hat <- vapply(1:J,
+                         function(j) {
+                             vec <- c(rep(NA, d-grps[j]),
+                                      mu0hat[1:grps[j],j],
+                                      mu0hat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
+                             c(vec, rep(NA, total_len - length(vec)))
+                         },
+                         numeric(total_len))
+        
+        tauhat <- vapply(1:J,
+                         function(j) {
+                             vec <- c(rep(NA, d-grps[j]),
+                                      tauhat[1:grps[j],j],
+                                      tauhat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
+                             c(vec, rep(NA, total_len - length(vec)))
+                         },
+                         numeric(total_len))
+        ## get the overall average estimate
+        avg <- apply(mu0hat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
+        mu0hat <- cbind(avg, mu0hat)
 
-        tauhat <- lapply(tauhat,
-                         function(x) {
-                             vapply(1:J,
-                                    function(j) {
-                                        vec <- c(rep(NA, d-grps[j]),
-                                                 x[1:grps[j],j],
-                                                 x[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
-                                        c(vec, rep(NA, total_len - length(vec)))
-                                    },
-                                    numeric(total_len))
-                         })
-    ## get the overall average estimate
-    lapply(mu0hat,
-           function(x) {
-               avg <- apply(x, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
-               cbind(avg, x)
-           }) -> mu0hat
-
-    lapply(tauhat,
-           function(x) {
-               avg <- apply(x, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
-               cbind(avg, x)
-           }) -> tauhat
+        avg <- apply(tauhat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
+        tauhat <- cbind(avg, tauhat)
         
     } else {
 
         ## remove all estimates for t > T_j + gap
-        lapply(mu0hat, function(x) {
-            vapply(1:J,
-                   function(j) c(x[1:min(grps[j]+gap, ttot),j],
-                                 rep(NA, max(0, ttot-(grps[j] + gap)))),
-                   numeric(ttot))
-        }) -> mu0hat
+        vapply(1:J,
+               function(j) c(mu0hat[1:min(grps[j]+gap, ttot),j],
+                             rep(NA, max(0, ttot-(grps[j] + gap)))),
+               numeric(ttot)) -> mu0hat
 
-        lapply(tauhat, function(x) {
-            vapply(1:J,
-                   function(j) c(x[1:min(grps[j]+gap, ttot),j],
-                                 rep(NA, max(0, ttot-(grps[j] + gap)))),
-                   numeric(ttot))
-        }) -> tauhat
+        vapply(1:J,
+               function(j) c(tauhat[1:min(grps[j]+gap, ttot),j],
+                             rep(NA, max(0, ttot-(grps[j] + gap)))),
+               numeric(ttot)) -> tauhat
 
         
         ## only average currently treated units
-        lapply(mu0hat, function(x) {
-            avg1 <- rowSums(t(fullmask) *  x * n1) /
+        avg1 <- rowSums(t(fullmask) *  mu0hat * n1) /
                 rowSums(t(fullmask) *  n1)
-            avg2 <- rowSums(t(1-fullmask) *  x * n1) /
-                rowSums(t(1-fullmask) *  n1)
-            avg <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
-                replace_na(avg2,0) * apply(1-fullmask, 2, max)
-            cbind(avg, x)
-        }) -> mu0hat
+        avg2 <- rowSums(t(1-fullmask) *  mu0hat * n1) /
+            rowSums(t(1-fullmask) *  n1)
+        avg <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
+            replace_na(avg2,0) * apply(1-fullmask, 2, max)
+        cbind(avg, mu0hat) -> mu0hat
 
         ## only average currently treated units
-        lapply(tauhat, function(x) {
-            avg1 <- rowSums(t(fullmask) *  x * n1) /
-                rowSums(t(fullmask) *  n1)
-            avg2 <- rowSums(t(1-fullmask) *  x * n1) /
-                rowSums(t(1-fullmask) *  n1)
-            avg <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
-                replace_na(avg2,0) * apply(1-fullmask, 2, max)
-            cbind(avg, x)
-        }) -> tauhat        
+        avg1 <- rowSums(t(fullmask) *  tauhat * n1) /
+            rowSums(t(fullmask) *  n1)
+        avg2 <- rowSums(t(1-fullmask) *  tauhat * n1) /
+            rowSums(t(1-fullmask) *  n1)
+        avg <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
+            replace_na(avg2,0) * apply(1-fullmask, 2, max)
+        cbind(avg, tauhat) -> tauhat        
     }
     
 
     if(att) {
-        return(tauhat[[1]])
+        return(tauhat)
     } else {
-        return(mu0hat[[1]])
+        return(mu0hat)
     }
 }
 
