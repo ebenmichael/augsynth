@@ -62,6 +62,27 @@ multisynth <- function(form, unit, time, data,
     msynth$call <- call_name
     msynth$relative <- relative
     msynth$gap <- gap
+    msynth$alpha <- alpha
+
+    ## Get imbalance for uniform weights
+    ## TODO: Get rid of this stupid hack of just fitting the weights again with zero steps
+    unif <- multisynth_(X=wide$X, trt=wide$trt,
+                          mask=wide$mask, gap=gap,
+                          relative=relative, lambda=lambda, alpha=alpha,
+                          link=opts_weights$link, regularizer=opts_weights$regularizer,
+                          nlambda=opts_weights$nlambda,
+                          lambda.min.ratio=opts_weights$lambda.min.ratio,
+                          opts=list(max_it=0))
+    
+    ## Balance for aggregate estimate
+    msynth$global_l2 <- sqrt(sum(msynth$imbalance[[1]][,1]^2))
+    msynth$scaled_global_l2 <- msynth$global_l2 / sqrt(sum(unif$imbalance[[1]][,1]^2))
+
+    ## balance for individual estimates
+    msynth$ind_op <- svd(msynth$imbalance[[1]][,-1])$d[1]
+    msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[[1]][,-1])$d[1]
+    
+    
     ##format output
     class(msynth) <- "multisynth"
     return(msynth)
@@ -105,7 +126,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     
     ## re-index time if relative to treatment
     if(relative) {
-        total_len <- ttot + d - grps[1] ## total length of predictions
+        total_len <- min(d + gap, ttot + d - grps[1]) ## total length of predictions
         mu0hat <- lapply(mu0hat,
                          function(x) {
                              vapply(1:J,
@@ -185,9 +206,9 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     
 
     if(att) {
-        return(tauhat)
+        return(tauhat[[1]])
     } else {
-        return(mu0hat)
+        return(mu0hat[[1]])
     }
 }
 
@@ -206,3 +227,113 @@ print.multisynth <- function(multisynth) {
     ##           format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
 }
 
+
+
+#' Plot function for multisynth
+#' @export
+plot.multisynth <- function(multisynth) {
+    plot(summary(multisynth))
+}
+
+
+#' Summary function for multisynth
+#' @param relative Whether to estimate effects for time relative to treatment
+#' @export
+summary.multisynth <- function(multisynth, relative=NULL) {
+
+    if(is.null(relative)) {
+        relative <- multisynth$relative
+    }
+
+    grps <- unique(multisynth$data$trt) %>% sort()
+    J <- length(grps) - 1    
+    gap <- tmp$gap
+    d <- ncol(multisynth$data$X)
+    ttot <- d + ncol(multisynth$data$y)
+
+    times <- multisynth$data$time
+    
+    summ <- list()
+    ## post treatment estimate for each group and overall
+    att <- predict(multisynth, relative, att=T)
+
+
+    if(relative) {
+        att <- data.frame(cbind(-d:min(gap-1, ttot-grps[1]-1), att))
+        names(att) <- c("Time", "Average", times[grps[1:J]])
+        att %>% gather(Level, Estimate, -Time) %>%
+            rename("Time"=Time) -> att
+    } else {
+        att <- data.frame(cbind(times, att))
+        names(att) <- c("Time", "Average", times[grps[1:J]])        
+        att %>% gather(Level, Estimate, -Time) -> att
+    }
+
+    summ$att <- att
+
+
+    summ$relative <- relative
+    summ$grps <- grps
+    summ$call <- multisynth$call
+    summ$global_l2 <- multisynth$global_l2
+    summ$scaled_global_l2 <- multisynth$scaled_global_l2
+
+    summ$ind_op <- multisynth$ind_op
+    summ$scaled_ind_op <- multisynth$scaled_ind_op
+    ## get estimated bias
+
+    
+    class(summ) <- "summary.multisynth"
+    return(summ)
+}
+
+#' Print function for summary function for multisynth
+#' @param level Which treatment level to show summary for, default is average
+#' @export
+print.summary.multisynth <- function(summ, level=NULL) {
+    ## straight from lm
+    cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
+
+    if(is.null(level)) level <- "Average"
+    
+    ## get ATT estimates for treatment level, post treatment
+    att_est <- summ$att %>%
+        filter(Level == level)
+    if(summ$relative) {
+        att_est %>% filter(Time >= 0) -> att_est
+    } else if(level == "Average") {
+        att_est %>% filter(Time >= min(Level)) -> att_est
+    } else {
+        att_est %>% filter(Time >= level) -> att_est
+    }
+
+
+    cat(paste("Global L2 Imbalance (Scaled): ",
+              format(round(summ$global_l2,3), nsmall=3), "  (",
+              format(round(summ$scaled_global_l2,3), nsmall=3), ")\n\n",
+              "Individual Operator Imbalance (Scaled): ",
+              format(round(summ$ind_op,3), nsmall=3), "  (",
+              format(round(summ$scaled_ind_op,3), nsmall=3), ")\t",
+              "\n\n",
+              sep=""))
+
+
+    print(att_est, row.names=F)
+    
+}
+
+#' Plot function for summary function for multisynth
+#' @export
+plot.summary.multisynth <- function(summ) {
+
+    summ$att %>%
+        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate)) +
+        ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+                        ymax=Estimate+2*Std.Error),
+                    alpha=0.2) +
+        ggplot2::geom_line() +
+        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
+        ggplot2::geom_hline(yintercept=0, lty=2) + 
+        ggplot2::theme_bw()
+    
+}
