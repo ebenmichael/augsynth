@@ -144,16 +144,17 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
             weights <- matrix(0, nrow=dim(X), ncol=(ncol(x_t)-1))
             for(j in 1:(ncol(x_t)-1)) {
                 ## restrict to units treated later than T_j + gap
-                Xmat <- X[trt > grps[j] + gap,,drop=F]
-                weights[trt > grps[j] + gap,j] <- weightfunc(Xmat,
-                                                             theta[,(j+1),drop=F])
+                Xmat <- t(apply(X[trt > grps[j] + gap,,drop=F], 1, function(x) x * mask[j,]))
+                weights[trt > grps[j] + gap,j] <-
+                    weightfunc(Xmat,
+                               theta[,(j+1),drop=F])
             }
             weights
         })
 
     out$weights <- weights
     
-    out$imbalance <- lapply(out$theta,
+    out$imbalance <- lapply(apgout,
                            function(th) grad_multisynth_absolute(as.matrix(th), loss_opts))
 
     out$lambda <- lambda
