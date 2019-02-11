@@ -5,7 +5,8 @@
 \title{Fit staggered synth}
 \usage{
 multisynth(form, unit, time, data, relative = T, gap = NULL,
-  lambda = NULL, alpha = 0.5, opts_weights = NULL)
+  lambda = NULL, alpha = 0.5, force = "two-way", n_factors = NULL,
+  opts_weights = NULL)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -16,15 +17,24 @@ multisynth(form, unit, time, data, relative = T, gap = NULL,
 
 \item{data}{Panel data as dataframe}
 
+\item{relative}{Whether to compute balance by relative time}
+
+\item{gap}{How long past treatment effects should be estimated for}
+
+\item{lambda}{Regularization hyperparameter}
+
+\item{alpha}{Fraction of balance for individual balance}
+
+\item{force}{Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"}
+
+\item{n_factors}{Number of factors for interactive fixed effects}
+
 \item{opts_weights}{Optional options for fitting synth weights}
 }
 \value{
 augsynth object that contains:
         \itemize{
-         \item{"weights"}{Ridge ASCM weights}
-         \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
-         \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
-         \item{"mhat"}{Outcome model estimate}
+         \item{"weights"}{weights}
          \item{"data"}{Panel data as matrices}
         }
 }
