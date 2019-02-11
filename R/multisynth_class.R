@@ -11,20 +11,25 @@
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
+#' @param relative Whether to compute balance by relative time
+#' @param gap How long past treatment effects should be estimated for
+#' @param lambda Regularization hyperparameter
+#' @param alpha Fraction of balance for individual balance
+#' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
+#' @param n_factors Number of factors for interactive fixed effects
 #' @param opts_weights Optional options for fitting synth weights
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
-#'          \item{"weights"}{Ridge ASCM weights}
-#'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
-#'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
-#'          \item{"mhat"}{Outcome model estimate}
+#'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 #' @export
 multisynth <- function(form, unit, time, data,
                        relative=T, gap=NULL,
                        lambda=NULL, alpha=0.5,
+                       force="two-way",
+                       n_factors=NULL,
                        opts_weights=NULL) {
     
     call_name <- match.call()
@@ -38,10 +43,44 @@ multisynth <- function(form, unit, time, data,
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
 
+    
+    
     ## if gap is NULL set it to be the size of X
     if(is.null(gap)) {
         gap <- ncol(wide$X) + 1
     }
+
+
+    force <- case_when(force == "none" ~ 0,
+                       force == "unit" ~ 1,
+                       force == "time" ~ 2,
+                       TRUE ~ 3)
+    ## fit interactive fixed effects model
+    if(is.null(n_factors)) {
+        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
+        y0hat <- out$y0hat
+        params <- out$params
+        
+    } else if(force == 0 & n_factors == 0) {
+        ## if no fixed effects or factors, just do nothing
+        y0hat <- matrix(0, nrow=nrow(wide$X), ncol=(ncol(wide$X) + ncol(wide$y)))
+        params <- NULL
+    } else {
+        ## if number of factors is provided don't do CV
+        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt,
+                                r=n_factors, r.end=n_factors,
+                                CV=0, force=force)
+        y0hat <- out$y0hat
+        params <- out$params        
+
+    }
+
+
+    
+    ## get residuals from outcome model
+    residuals <- cbind(wide$X, wide$y) - y0hat
+
+    
     
     ## fit multisynth
     opts_weights <- c(opts_weights,
@@ -53,7 +92,8 @@ multisynth <- function(form, unit, time, data,
     ## If no lambda or multiple lambdas, search over possible lambdas and choose the one with best balance
     if(is.null(lambda) || length(lambda) > 1) {
         suppressWarnings(
-            msynth <- multisynth_(X=wide$X, trt=wide$trt,
+            msynth <- multisynth_(X=residuals[,1:ncol(wide$X)],
+                                  trt=wide$trt,
                                   mask=wide$mask, gap=gap,
                                   relative=relative, lambda=lambda, alpha=alpha,
                                   link=opts_weights$link, regularizer=opts_weights$regularizer,
@@ -73,8 +113,7 @@ multisynth <- function(form, unit, time, data,
         ## get the setting of lambda with the best weighted balance
         best <- which.min((1-alpha) * as.numeric(global_l2) +
                           alpha * as.numeric(ind_op))
-        cbind(as.numeric(global_l2), as.numeric(ind_op)) %>% print()
-        print(best)
+
         msynth$global_l2 <- global_l2[[best]]
         msynth$ind_op <- ind_op[[best]]
         msynth$weights <- msynth$weights[[best]]
@@ -84,7 +123,8 @@ multisynth <- function(form, unit, time, data,
 
         
     } else {
-        msynth <- multisynth_(X=wide$X, trt=wide$trt,
+        msynth <- multisynth_(X=residuals[,1:ncol(wide$X)],
+                              trt=wide$trt,
                               mask=wide$mask, gap=gap,
                               relative=relative, lambda=lambda, alpha=alpha,
                               link=opts_weights$link, regularizer=opts_weights$regularizer,
@@ -116,22 +156,32 @@ multisynth <- function(form, unit, time, data,
     msynth$gap <- gap
     msynth$alpha <- alpha
 
+    ## average together treatment groups
+    grps <- unique(wide$trt)
+    J <- length(grps)-1
+
+    msynth$y0hat <- y0hat
+    msynth$residuals <- residuals
+    
     ## Get imbalance for uniform weights
     ## TODO: Get rid of this stupid hack of just fitting the weights again with zero steps
-    unif <- multisynth_(X=wide$X, trt=wide$trt,
-                          mask=wide$mask, gap=gap,
-                          relative=relative, lambda=lambda, alpha=alpha,
-                          link=opts_weights$link, regularizer=opts_weights$regularizer,
-                          nlambda=opts_weights$nlambda,
-                          lambda.min.ratio=opts_weights$lambda.min.ratio,
-                          opts=list(max_it=0))
+    unif <- multisynth_(X=residuals[,1:ncol(wide$X)],
+                        trt=wide$trt,
+                        mask=wide$mask, gap=gap,
+                        relative=relative, lambda=lambda, alpha=alpha,
+                        link=opts_weights$link, regularizer=opts_weights$regularizer,
+                        nlambda=opts_weights$nlambda,
+                        lambda.min.ratio=opts_weights$lambda.min.ratio,
+                        opts=list(max_it=0))
     
     ## Balance for aggregate estimate
     msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[[1]][,1]^2))
 
     ## balance for individual estimates
     msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[[1]][,-1])$d[1]
-    
+
+    ## outcome model parameters
+    msynth$params <- params
     
     ##format output
     class(msynth) <- "multisynth"
@@ -150,11 +200,10 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
-    gap <- tmp$gap
+    gap <- multisynth$gap
     d <- ncol(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
-
     grps <- unique(multisynth$data$trt) %>% sort()
     J <- length(grps) - 1
     n1 <- multisynth$data$trt[is.finite(multisynth$data$trt)] %>%
@@ -162,16 +211,28 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
 
-    ## get weighted average estimates
-    mu0hat <- t(fulldat) %*% multisynth$weights
-
     ## estimate the post-treatment values to gett att estimates
     mu1hat <- vapply(1:J,
                      function(j) colMeans(fulldat[multisynth$data$trt ==grps[j],
                                                 , drop=FALSE]),
                      numeric(ttot))
+    ## average outcome model estimates for treatment groups
+    y0hat_avg <- vapply(1:J,
+                     function(j) colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
+                                                , drop=FALSE]),
+                     numeric(ttot))
 
-    tauhat <- mu1hat -mu0hat
+    
+    ## residuals for treated units
+    trt_r <- vapply(1:J,
+                    function(j) colMeans(multisynth$residuals[multisynth$data$trt ==grps[j],
+                                                , drop=FALSE]),
+                    numeric(ttot))
+
+    ## tauhat <- trt_r - t(multisynth$residuals) %*% multisynth$weights
+    ## mu0hat <- tauhat - mu1hat
+    mu0hat <- y0hat_avg + t(multisynth$residuals) %*% multisynth$weights
+    tauhat <- mu1hat - mu0hat
     
     ## re-index time if relative to treatment
     if(relative) {
@@ -278,7 +339,7 @@ summary.multisynth <- function(multisynth, relative=NULL) {
 
     grps <- unique(multisynth$data$trt) %>% sort()
     J <- length(grps) - 1    
-    gap <- tmp$gap
+    gap <- multisynth$gap
     d <- ncol(multisynth$data$X)
     ttot <- d + ncol(multisynth$data$y)
 
