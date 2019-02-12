@@ -4,7 +4,7 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(multisynth, relative = NULL)
+\method{summary}{multisynth}(multisynth, relative = NULL, level = NULL)
 }
 \arguments{
 \item{relative}{Whether to estimate effects for time relative to treatment}
