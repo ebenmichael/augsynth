@@ -305,13 +305,8 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
     
     
     if(link == "logit") {
-        ## if(normalized) {
         weightfunc <- balancer:::softmax_weights
         weightptr <- balancer:::make_softmax_weights()
-        ## } else {
-        ##     weightfunc <- exp_balancer:::weights_ipw
-        ##     weightptr <- balancer:::make_exp_weights_ipw()
-        ## }
     } else if(link == "linear") {
         weightfunc <- balancer:::lin_weights_ipw
         weightptr <- balancer:::make_lin_weights_ipw()
@@ -334,7 +329,8 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
         balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * (1 + balancer:::l2(x[,1]))^2
     } else if(regularizer == "nuc") {
         proxfunc <- balancer:::make_prox_multilevel_ridge_nuc()
-        balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * balancer:::op_norm(x[,-1])
+        ## balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * balancer:::op_norm(x[,-1])
+        balancefunc <- function(x) balancer:::op_norm(x[,-1]) / alpha
     }else {
         stop("regularizer must be one of ('ridge', 'nuc')")
     }

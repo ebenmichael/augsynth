@@ -86,7 +86,7 @@ multisynth <- function(form, unit, time, data,
     opts_weights <- c(opts_weights,
                       list(link="logit",
                            regularizer="nuc",
-                           nlambda=10, lambda.min.ratio=5e-2,
+                           nlambda=20, lambda.min.ratio=1e-2,
                            opts=NULL))
 
     ## If no lambda or multiple lambdas, search over possible lambdas and choose the one with best balance
@@ -106,10 +106,16 @@ multisynth <- function(form, unit, time, data,
                                    function(imbal) sqrt(sum(imbal[,1]^2)))
 
         ## balance for individual estimates
-        ind_op <- lapply(msynth$imbalance,
-                                function(imbal) svd(imbal[,-1])$d[1])
+        ind_op <- 
+            lapply(msynth$imbalance,
+                   function(imbal) {
+                       if(all(is.finite(imbal))) {
+                           svd(imbal[,-1])$d[1]
+                       } else {
+                           Inf
+                       }})
 
-
+        
         ## get the setting of lambda with the best weighted balance
         best <- which.min((1-alpha) * as.numeric(global_l2) +
                           alpha * as.numeric(ind_op))
