@@ -115,12 +115,18 @@ multisynth <- function(form, unit, time, data,
                            Inf
                        }})
 
+        ## l2 imbalance for individual estimates
+        ind_l2 <- lapply(msynth$imbalance,
+                         function(imbal)  {
+                             sqrt(sum(imbal[,-1]^2))
+                         })
         
         ## get the setting of lambda with the best weighted balance
         best <- which.min((1-alpha) * as.numeric(global_l2) +
                           alpha * as.numeric(ind_op))
 
         msynth$global_l2 <- global_l2[[best]]
+        msynth$ind_l2 <- ind_l2[[best]]
         msynth$ind_op <- ind_op[[best]]
         msynth$weights <- msynth$weights[[best]]
         msynth$theta <- msynth$theta[[best]]
@@ -146,8 +152,14 @@ multisynth <- function(form, unit, time, data,
         ind_op <- lapply(msynth$imbalance,
                          function(imbal) svd(imbal[,-1])$d[1])
 
+        ## l2 imbalance for individual estimates
+        ind_l2 <- lapply(msynth$imbalance,
+                         function(imbal)  {
+                             sqrt(sum(imbal[,-1]^2))
+                         })
         
         msynth$global_l2 <- global_l2[[1]]
+        msynth$ind_l2 <- ind_l2[[1]]        
         msynth$ind_op <- ind_op[[1]]
         msynth$weights <- msynth$weights[[1]]
         msynth$theta <- msynth$theta[[1]]
@@ -185,6 +197,7 @@ multisynth <- function(form, unit, time, data,
 
     ## balance for individual estimates
     msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[[1]][,-1])$d[1]
+    msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[[1]][,-1]^2))
     
     ## outcome model parameters
     msynth$params <- params
@@ -328,9 +341,10 @@ print.multisynth <- function(multisynth) {
 #' Plot function for multisynth
 #' @param relative Whether to estimate effects for time relative to treatment
 #' @param levels Treatment levels to plot for, default plots for everything
+#' @param se Whether to plot standard errors
 #' @export
-plot.multisynth <- function(multisynth, relative=NULL, levels=NULL) {
-    plot(summary(multisynth, relative), levels)
+plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, se=T) {
+    plot(summary(multisynth, relative), levels, se)
 }
 
 compute_se <- function(multisynth, relative=NULL) {
@@ -477,7 +491,9 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL) {
 
     summ$ind_op <- multisynth$ind_op
     summ$scaled_ind_op <- multisynth$scaled_ind_op
-
+    summ$ind_l2 <- multisynth$ind_l2
+    summ$scaled_ind_l2 <- multisynth$scaled_ind_l2
+    
     summ$level <- level
     
     class(summ) <- "summary.multisynth"
@@ -512,7 +528,10 @@ print.summary.multisynth <- function(summ) {
               format(round(summ$scaled_global_l2,3), nsmall=3), ")\n\n",
               "Individual Operator Imbalance (Scaled): ",
               format(round(summ$ind_op,3), nsmall=3), "  (",
-              format(round(summ$scaled_ind_op,3), nsmall=3), ")\t",
+              format(round(summ$scaled_ind_op,3), nsmall=3), ")\n\n",
+              "Individual L2 Imbalance (Scaled): ",
+              format(round(summ$ind_l2,3), nsmall=3), "  (",
+              format(round(summ$scaled_ind_l2,3), nsmall=3), ")\t",
               "\n\n",
               sep=""))
 
@@ -523,8 +542,9 @@ print.summary.multisynth <- function(summ) {
 
 #' Plot function for summary function for multisynth
 #' @param levels Treatment levels to plot for, default plots for everything
+#' @param se Whether to plot standard errors
 #' @export
-plot.summary.multisynth <- function(summ, levels=NULL) {
+plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
 
     ## get the last time period for each level
     summ$att %>% na.omit() %>%
@@ -545,12 +565,14 @@ plot.summary.multisynth <- function(summ, levels=NULL) {
                                      color=is_avg,
                                      alpha=is_avg)) +
             ggplot2::geom_line() +
+            ggplot2::geom_point(size=1) + 
             ggrepel::geom_label_repel(ggplot2::aes(label=label),
                                       nudge_x=1, na.rm=T) + 
             ggplot2::geom_hline(yintercept=0, lty=2) -> p
 
     if(summ$relative) {
-        p <- p + ggplot2::geom_vline(xintercept=0, lty=2)
+        p <- p + ggplot2::geom_vline(xintercept=0, lty=2) +
+            xlab("Time Relative to Treatment")
     } else {
         p <- p + ggplot2::geom_vline(aes(xintercept=as.numeric(Level)),
                                      lty=2, alpha=0.5,
@@ -558,15 +580,18 @@ plot.summary.multisynth <- function(summ, levels=NULL) {
     }
 
     ## add ses
-    if("Average" %in% levels) {
-        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                                                   ymax=Estimate+2*Std.Error),
-                                      alpha=0.2, color=NA,
-                                      data=summ$att %>% filter(Level == "Average"))
-    } else {
-        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                                                   ymax=Estimate+2*Std.Error),
-                                      alpha=0.2, color=NA)
+    if(se) {
+        if("Average" %in% levels) {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+                                                       ymax=Estimate+2*Std.Error),
+                                          alpha=0.2, color=NA,
+                                          data=summ$att %>% filter(Level == "Average"))
+            
+        } else {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+                                                       ymax=Estimate+2*Std.Error),
+                                          alpha=0.2, color=NA)
+        }
     }
     
     p <- p + ggplot2::scale_alpha_manual(values=c(1, 0.5)) +
