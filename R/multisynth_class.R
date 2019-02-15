@@ -213,6 +213,7 @@ multisynth <- function(form, unit, time, data,
 #' @param att Whether to estimate the ATT or the missing counterfactual
 #'
 #' @return Vector of predicted post-treatment control averages for each treatment group
+#' @export
 predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 
 
