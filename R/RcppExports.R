@@ -19,3 +19,85 @@ make_grad_multisynth_relative <- function() {
     .Call('_augsynth_make_grad_multisynth_relative', PACKAGE = 'augsynth')
 }
 
+#' Nuclear norm prox
+#'
+#' @param x Input matrix
+#' @param lam Prox scaling factor
+#' @param opts List of options (opts["lam"] holds the other scaling
+#'
+#' @return Singular value soft thresholded X
+prox_nuc <- function(x, lam, opts) {
+    .Call('_augsynth_prox_nuc', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+#' Weighted squared L2 prox
+#'
+#' @param x Input matrix
+#' @param lam Prox scaling factor
+#' @param opts List of options. opts["lam"] holds the other scaling, opts["w"] holds unit specific weights
+#'
+#' @return Column soft thresholded X
+prox_weighted_l2_sq <- function(x, lam, opts) {
+    .Call('_augsynth_prox_weighted_l2_sq', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+#' Prox for weighted ridge on global params and nuclear norm on individual params
+#'
+#' @param x Input matrix (contains global and local parameters
+#' @param lam Prox scaling factor
+#' @param opts List of options (opts["alpha"] holds the ratio between global and local balance
+#'
+#' @return L2 squared prox values
+prox_multilevel_weighted_ridge_nuc <- function(x, lam, opts) {
+    .Call('_augsynth_prox_multilevel_weighted_ridge_nuc', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+make_prox_multilevel_weighted_ridge_nuc <- function() {
+    .Call('_augsynth_make_prox_multilevel_weighted_ridge_nuc', PACKAGE = 'augsynth')
+}
+
+#' Prox for weighted ridge on global params and nuclear norm on individual params
+#'
+#' @param x Input matrix (contains global and local parameters
+#' @param lam Prox scaling factor
+#' @param opts List of options (opts["alpha"] holds the ratio between global and local balance
+#'
+#' @return L2 squared prox values
+prox_multilevel_weighted_ridge_nuc_normalized <- function(x, lam, opts) {
+    .Call('_augsynth_prox_multilevel_weighted_ridge_nuc_normalized', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+make_prox_multilevel_weighted_ridge_nuc_normalized <- function() {
+    .Call('_augsynth_make_prox_multilevel_weighted_ridge_nuc_normalized', PACKAGE = 'augsynth')
+}
+
+#' Nuclear norm projection ||x||_* <= lam
+#'
+#' @param x Input matrix
+#' @param lam Constraint on nuclear norm
+#' @param opts List of options (opts["lam"] holds the other scaling
+#'
+#' @return Singular value soft thresholded X
+proj_nuc <- function(x, lam, opts) {
+    .Call('_augsynth_proj_nuc', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+make_proj_nuc <- function() {
+    .Call('_augsynth_make_proj_nuc', PACKAGE = 'augsynth')
+}
+
+#' Squared L2 Prox for global parameters, nuclear norm projection for local parameters
+#'
+#' @param x Input matrix (contains global and local parameters
+#' @param lam Prox scaling factor
+#' @param opts List of options (opts["alpha"] holds the ratio between global and local balance
+#'
+#' @return L2 squared prox values
+proj_multilevel_weighted_ridge_nuc <- function(x, lam, opts) {
+    .Call('_augsynth_proj_multilevel_weighted_ridge_nuc', PACKAGE = 'augsynth', x, lam, opts)
+}
+
+make_proj_multilevel_weighted_ridge_nuc <- function() {
+    .Call('_augsynth_make_proj_multilevel_weighted_ridge_nuc', PACKAGE = 'augsynth')
+}
+

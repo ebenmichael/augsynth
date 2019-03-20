@@ -26,7 +26,7 @@
 #' 
 multisynth_ <- function(X, trt, mask, relative, gap,
                        link=c("logit", "linear", "pos-linear", "pos-enet", "posenet"),
-                       regularizer=c("nuc", "ridge"),
+                       regularizer=c("ridge", "nuc"),
                        lambda=NULL, nlambda=20, lambda.min.ratio=1e-3,
                        alpha=1,
                        opts=list()) {
@@ -64,7 +64,7 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
     n <- dim(X)[1]
 
     d <- dim(X)[2]
-    
+
     ## average over treatment times/groups
     grps <- sort(unique(trt[is.finite(trt)]))
     J <- length(grps)
@@ -82,6 +82,8 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
     avg <- apply(x_t, 1, function(x) sum(x * n1)) / sum(n1)
     x_t <- cbind(avg, x_t)
 
+    ## weight the global parameters by the number of treated units still untreated in calander time
+    nw <- sapply(1:max(trt[is.finite(trt)]), function(t) sum(trt[is.finite(trt)] >= t))
     
     loss_opts = list(X=X,
                      Xt=x_t,
@@ -113,6 +115,8 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
         lam1 <- lam0 * lambda.min.ratio
         ## decrease on log scale
         lambda <- exp(seq(log(lam0), log(lam1), length.out=nlambda))
+        ## ## increase on log scale
+        ## lambda <- exp(seq(log(lam1), log(lam0), length.out=nlambda))
     }
 
 
@@ -126,7 +130,8 @@ multisynth_absolute_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
 
     ## with multiple hyperparameters do warm starts        
     prox_opts = c(prox_opts,
-                  list(lam=1))
+                  list(lam=1),
+                  list(w=nw))
     
     apgout <- balancer:::apg_warmstart(make_grad_multisynth_absolute(),
                             proxfunc, loss_opts, prox_opts,
@@ -200,6 +205,10 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
     avg <- apply(x_t, 1, function(x) sum(x * n1)) / sum(n1)
     x_t <- cbind(avg, x_t)
 
+    ## weight the global parameters by the number of treated units still untreated in calander time
+    nw <- sapply(1:max(trt[is.finite(trt)]), function(t) sum(trt[is.finite(trt)] >= t))
+    ## reverse to get absolute time
+    nw <- rev(nw)
 
     
     loss_opts = list(X=X,
@@ -232,9 +241,10 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
         lam1 <- lam0 * lambda.min.ratio
         ## decrease on log scale
         lambda <- exp(seq(log(lam0), log(lam1), length.out=nlambda))
+        ## ## increase on log scale
+        ## lambda <- exp(seq(log(lam1), log(lam0), length.out=nlambda))        
     }
-
-
+    print(lambda)
     ## collect results
     out <- list()
     out$theta <- matrix(,nrow=d, ncol=length(lambda))
@@ -245,8 +255,9 @@ multisynth_relative_ <- function(X, trt, mask, gap, weightfunc, weightfunc_ptr,
 
     ## with multiple hyperparameters do warm starts        
     prox_opts = c(prox_opts,
-                  list(lam=1))
-    
+                  list(lam=1),
+                  list(w=nw/sum(nw)))
+
     apgout <- balancer:::apg_warmstart(make_grad_multisynth_relative(),
                             proxfunc, loss_opts, prox_opts,
                             lambda,
@@ -328,9 +339,10 @@ map_to_param <- function(X, link=c("logit", "linear", "pos-linear", "pos-enet", 
         proxfunc <- balancer:::make_prox_multilevel_ridge()
         balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * (1 + balancer:::l2(x[,1]))^2
     } else if(regularizer == "nuc") {
-        proxfunc <- balancer:::make_prox_multilevel_ridge_nuc()
+        ## proxfunc <- make_prox_multilevel_weighted_ridge_nuc()
+        proxfunc <- make_proj_multilevel_weighted_ridge_nuc()        
         ## balancefunc <- function(x) (1 - alpha) * (1 + balancer:::l2(x[,1]))^2 + alpha * balancer:::op_norm(x[,-1])
-        balancefunc <- function(x) balancer:::op_norm(x[,-1]) / alpha
+        balancefunc <- function(x) balancer:::op_norm(x[,-1]) / alpha * 100
     }else {
         stop("regularizer must be one of ('ridge', 'nuc')")
     }

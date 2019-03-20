@@ -19,7 +19,8 @@ Imports:
     Formula,
     Rcpp,
     RcppArmadillo,
-    balancer
+    balancer,
+    Matrix
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE

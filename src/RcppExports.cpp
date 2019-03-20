@@ -51,12 +51,140 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// prox_nuc
+mat prox_nuc(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_prox_nuc(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(prox_nuc(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prox_weighted_l2_sq
+mat prox_weighted_l2_sq(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_prox_weighted_l2_sq(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(prox_weighted_l2_sq(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// prox_multilevel_weighted_ridge_nuc
+mat prox_multilevel_weighted_ridge_nuc(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_prox_multilevel_weighted_ridge_nuc(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(prox_multilevel_weighted_ridge_nuc(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// make_prox_multilevel_weighted_ridge_nuc
+pptr make_prox_multilevel_weighted_ridge_nuc();
+RcppExport SEXP _augsynth_make_prox_multilevel_weighted_ridge_nuc() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(make_prox_multilevel_weighted_ridge_nuc());
+    return rcpp_result_gen;
+END_RCPP
+}
+// prox_multilevel_weighted_ridge_nuc_normalized
+mat prox_multilevel_weighted_ridge_nuc_normalized(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_prox_multilevel_weighted_ridge_nuc_normalized(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(prox_multilevel_weighted_ridge_nuc_normalized(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// make_prox_multilevel_weighted_ridge_nuc_normalized
+pptr make_prox_multilevel_weighted_ridge_nuc_normalized();
+RcppExport SEXP _augsynth_make_prox_multilevel_weighted_ridge_nuc_normalized() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(make_prox_multilevel_weighted_ridge_nuc_normalized());
+    return rcpp_result_gen;
+END_RCPP
+}
+// proj_nuc
+mat proj_nuc(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_proj_nuc(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(proj_nuc(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// make_proj_nuc
+pptr make_proj_nuc();
+RcppExport SEXP _augsynth_make_proj_nuc() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(make_proj_nuc());
+    return rcpp_result_gen;
+END_RCPP
+}
+// proj_multilevel_weighted_ridge_nuc
+mat proj_multilevel_weighted_ridge_nuc(mat x, double lam, List opts);
+RcppExport SEXP _augsynth_proj_multilevel_weighted_ridge_nuc(SEXP xSEXP, SEXP lamSEXP, SEXP optsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< mat >::type x(xSEXP);
+    Rcpp::traits::input_parameter< double >::type lam(lamSEXP);
+    Rcpp::traits::input_parameter< List >::type opts(optsSEXP);
+    rcpp_result_gen = Rcpp::wrap(proj_multilevel_weighted_ridge_nuc(x, lam, opts));
+    return rcpp_result_gen;
+END_RCPP
+}
+// make_proj_multilevel_weighted_ridge_nuc
+pptr make_proj_multilevel_weighted_ridge_nuc();
+RcppExport SEXP _augsynth_make_proj_multilevel_weighted_ridge_nuc() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(make_proj_multilevel_weighted_ridge_nuc());
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_augsynth_grad_multisynth_absolute", (DL_FUNC) &_augsynth_grad_multisynth_absolute, 2},
     {"_augsynth_make_grad_multisynth_absolute", (DL_FUNC) &_augsynth_make_grad_multisynth_absolute, 0},
     {"_augsynth_grad_multisynth_relative", (DL_FUNC) &_augsynth_grad_multisynth_relative, 2},
     {"_augsynth_make_grad_multisynth_relative", (DL_FUNC) &_augsynth_make_grad_multisynth_relative, 0},
+    {"_augsynth_prox_nuc", (DL_FUNC) &_augsynth_prox_nuc, 3},
+    {"_augsynth_prox_weighted_l2_sq", (DL_FUNC) &_augsynth_prox_weighted_l2_sq, 3},
+    {"_augsynth_prox_multilevel_weighted_ridge_nuc", (DL_FUNC) &_augsynth_prox_multilevel_weighted_ridge_nuc, 3},
+    {"_augsynth_make_prox_multilevel_weighted_ridge_nuc", (DL_FUNC) &_augsynth_make_prox_multilevel_weighted_ridge_nuc, 0},
+    {"_augsynth_prox_multilevel_weighted_ridge_nuc_normalized", (DL_FUNC) &_augsynth_prox_multilevel_weighted_ridge_nuc_normalized, 3},
+    {"_augsynth_make_prox_multilevel_weighted_ridge_nuc_normalized", (DL_FUNC) &_augsynth_make_prox_multilevel_weighted_ridge_nuc_normalized, 0},
+    {"_augsynth_proj_nuc", (DL_FUNC) &_augsynth_proj_nuc, 3},
+    {"_augsynth_make_proj_nuc", (DL_FUNC) &_augsynth_make_proj_nuc, 0},
+    {"_augsynth_proj_multilevel_weighted_ridge_nuc", (DL_FUNC) &_augsynth_proj_multilevel_weighted_ridge_nuc, 3},
+    {"_augsynth_make_proj_multilevel_weighted_ridge_nuc", (DL_FUNC) &_augsynth_make_proj_multilevel_weighted_ridge_nuc, 0},
     {NULL, NULL, 0}
 };
 
