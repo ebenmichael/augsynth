@@ -5,7 +5,7 @@
 \title{Internal function to fit synth with staggered adoption}
 \usage{
 multisynth_(X, trt, mask, relative, gap, link = c("logit", "linear",
-  "pos-linear", "pos-enet", "posenet"), regularizer = c("nuc", "ridge"),
+  "pos-linear", "pos-enet", "posenet"), regularizer = c("ridge", "nuc"),
   lambda = NULL, nlambda = 20, lambda.min.ratio = 0.001, alpha = 1,
   opts = list())
 }
