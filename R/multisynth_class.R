@@ -85,7 +85,7 @@ multisynth <- function(form, unit, time, data,
     ## fit multisynth
     opts_weights <- c(opts_weights,
                       list(link="logit",
-                           regularizer="nuc",
+                           regularizer="ridge",
                            nlambda=20, lambda.min.ratio=1e-2,
                            opts=NULL))
 
@@ -191,7 +191,6 @@ multisynth <- function(form, unit, time, data,
                         nlambda=opts_weights$nlambda,
                         lambda.min.ratio=opts_weights$lambda.min.ratio,
                         opts=list(max_it=0))
-    
     ## Balance for aggregate estimate
     msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[[1]][,1]^2))
 
