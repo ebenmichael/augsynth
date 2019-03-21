@@ -3,39 +3,56 @@
 ################################################################################
 
 
-#' Internal function to fit synth with staggered adoption according to time relative to treatment
-#' #' @importMethodsFrom Matrix %*%
-multisynth_relative_qp <- function(X, trt, mask, gap, alpha, lambda, ...) {
+#' Internal function to fit synth with staggered adoption with a QP solver
+#' @param X Matrix of pre-final intervention outcomes
+#' @param trt Vector of treatment levels/times
+#' @param mask Matrix with indicators for observed pre-intervention times for each treatment group
+#' @param gap Number of time periods after treatment to impute control values.
+#'            For units treated at time T_j, all units treated after T_j + gap
+#'            will be used as control values. If larger than the number of periods,
+#'            only never never treated units (pure controls) will be used as comparison units
+#' @param relative Whether to re-index time according to treatment date, default T
+#' @param alpha Hyper-parameter that controls trade-off between overall and individual balance.
+#'              Larger values of alpha place more emphasis on individual balance.
+#'              Balance measure is
+#'                alpha ||global|| + (1-alpha) ||individual||
+#'              Default: 0
+#' @param lambda Regularization hyper-parameter. Default, 0
+#' 
+#'
+#' @importMethodsFrom Matrix %*%
+multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0) {
 
     n <- dim(X)[1]
 
     d <- dim(X)[2]
-    
+    if(is.null(gap)) {
+        gap <- d+1
+    } else if(gap > d) {
+        gap <- d+1
+    }
+
     ## average over treatment times/groups
     grps <- sort(unique(trt[is.finite(trt)]))
 
     J <- length(grps)
 
 
-    x_t <- lapply(1:J, function(j) colMeans(X[trt ==grps[j], mask[j,]==1, drop=F]))
     x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
-    
-    ## pure controls, indexed by time
-    ## Xc <- X[!is.finite(trt),,drop=FALSE]
+
     ## All possible donor units for all treatment groups
     Xc <- lapply(1:nrow(mask),
                  function(j) X[trt > gap + min(grps), mask[j,]==1, drop=F])
 
     n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
-
-
-    ## compute global average according to time relative to treatment
-    sum_t <- reduce(x_t, function(x, y) c(numeric(length(y)-length(x)),x) + y)
     
     ## weight the global parameters by the number of treated units still untreated in calander time
     nw <- sapply(1:max(trt[is.finite(trt)]), function(t) sum(trt[is.finite(trt)] >= t))
+
     ## reverse to get relative absolute time
-    nw <- rev(nw)    
+    if(relative) {
+        nw <- rev(nw)
+    }
 
 
     
@@ -54,8 +71,6 @@ multisynth_relative_qp <- function(X, trt, mask, gap, alpha, lambda, ...) {
     Amat <- Matrix::rbind2(Amat, A2)
 
     ## zero out weights for inelligible units
-    glblzero <- numeric(n0)
-    glblzero[is.finite(trt)] <- 1
     A3 <- do.call(Matrix::bdiag,
                   c(lapply(1:J,
                            function(j) {
@@ -82,27 +97,25 @@ multisynth_relative_qp <- function(X, trt, mask, gap, alpha, lambda, ...) {
     ## quadratic balance measures
 
     dvec <- lapply(1:J, function(j) c((1-alpha) / length(x_t[[j]]) * Xc[[j]] %*% x_t[[j]]))
-    dvec_avg <- lapply(1:J,
-                       function(j) {
-                           lapply(1:J,
-                                  function(k) {
-                                      c(c(numeric(d-length(x_t[[k]])),x_t[[k]]) %*%
-                                        t(cbind(matrix(0, nrow=nrow(Xc[[j]]), ncol=(d-ncol(Xc[[j]]))), Xc[[j]])))
-                                  }) %>% reduce(`+`)
-                       }) %>% reduce(`+`)
-    
-    dvec_avg <- Xc[[1]] %*% reduce(x_t, function(x, y) x[1:length(x_t[[1]])] + y[1:length(x_t[[1]])])
-
 
     dvec_avg <- lapply(x_t,
                        function(xtk) {
                            lapply(1:J,
                                   function(j)  {
-                                      ## Xc[[j]][,1:length(x_t[[1]])] %*% xtk[1:length(x_t[[1]])] * n1[j] / sum(n1)
                                       dk <- length(xtk)
                                       dj <- ncol(Xc[[j]])
                                       ndim <- min(dk, dj)
-                                      Xc[[j]][,(dj-ndim+1):dj] %*% xtk[(dk-ndim+1):dk] * n1[j] / sum(n1)
+                                      ## relative time: inner product from the end
+                                      if(relative) {
+                                          Xc[[j]][,(dj-ndim+1):dj] %*%
+                                              xtk[(dk-ndim+1):dk] *
+                                              n1[j] / sum(n1)
+                                      } else {
+                                          ## absolute time: inner product from start
+                                          Xc[[j]][,1:ndim] %*%
+                                              xtk[1:ndim] *
+                                              n1[j] / sum(n1)
+                                      }
                                   }) %>% reduce(`+`)
                        }) %>% reduce(`+`)
     
@@ -112,55 +125,58 @@ multisynth_relative_qp <- function(X, trt, mask, gap, alpha, lambda, ...) {
     V1 <- do.call(Matrix::bdiag,
                   lapply(Xc, function(x) x / sqrt(ncol(x))))
 
-    lapply(Xc,
-           function(x0k) {
-               lapply(Xc,
-                      function(x0j) {
-                          cbind(matrix(0, nrow=nrow(x0k), ncol=(d-ncol(x0k))), x0k) %*%
-                              t(cbind(matrix(0, nrow=nrow(x0j), ncol=(d-ncol(x0j))), x0j))
-                      }) %>% reduce(`+`)
-           }) %>% reduce(`+`) -> V2
-    
-    V2 <- Xc[[1]] %*% t(Xc[[1]])
-
-
     lapply(1:J,
            function(k) {
                lapply(1:J,
                       function(j) {
-                          ## Xc[[k]][,1:length(x_t[[1]])] %*%
-                          ##     t(Xc[[j]][,1:length(x_t[[1]])]) * n1[k] * n1[j] / sum(n1)^2
                           dk <- ncol(Xc[[k]])
                           dj <- ncol(Xc[[j]])
                           ndim <- min(dk, dj)
-                          Xc[[k]][,(dk-ndim+1):dk] %*%
-                              t(Xc[[j]][,(dj-ndim+1):dj]) * n1[k] * n1[j] / sum(n1)^2
+                          if(relative) {
+                              ## inner product from end
+                              Xc[[k]][,(dk-ndim+1):dk] %*%
+                                  t(Xc[[j]][,(dj-ndim+1):dj]) *
+                                  n1[k] * n1[j] / sum(n1)^2
+                          } else {
+                              ## inner product from start
+                              Xc[[k]][,1:ndim] %*%
+                                  t(Xc[[j]][,1:ndim]) *
+                                  n1[k] * n1[j] / sum(n1)^2
+                          }
                       }) %>% reduce(`+`)
            }) %>% reduce(`+`) -> V2
-    
+
+
     Hmat <- Matrix::bdiag(list(alpha * V2, (1-alpha) * V1 %*% Matrix::t(V1))) +
         lambda * Matrix::Diagonal(nrow(V1) + nrow(V2))
 
 
-    print(length(dvec))
-    print(dim(Hmat))
-    print(dim(Amat))
-    print(length(lvec))
-    print(length(uvec))
 
-    settings <- osqp::osqpSettings(verbose = TRUE, eps_abs=1e-8, eps_rel = 1e-8)
+    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-6, eps_rel = 1e-6)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
 
     ## get weights
     weights <- matrix(out$x[-(1:n0)], nrow=n0)
 
     ## compute imbalance
-    imbalance <- vapply(1:J,
-                         function(j) c(numeric(d-length(x_t[[j]])),
-                                       x_t[[j]] -  t(Xc[[j]]) %*% weights[,j]),
-                        numeric(d))
+    if(relative) {
+        imbalance <- vapply(1:J,
+                            function(j) c(numeric(d-length(x_t[[j]])),
+                                          x_t[[j]] -  t(Xc[[j]]) %*% weights[,j]),
+                            numeric(d))
+    } else {
+        imbalance <- vapply(1:J,
+                            function(j) c(x_t[[j]] -  t(Xc[[j]]) %*% weights[,j],
+                                          numeric(d-length(x_t[[j]]))),
+                            numeric(d))
+    }
 
     avg_imbal <- rowSums(t(t(imbalance)))
+
+
+    ## pad weights with zeros for treated units
+    weights <- matrix(0, nrow=n, ncol=J)
+    weights[idxs0,] <- matrix(out$x[-(1:n0)], nrow=n0)
     
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance))

@@ -21,7 +21,8 @@ Imports:
     Rcpp,
     RcppArmadillo,
     balancer,
-    Matrix
+    Matrix,
+    osqp
 Remotes:
     xuyiqing/gsynth,
     susanathey/MCPanel
