@@ -20,7 +20,8 @@ Imports:
     Rcpp,
     RcppArmadillo,
     balancer,
-    Matrix
+    Matrix,
+    osqp
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE
