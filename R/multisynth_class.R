@@ -2,10 +2,6 @@
 ## Fitting, plotting, summarizing staggered synth
 ################################################################################
 
-
-
-
-
 #' Fit staggered synth
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
@@ -13,21 +9,19 @@
 #' @param data Panel data as dataframe
 #' @param relative Whether to compute balance by relative time
 #' @param gap How long past treatment effects should be estimated for
-#' @param lambda Regularization hyperparameter
 #' @param alpha Fraction of balance for individual balance
+#' @param lambda Regularization hyperparameter, default = 0
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
-#' @param n_factors Number of factors for interactive fixed effects
-#' @param opts_weights Optional options for fitting synth weights
+#' @param n_factors Number of factors for interactive fixed effects, default does CV
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
-#' @export
 multisynth <- function(form, unit, time, data,
                        relative=T, gap=NULL,
-                       lambda=NULL, alpha=0.5,
+                       alpha=0.5, lambda=0,
                        force="two-way",
                        n_factors=NULL,
                        opts_weights=NULL) {
@@ -47,6 +41,8 @@ multisynth <- function(form, unit, time, data,
     
     ## if gap is NULL set it to be the size of X
     if(is.null(gap)) {
+        gap <- ncol(wide$X) + 1
+    } else if(gap > ncol(wide$X)) {
         gap <- ncol(wide$X) + 1
     }
 
@@ -76,97 +72,32 @@ multisynth <- function(form, unit, time, data,
     }
 
 
-    
+
     ## get residuals from outcome model
     residuals <- cbind(wide$X, wide$y) - y0hat
 
     
     
-    ## fit multisynth
-    opts_weights <- c(opts_weights,
-                      list(link="logit",
-                           regularizer="ridge",
-                           nlambda=20, lambda.min.ratio=1e-2,
-                           opts=NULL))
+    msynth <- multisynth_qp(X=residuals[,1:ncol(wide$X)],
+                            trt=wide$trt,
+                            mask=wide$mask, gap=gap,
+                            relative=relative,
+                            alpha=alpha, lambda=lambda)
 
-    ## If no lambda or multiple lambdas, search over possible lambdas and choose the one with best balance
-    if(is.null(lambda) || length(lambda) > 1) {
-        suppressWarnings(
-            msynth <- multisynth_(X=residuals[,1:ncol(wide$X)],
-                                  trt=wide$trt,
-                                  mask=wide$mask, gap=gap,
-                                  relative=relative, lambda=lambda, alpha=alpha,
-                                  link=opts_weights$link, regularizer=opts_weights$regularizer,
-                                  nlambda=opts_weights$nlambda,
-                                  lambda.min.ratio=opts_weights$lambda.min.ratio,
-                                  opts=opts_weights$opts)
-        )
-        ## Balance for aggregate estimate
-        global_l2 <- lapply(msynth$imbalance,
-                                   function(imbal) sqrt(sum(imbal[,1]^2)))
+    ## Balance for aggregate estimate
+    global_l2 <- sqrt(sum(msynth$imbalance[,1]^2))
 
-        ## balance for individual estimates
-        ind_op <- 
-            lapply(msynth$imbalance,
-                   function(imbal) {
-                       if(all(is.finite(imbal))) {
-                           svd(imbal[,-1])$d[1]
-                       } else {
-                           Inf
-                       }})
+    ## balance for individual estimates
+    ind_op <- svd(msynth$imbalance[,-1])$d[1]
 
-        ## l2 imbalance for individual estimates
-        ind_l2 <- lapply(msynth$imbalance,
-                         function(imbal)  {
-                             sqrt(sum(imbal[,-1]^2))
-                         })
+    ## l2 imbalance for individual estimates
+    ind_l2 <- sqrt(sum(msynth$imbalance[,-1]^2))
         
-        ## get the setting of lambda with the best weighted balance
-        best <- which.min((1-alpha) * as.numeric(global_l2) +
-                          alpha * as.numeric(ind_op))
+    msynth$global_l2 <- global_l2
+    msynth$ind_l2 <- ind_l2       
+    msynth$ind_op <- ind_op
 
-        msynth$global_l2 <- global_l2[[best]]
-        msynth$ind_l2 <- ind_l2[[best]]
-        msynth$ind_op <- ind_op[[best]]
-        msynth$weights <- msynth$weights[[best]]
-        msynth$theta <- msynth$theta[[best]]
-        msynth$imbalance <- msynth$imbalance[[best]]
-        msynth$lambda <- msynth$lambda[best]
-
-        
-    } else {
-        msynth <- multisynth_(X=residuals[,1:ncol(wide$X)],
-                              trt=wide$trt,
-                              mask=wide$mask, gap=gap,
-                              relative=relative, lambda=lambda, alpha=alpha,
-                              link=opts_weights$link, regularizer=opts_weights$regularizer,
-                              nlambda=opts_weights$nlambda,
-                              lambda.min.ratio=opts_weights$lambda.min.ratio,
-                              opts=opts_weights$opts)
-
-        ## Balance for aggregate estimate
-        global_l2 <- lapply(msynth$imbalance,
-                                   function(imbal) sqrt(sum(imbal[,1]^2)))
-
-        ## balance for individual estimates
-        ind_op <- lapply(msynth$imbalance,
-                         function(imbal) svd(imbal[,-1])$d[1])
-
-        ## l2 imbalance for individual estimates
-        ind_l2 <- lapply(msynth$imbalance,
-                         function(imbal)  {
-                             sqrt(sum(imbal[,-1]^2))
-                         })
-        
-        msynth$global_l2 <- global_l2[[1]]
-        msynth$ind_l2 <- ind_l2[[1]]        
-        msynth$ind_op <- ind_op[[1]]
-        msynth$weights <- msynth$weights[[1]]
-        msynth$theta <- msynth$theta[[1]]
-        msynth$imbalance <- msynth$imbalance[[1]]
-
-
-    }
+    ## put in data and hyperparams
     msynth$data <- wide
     msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     msynth$call <- call_name
@@ -180,23 +111,21 @@ multisynth <- function(form, unit, time, data,
 
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
+
     
     ## Get imbalance for uniform weights on raw data
-    ## TODO: Get rid of this stupid hack of just fitting the weights again with zero steps
-    unif <- multisynth_(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
-                        trt=wide$trt,
-                        mask=wide$mask, gap=gap,
-                        relative=relative, lambda=lambda, alpha=alpha,
-                        link=opts_weights$link, regularizer=opts_weights$regularizer,
-                        nlambda=opts_weights$nlambda,
-                        lambda.min.ratio=opts_weights$lambda.min.ratio,
-                        opts=list(max_it=0))
-    ## Balance for aggregate estimate
-    msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[[1]][,1]^2))
+    ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
+    unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
+                          trt=wide$trt,
+                          mask=wide$mask, gap=gap,
+                          relative=relative,
+                          alpha=0, lambda=1e10)
+    ## scaled global balance
+    msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))    
 
     ## balance for individual estimates
-    msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[[1]][,-1])$d[1]
-    msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[[1]][,-1]^2))
+    msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[,-1])$d[1]
+    msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
     
     ## outcome model parameters
     msynth$params <- params
@@ -205,6 +134,11 @@ multisynth <- function(form, unit, time, data,
     class(msynth) <- "multisynth"
     return(msynth)
 }
+
+
+
+
+
 
 #' Get prediction of average outcome under control
 #' @param multisynth Fit multisynth object
@@ -235,6 +169,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                      function(j) colMeans(fulldat[multisynth$data$trt ==grps[j],
                                                 , drop=FALSE]),
                      numeric(ttot))
+
     ## average outcome model estimates for treatment groups
     y0hat_avg <- vapply(1:J,
                      function(j) colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
@@ -252,7 +187,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     ## mu0hat <- tauhat - mu1hat
     mu0hat <- y0hat_avg + t(multisynth$residuals) %*% multisynth$weights
     tauhat <- mu1hat - mu0hat
-    
+
     ## re-index time if relative to treatment
     if(relative) {
         total_len <- min(d + gap, ttot + d - grps[1]) ## total length of predictions
