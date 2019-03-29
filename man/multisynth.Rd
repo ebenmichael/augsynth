@@ -5,7 +5,7 @@
 \title{Fit staggered synth}
 \usage{
 multisynth(form, unit, time, data, relative = T, gap = NULL,
-  alpha = 0.5, lambda = 0, force = "two-way", n_factors = NULL,
+  alpha = NULL, lambda = 0, force = "two-way", n_factors = NULL,
   opts_weights = NULL)
 }
 \arguments{

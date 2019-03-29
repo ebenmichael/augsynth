@@ -21,7 +21,7 @@
 #'         }
 multisynth <- function(form, unit, time, data,
                        relative=T, gap=NULL,
-                       alpha=0.5, lambda=0,
+                       alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
                        opts_weights=NULL) {
@@ -76,26 +76,26 @@ multisynth <- function(form, unit, time, data,
     ## get residuals from outcome model
     residuals <- cbind(wide$X, wide$y) - y0hat
 
-    
+    ## if no alpha value is provided, use default based on
+    ## global and individual imbalance for no-pooling estimator
+
+    if(is.null(alpha)) {
+        ## fit with alpha = 0
+        alpha_fit <- multisynth_qp(X=residuals[,1:ncol(wide$X)],
+                                   trt=wide$trt,
+                                   mask=wide$mask, gap=gap,
+                                   relative=relative,
+                                   alpha=0, lambda=lambda)
+
+        alpha <- alpha_fit$ind_l2^2 / (alpha_fit$global_l2^2 + alpha_fit$ind_l2^2)
+        
+    }
     
     msynth <- multisynth_qp(X=residuals[,1:ncol(wide$X)],
                             trt=wide$trt,
                             mask=wide$mask, gap=gap,
                             relative=relative,
                             alpha=alpha, lambda=lambda)
-
-    ## Balance for aggregate estimate
-    global_l2 <- sqrt(sum(msynth$imbalance[,1]^2))
-
-    ## balance for individual estimates
-    ind_op <- svd(msynth$imbalance[,-1])$d[1]
-
-    ## l2 imbalance for individual estimates
-    ind_l2 <- sqrt(sum(msynth$imbalance[,-1]^2))
-        
-    msynth$global_l2 <- global_l2
-    msynth$ind_l2 <- ind_l2       
-    msynth$ind_op <- ind_op
 
     ## put in data and hyperparams
     msynth$data <- wide
@@ -121,12 +121,13 @@ multisynth <- function(form, unit, time, data,
                           relative=relative,
                           alpha=0, lambda=1e10)
     ## scaled global balance
-    msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))    
+    ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
+    msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
 
     ## balance for individual estimates
-    msynth$scaled_ind_op <- msynth$ind_op / svd(unif$imbalance[,-1])$d[1]
-    msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
-    
+    ## msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
+    msynth$scaled_ind_l2 <- msynth$ind_l2  / unif$ind_l2
+
     ## outcome model parameters
     msynth$params <- params
     
@@ -424,8 +425,6 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL) {
     summ$global_l2 <- multisynth$global_l2
     summ$scaled_global_l2 <- multisynth$scaled_global_l2
 
-    summ$ind_op <- multisynth$ind_op
-    summ$scaled_ind_op <- multisynth$scaled_ind_op
     summ$ind_l2 <- multisynth$ind_l2
     summ$scaled_ind_l2 <- multisynth$scaled_ind_l2
     
@@ -461,9 +460,6 @@ print.summary.multisynth <- function(summ) {
     cat(paste("Global L2 Imbalance (Scaled): ",
               format(round(summ$global_l2,3), nsmall=3), "  (",
               format(round(summ$scaled_global_l2,3), nsmall=3), ")\n\n",
-              "Individual Operator Imbalance (Scaled): ",
-              format(round(summ$ind_op,3), nsmall=3), "  (",
-              format(round(summ$scaled_ind_op,3), nsmall=3), ")\n\n",
               "Individual L2 Imbalance (Scaled): ",
               format(round(summ$ind_l2,3), nsmall=3), "  (",
               format(round(summ$scaled_ind_l2,3), nsmall=3), ")\t",
