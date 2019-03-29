@@ -147,12 +147,13 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
            }) %>% reduce(`+`) -> V2
 
 
-    Hmat <- Matrix::bdiag(list(alpha * V2, (1-alpha) * V1 %*% Matrix::t(V1))) +
-        lambda * Matrix::Diagonal(nrow(V1) + nrow(V2))
+    Hmat <- Matrix::bdiag(list(alpha * (V2 + lambda * Matrix::Diagonal(nrow(V2))),
+    (1-alpha) * (V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1)))))
 
 
 
-    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-6, eps_rel = 1e-6)
+    ## Optimize
+    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-8, eps_rel = 1e-8)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
 
     ## get weights
@@ -174,9 +175,10 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     avg_imbal <- rowSums(t(t(imbalance)))
 
 
-    ## pad weights with zeros for treated units
+    ## pad weights with zeros for treated units and divide by number of treated units
     weights <- matrix(0, nrow=n, ncol=J)
     weights[idxs0,] <- matrix(out$x[-(1:n0)], nrow=n0)
+    weights <- t(t(weights) / n1)
     
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance))
