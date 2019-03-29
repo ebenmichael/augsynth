@@ -179,9 +179,11 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     weights <- matrix(0, nrow=n, ncol=J)
     weights[idxs0,] <- matrix(out$x[-(1:n0)], nrow=n0)
     weights <- t(t(weights) / n1)
-    
+
     output <- list(weights=weights,
-                   imbalance=cbind(avg_imbal, imbalance))
+                   imbalance=cbind(avg_imbal, imbalance),
+                   global_l2=sqrt(sum(avg_imbal^2 * nw^2 / sum(nw^2))),
+                   ind_l2=sqrt(sum(imbalance^2)))
     
     return(output)
     
