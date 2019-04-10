@@ -67,11 +67,11 @@ multisynth <- function(form, unit, time, data,
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
         
-    } else if(force == 1) {
+    } else if(force != 0) {
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
                                             ncol=ncol(wide$y)))
-        out <- fit_unit_feff(cbind(wide$X, wide$y), wide$trt, fullmask)
+        out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force)
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- NULL

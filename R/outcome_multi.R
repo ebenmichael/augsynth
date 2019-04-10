@@ -56,16 +56,17 @@ fit_gsynth_multi <- function(X, trt, r=0, r.end=5, force=3, CV=1) {
 
 
 
-#' Get unit fixed effects from pre-treatment data for each level
+#' Get fixed effects from pre-treatment data for each level
 #'
 #' @param X Matrix of outcomes
 #' @param trt Vector of treatment status for each unit
 #' @param mask Matrix of treatment statuses
-#'
+#' @param force Fixed effects: 1="unit", 2="time", 3="two-way"
+#' 
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_unit_feff <- function(X, trt, mask) {
+fit_feff <- function(X, trt, mask, force) {
 
     ttot <- ncol(X)
     n <- nrow(X)
@@ -73,12 +74,29 @@ fit_unit_feff <- function(X, trt, mask) {
     grps <- unique(trt)
     J <- length(grps)-1
 
-    ## iterate over each treatment time and get pre-treamtent unit averages
-    y0hat <- lapply(1:J, function(j) matrix(rowMeans(X[, mask[j,]==1]),
-                                            nrow=nrow(X), ncol=ncol(X)))
+    residuals <- lapply(1:J, function(j) X)
+    if(force %in% c(2,3)) {
+        ## compute time fixed effects from pure controls
+        time_eff <- lapply(1:J, function(j) matrix(colMeans(X[!is.finite(trt),]),
+                                                            nrow=nrow(X), ncol=ncol(X),
+                                                            byrow=T))
+        residuals <- lapply(1:J, function(j) residuals[[j]] - time_eff[[j]])
+        y0hat <- time_eff
+    }
 
-    ## get residuals
-    residuals <- lapply(y0hat, function(y0j) X - y0j)
+    if(force %in% c(1,3)) {
+
+        ## compute unit fixed effects from pre-intervention outcomes
+        unit_eff <- lapply(1:J, function(j) matrix(rowMeans(residuals[[j]][, mask[j,]==1]),
+                                                   nrow=nrow(X), ncol=ncol(X)))
+
+        residuals <- lapply(1:J, function(j) residuals[[j]] - unit_eff[[j]])
+        y0hat <- lapply(1:J, function(j) unit_eff[[j]])
+    }
+
+    if(force == 3) {
+        y0hat <- lapply(1:J, function(j) time_eff[[j]] + unit_eff[[j]])
+    }
     
     return(list(y0hat=y0hat,
                 residuals=residuals))
