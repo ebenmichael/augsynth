@@ -56,10 +56,24 @@ multisynth <- function(form, unit, time, data,
         out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
         y0hat <- out$y0hat
         params <- out$params
+        ## get residuals from outcome model
+        residuals <- cbind(wide$X, wide$y) - y0hat
+        
         
     } else if(force == 0 & n_factors == 0) {
         ## if no fixed effects or factors, just do nothing
         y0hat <- matrix(0, nrow=nrow(wide$X), ncol=(ncol(wide$X) + ncol(wide$y)))
+        params <- NULL
+        ## get residuals from outcome model
+        residuals <- cbind(wide$X, wide$y) - y0hat
+        
+    } else if(force == 1) {
+        ## take out pre-treatment averages
+        fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
+                                            ncol=ncol(wide$y)))
+        out <- fit_unit_feff(cbind(wide$X, wide$y), wide$trt, fullmask)
+        y0hat <- out$y0hat
+        residuals <- out$residuals
         params <- NULL
     } else {
         ## if number of factors is provided don't do CV
@@ -69,19 +83,25 @@ multisynth <- function(form, unit, time, data,
         y0hat <- out$y0hat
         params <- out$params        
 
+        ## get residuals from outcome model
+        residuals <- cbind(wide$X, wide$y) - y0hat
+
+    }
+
+    
+    ## balance the residuals
+    if(typeof(residuals) == "list") {
+        bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
+    } else {
+        bal_mat <- residuals[,1:ncol(wide$X)]
     }
 
 
-
-    ## get residuals from outcome model
-    residuals <- cbind(wide$X, wide$y) - y0hat
-
     ## if no alpha value is provided, use default based on
     ## global and individual imbalance for no-pooling estimator
-
     if(is.null(alpha)) {
         ## fit with alpha = 0
-        alpha_fit <- multisynth_qp(X=residuals[,1:ncol(wide$X)],
+        alpha_fit <- multisynth_qp(X=bal_mat,
                                    trt=wide$trt,
                                    mask=wide$mask, gap=gap,
                                    relative=relative,
@@ -91,7 +111,7 @@ multisynth <- function(form, unit, time, data,
         
     }
     
-    msynth <- multisynth_qp(X=residuals[,1:ncol(wide$X)],
+    msynth <- multisynth_qp(X=bal_mat,
                             trt=wide$trt,
                             mask=wide$mask, gap=gap,
                             relative=relative,
@@ -112,6 +132,8 @@ multisynth <- function(form, unit, time, data,
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
 
+    msynth$n_factors <- n_factors
+    msynth$force <- force
     
     ## Get imbalance for uniform weights on raw data
     ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
@@ -165,28 +187,51 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
 
-    ## estimate the post-treatment values to gett att estimates
+    ## estimate the post-treatment values to get att estimates
     mu1hat <- vapply(1:J,
                      function(j) colMeans(fulldat[multisynth$data$trt ==grps[j],
                                                 , drop=FALSE]),
                      numeric(ttot))
 
+
+    ## get average outcome model estimates and reweight residuals
+    if(typeof(multisynth$y0hat) == "list") {
+        mu0hat <- vapply(1:J,
+                        function(j) {
+                            y0hat <- colMeans(multisynth$y0hat[[j]][multisynth$data$trt ==grps[j],
+                                                                  , drop=FALSE])
+                            y0hat + t(multisynth$residuals[[j]]) %*% multisynth$weights[,j]
+                        }
+                       , numeric(ttot)
+                        )
+    } else {
+        mu0hat <- vapply(1:J,
+                        function(j) {
+                            y0hat <- colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
+                                                                  , drop=FALSE])
+                            y0hat + t(multisynth$residuals) %*% multisynth$weights[,j]
+                        }
+                       , numeric(ttot)
+                        )
+    }
+    
+    
     ## average outcome model estimates for treatment groups
-    y0hat_avg <- vapply(1:J,
-                     function(j) colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
-                                                , drop=FALSE]),
-                     numeric(ttot))
+    ## y0hat_avg <- vapply(1:J,
+    ##                  function(j) colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
+    ##                                             , drop=FALSE]),
+    ##                  numeric(ttot))
 
     
     ## residuals for treated units
-    trt_r <- vapply(1:J,
-                    function(j) colMeans(multisynth$residuals[multisynth$data$trt ==grps[j],
-                                                , drop=FALSE]),
-                    numeric(ttot))
+    ## trt_r <- vapply(1:J,
+    ##                 function(j) colMeans(multisynth$residuals[multisynth$data$trt ==grps[j],
+    ##                                             , drop=FALSE]),
+    ##                 numeric(ttot))
 
     ## tauhat <- trt_r - t(multisynth$residuals) %*% multisynth$weights
     ## mu0hat <- tauhat - mu1hat
-    mu0hat <- y0hat_avg + t(multisynth$residuals) %*% multisynth$weights
+    ## mu0hat <- y0hat_avg + t(multisynth$residuals) %*% multisynth$weights
     tauhat <- mu1hat - mu0hat
 
     ## re-index time if relative to treatment
@@ -311,21 +356,86 @@ compute_se <- function(multisynth, relative=NULL) {
     ##                   numeric(ttot))
 
     ## use weighted control residuals to estimate variance for treated units
-    trt_var <- vapply(1:J,
-                      function(j) {
-                          colSums(multisynth$residuals^2 * multisynth$weights[,j]) / n1[j]
-                      },
-                      numeric(ttot))
+    if(typeof(multisynth$residuals) == "list") {
+        trt_var <- vapply(1:J,
+                          function(j) {
+                              colSums(multisynth$residuals[[j]]^2 * multisynth$weights[,j]) / n1[j]
+                          },
+                          numeric(ttot))
+
+        ## standard error estimate of imputed counterfactual mean
+        ## from control residuals and weights
+        ctrl_var <- vapply(1:J,
+                           function(j) colSums(multisynth$residuals[[j]]^2 * multisynth$weights[,j]^2),
+                           numeric(ttot))
+
+    } else {
+        trt_var <- vapply(1:J,
+                          function(j) {
+                              colSums(multisynth$residuals^2 * multisynth$weights[,j]) / n1[j]
+                          },
+                          numeric(ttot))
+
+        ## standard error estimate of imputed counterfactual mean
+        ## from control residuals and weights
+        ctrl_var <- vapply(1:J,
+                           function(j) colSums(multisynth$residuals^2 * multisynth$weights[,j]^2),
+                           numeric(ttot))
+        
+    }
+
+
+    ## standard error estimate of treated means from treated residuals
+    ## heteroskedastic errors between treated/untreated, homoskedastic across time
+    ## trt_var <- vapply(1:J,
+    ##                   function(j) {
+    ##                       apply(multisynth$residuals[is.finite(multisynth$data$trt),
+    ##                                                , drop=FALSE], 2, var) / n1[j]
+    ##                   },
+    ##                   numeric(ttot))
     
-    ## standard error estimate of imputed counterfactual mean
-    ## from control residuals and weights
-    ctrl_var <- vapply(1:J,
-                       function(j) colSums(multisynth$residuals^2 * multisynth$weights[,j]^2),
-                       numeric(ttot))
     
+
     ## standard error
     se <- sqrt(trt_var + ctrl_var)
 
+    ## print(se)
+    ## ## for fixed effects use HC3 standard errors
+    ## if(multisynth$force %in% c(2,3)) {
+    ##     ## put back into a panel structure
+    ##     wide <- cbind(multisynth$data$X, multisynth$data$y)
+    ##     ids <- 1:nrow(wide)
+
+    ##     wide <- wide %>% data.frame() %>% mutate(trt=multisynth$data$trt, id=ids)
+
+    ##     vapply(1:J,
+    ##            function(j) {
+    ##                ## get weights for level j
+    ##                wj <- multisynth$weights[,j]
+    ##                wj[multisynth$data$trt == grps[j]] <- 1/sum(multisynth$data$trt == grps[j])
+
+    ##                ## some weights are tiny adn negative, make these zero
+    ##                wj <- wj * (wj >= 0)
+    ##                wide %>% mutate(weight=wj) %>%
+    ##                    gather(time, val, -trt, -id, -weight) %>%
+    ##                    mutate(post = as.numeric(time) >= trt) -> pnlj
+
+    ##                ## fit weighted fixed effects estimator to get variances
+    ##                fit <- lm(val ~ as.factor(time) + as.factor(id) +
+    ##                              (trt==grps[j]):time, pnlj, weights=pnlj$weight)
+    ##                ses <- sqrt(diag(sandwich::vcovHC(fit)))
+
+    ##                ## isolate treatment effect standard errors
+    ##                print(length(ses))
+    ##                ses <- ses[(length(ses) - ttot+2):length(ses)]
+    ##                print(ses)                   
+    ##                print(length(ids) + ttot)
+    ##                print(length(ses))
+    ##                ses
+    ##            },
+    ##            numeric(ttot-1)) -> se
+    ## }
+    ## print(se)
 
     ## re-index time if relative to treatment
     if(relative) {
