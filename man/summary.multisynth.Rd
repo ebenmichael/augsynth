@@ -4,10 +4,15 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(multisynth, relative = NULL, level = NULL)
+\method{summary}{multisynth}(multisynth, relative = NULL, level = NULL,
+  jackknife = T)
 }
 \arguments{
 \item{relative}{Whether to estimate effects for time relative to treatment}
+
+\item{level}{What treatment level to report}
+
+\item{jackknife}{Whether to use jackknice standard errors, default T}
 }
 \description{
 Summary function for multisynth

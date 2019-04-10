@@ -126,9 +126,9 @@ multisynth <- function(form, unit, time, data,
     msynth$alpha <- alpha
 
     ## average together treatment groups
-    grps <- unique(wide$trt)
+    grps <- unique(wide$trt) %>% sort()
     J <- length(grps)-1
-
+    msynth$grps <- grps
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
 
@@ -180,10 +180,11 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     d <- ncol(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
-    grps <- unique(multisynth$data$trt) %>% sort()
+    grps <- multisynth$grps
     J <- length(grps) - 1
-    n1 <- multisynth$data$trt[is.finite(multisynth$data$trt)] %>%
-        table() %>% as.numeric()
+
+    n1 <- sapply(1:J, function(j) sum(multisynth$data$trt == grps[j]))
+
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
 
@@ -200,7 +201,8 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[[j]][multisynth$data$trt ==grps[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals[[j]]) %*% multisynth$weights[,j]
+                            y0hat + t(multisynth$residuals[[j]]) %*%
+                                multisynth$weights[,j] / sum(multisynth$weights[,j])
                         }
                        , numeric(ttot)
                         )
@@ -209,29 +211,13 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals) %*% multisynth$weights[,j]
+                            y0hat + t(multisynth$residuals) %*%
+                                multisynth$weights[,j] / sum(multisynth$weights[,j])
                         }
                        , numeric(ttot)
                         )
     }
     
-    
-    ## average outcome model estimates for treatment groups
-    ## y0hat_avg <- vapply(1:J,
-    ##                  function(j) colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
-    ##                                             , drop=FALSE]),
-    ##                  numeric(ttot))
-
-    
-    ## residuals for treated units
-    ## trt_r <- vapply(1:J,
-    ##                 function(j) colMeans(multisynth$residuals[multisynth$data$trt ==grps[j],
-    ##                                             , drop=FALSE]),
-    ##                 numeric(ttot))
-
-    ## tauhat <- trt_r - t(multisynth$residuals) %*% multisynth$weights
-    ## mu0hat <- tauhat - mu1hat
-    ## mu0hat <- y0hat_avg + t(multisynth$residuals) %*% multisynth$weights
     tauhat <- mu1hat - mu0hat
 
     ## re-index time if relative to treatment
@@ -323,9 +309,10 @@ print.multisynth <- function(multisynth) {
 #' @param relative Whether to estimate effects for time relative to treatment
 #' @param levels Treatment levels to plot for, default plots for everything
 #' @param se Whether to plot standard errors
+#' @param jackknice Whether to compute jackknife standard errors, default T
 #' @export
-plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, se=T) {
-    plot(summary(multisynth, relative), levels, se)
+plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, se=T, jackknife=T) {
+    plot(summary(multisynth, relative, jackknife=jackknife), levels, se)
 }
 
 compute_se <- function(multisynth, relative=NULL) {
@@ -346,14 +333,6 @@ compute_se <- function(multisynth, relative=NULL) {
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
     
-    ## standard error estimate of treated means from treated residuals
-    ## heteroskedastic errors between treated/untreated
-    ## trt_var <- vapply(1:J,
-    ##                   function(j) {
-    ##                       apply(multisynth$residuals[is.finite(multisynth$data$trt),
-    ##                                                , drop=FALSE], 2, var) / n1[j]
-    ##                   },
-    ##                   numeric(ttot))
 
     ## use weighted control residuals to estimate variance for treated units
     if(typeof(multisynth$residuals) == "list") {
@@ -383,59 +362,11 @@ compute_se <- function(multisynth, relative=NULL) {
                            numeric(ttot))
         
     }
-
-
-    ## standard error estimate of treated means from treated residuals
-    ## heteroskedastic errors between treated/untreated, homoskedastic across time
-    ## trt_var <- vapply(1:J,
-    ##                   function(j) {
-    ##                       apply(multisynth$residuals[is.finite(multisynth$data$trt),
-    ##                                                , drop=FALSE], 2, var) / n1[j]
-    ##                   },
-    ##                   numeric(ttot))
     
     
 
     ## standard error
     se <- sqrt(trt_var + ctrl_var)
-
-    ## print(se)
-    ## ## for fixed effects use HC3 standard errors
-    ## if(multisynth$force %in% c(2,3)) {
-    ##     ## put back into a panel structure
-    ##     wide <- cbind(multisynth$data$X, multisynth$data$y)
-    ##     ids <- 1:nrow(wide)
-
-    ##     wide <- wide %>% data.frame() %>% mutate(trt=multisynth$data$trt, id=ids)
-
-    ##     vapply(1:J,
-    ##            function(j) {
-    ##                ## get weights for level j
-    ##                wj <- multisynth$weights[,j]
-    ##                wj[multisynth$data$trt == grps[j]] <- 1/sum(multisynth$data$trt == grps[j])
-
-    ##                ## some weights are tiny adn negative, make these zero
-    ##                wj <- wj * (wj >= 0)
-    ##                wide %>% mutate(weight=wj) %>%
-    ##                    gather(time, val, -trt, -id, -weight) %>%
-    ##                    mutate(post = as.numeric(time) >= trt) -> pnlj
-
-    ##                ## fit weighted fixed effects estimator to get variances
-    ##                fit <- lm(val ~ as.factor(time) + as.factor(id) +
-    ##                              (trt==grps[j]):time, pnlj, weights=pnlj$weight)
-    ##                ses <- sqrt(diag(sandwich::vcovHC(fit)))
-
-    ##                ## isolate treatment effect standard errors
-    ##                print(length(ses))
-    ##                ses <- ses[(length(ses) - ttot+2):length(ses)]
-    ##                print(ses)                   
-    ##                print(length(ids) + ttot)
-    ##                print(length(ses))
-    ##                ses
-    ##            },
-    ##            numeric(ttot-1)) -> se
-    ## }
-    ## print(se)
 
     ## re-index time if relative to treatment
     if(relative) {
@@ -478,11 +409,83 @@ compute_se <- function(multisynth, relative=NULL) {
 }
 
 
+#' Compute standard errors using the jackknife
+#' @param multisynth fitted multisynth object
+#' @param relative Whether to compute effects according to relative time
+jackknife <- function(multisynth, relative=NULL) {
+    ## get info from the multisynth object
+    if(is.null(relative)) {
+        relative <- multisynth$relative
+    }
+    gap <- multisynth$gap
+    n <- nrow(multisynth$data$X)
+    outddim <- nrow(predict(multisynth, att=T))
+    J <- length(multisynth$grps) - 1
+    ## drop each unit and estimate overall treatment effect   
+    jack_est <- vapply(1:n,
+                       function(i) {
+                           msyn_i <- drop_unit_i_(multisynth, i)
+                           predict(msyn_i, relative=relative, att=T)[,1]
+                       },
+                       numeric(outddim))
+
+
+
+    
+    se <- apply(jack_est, 1, sd, na.rm=T)
+    ## se[1:(length(se)-gap-1)] <- NA
+    ## pad with NA
+    ## TODO: this is a dumb hack to work with existing code easily, fix this
+    se <- cbind(se, matrix(NA, nrow=length(se), ncol=J))
+    return(se)
+
+}
+
+#' Helper function to drop unit i from the multisynth object
+drop_unit_i_ <- function(msyn, i) {
+
+    msyn_i <- msyn
+    msyn_i$data$X <- msyn$data$X[-i,]
+    msyn_i$data$y <- msyn$data$y[-i,]
+    msyn_i$data$trt <- msyn$data$trt[-i]
+    if(typeof(msyn$residuals) == "list") {
+        msyn_i$residuals <- lapply(msyn$residuals, function(x) x[-i,])
+        msyn_i$y0hat <- lapply(msyn$y0hat, function(x) x[-i,])
+
+    } else {
+        msyn_i$residuals <- msyn$residuals[-i,]
+        msyn_i$y0hat <- msyn$y0hat[-i,]
+    }
+
+    msyn_i$weights <- msyn$weights[-i,]
+
+    ## ## refit weights
+    ## if(typeof(msyn_i$residuals) == "list") {
+    ##     bal_mat <- lapply(msyn_i$residuals, function(x) x[,1:ncol(msyn_i$data$X)])
+    ## } else {
+    ##     bal_mat <- msyn_i$residuals[,1:ncol(msyn_i$data$X)]
+    ## }
+    ## msyn_i$grps <- unique(msyn_i$data$trt) %>% sort()
+    ## not_miss_j <- msyn$grps[is.finite(msyn$grps)] %in% msyn_i$grps[is.finite(msyn_i$grps)]
+
+    ## msyn_i$data$mask <- msyn$data$mask[not_miss_j,]
+    ## msyn_i$weights <- multisynth_qp(X=bal_mat,
+    ##                                 trt=msyn_i$data$trt,
+    ##                                 mask=msyn_i$data$mask,
+    ##                                 gap=msyn_i$gap,
+    ##                                 relative=msyn_i$relative,
+    ##                                 alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
+    
+    
+    return(msyn_i)
+}
+
 #' Summary function for multisynth
 #' @param relative Whether to estimate effects for time relative to treatment
+#' @param level What treatment level to report
+#' @param jackknife Whether to use jackknice standard errors, default T
 #' @export
-summary.multisynth <- function(multisynth, relative=NULL, level=NULL) {
-
+summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=T) {
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
@@ -501,7 +504,12 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL) {
     summ <- list()
     ## post treatment estimate for each group and overall
     att <- predict(multisynth, relative, att=T)
-    se <- compute_se(multisynth, relative)
+    
+    if(jackknife) {
+        se <- jackknife(multisynth, relative)
+    } else {
+        se <- compute_se(multisynth, relative)
+    }
     
 
     if(relative) {
