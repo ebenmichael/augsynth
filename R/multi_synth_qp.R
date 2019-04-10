@@ -4,7 +4,7 @@
 
 
 #' Internal function to fit synth with staggered adoption with a QP solver
-#' @param X Matrix of pre-final intervention outcomes
+#' @param X Matrix of pre-final intervention outcomes, or list of such matrices after transformations
 #' @param trt Vector of treatment levels/times
 #' @param mask Matrix with indicators for observed pre-intervention times for each treatment group
 #' @param gap Number of time periods after treatment to impute control values.
@@ -23,9 +23,9 @@
 #' @importMethodsFrom Matrix %*%
 multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0) {
 
-    n <- dim(X)[1]
+    n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
+    d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
 
-    d <- dim(X)[2]
     if(is.null(gap)) {
         gap <- d+1
     } else if(gap > d) {
@@ -38,12 +38,21 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     J <- length(grps)
 
 
-    x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
-
-    ## All possible donor units for all treatment groups
-    Xc <- lapply(1:nrow(mask),
+    ## handle X differently if it is a list
+    if(typeof(X) == "list") {
+        x_t <- lapply(1:J, function(j) colSums(X[[j]][trt ==grps[j], mask[j,]==1, drop=F]))    
+        
+        ## All possible donor units for all treatment groups
+        Xc <- lapply(1:nrow(mask),
+                 function(j) X[[j]][trt > gap + min(grps), mask[j,]==1, drop=F])
+    } else {
+        x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
+        
+        ## All possible donor units for all treatment groups
+        Xc <- lapply(1:nrow(mask),
                  function(j) X[trt > gap + min(grps), mask[j,]==1, drop=F])
-
+    }
+    
     n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
     
     ## weight the global parameters by the number of treated units still untreated in calander time
@@ -183,7 +192,7 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance),
                    global_l2=sqrt(sum(avg_imbal^2 * nw^2 / sum(nw^2))),
-                   ind_l2=sqrt(sum(imbalance^2)))
+                   ind_l2=sqrt(sum(imbalance^2) / J))
     
     return(output)
     
