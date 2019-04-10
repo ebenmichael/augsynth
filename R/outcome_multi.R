@@ -7,7 +7,6 @@
 #'
 #' @param X Matrix of outcomes
 #' @param trt Vector of treatment status for each unit
-#' @param mask Matrix of treatment statuses
 #' @param r Number of factors to use (or start with if CV==1)
 #' @param r.end Max number of factors to consider if CV==1
 #' @param force=c(0,1,2,3) Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
@@ -52,6 +51,37 @@ fit_gsynth_multi <- function(X, trt, r=0, r.end=5, force=3, CV=1) {
     
     return(list(y0hat=y0hat,
                 params=gsyn$est.co))
+    
+}
+
+
+
+#' Get unit fixed effects from pre-treatment data for each level
+#'
+#' @param X Matrix of outcomes
+#' @param trt Vector of treatment status for each unit
+#' @param mask Matrix of treatment statuses
+#'
+#' @return \itemize{
+#'           \item{y0hat }{Predicted outcome under control}
+#'           \item{params }{Regression parameters}}
+fit_unit_feff <- function(X, trt, mask) {
+
+    ttot <- ncol(X)
+    n <- nrow(X)
+
+    grps <- unique(trt)
+    J <- length(grps)-1
+
+    ## iterate over each treatment time and get pre-treamtent unit averages
+    y0hat <- lapply(1:J, function(j) matrix(rowMeans(X[, mask[j,]==1]),
+                                            nrow=nrow(X), ncol=ncol(X)))
+
+    ## get residuals
+    residuals <- lapply(y0hat, function(y0j) X - y0j)
+    
+    return(list(y0hat=y0hat,
+                residuals=residuals))
     
 }
 
