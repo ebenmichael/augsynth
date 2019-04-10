@@ -596,14 +596,13 @@ print.summary.multisynth <- function(summ) {
 plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
 
     ## get the last time period for each level
-    summ$att %>% na.omit() %>%
+    summ$att %>%
+        filter(!is.na(Estimate)) %>%
         group_by(Level) %>%
         summarise(last_time=max(Time)) -> last_times
 
     if(is.null(levels)) levels <- unique(summ$att$Level)
 
-    
-    
     summ$att %>% inner_join(last_times) %>%
         filter(Level %in% levels) %>%
         mutate(label=ifelse(Time == last_time, Level, NA),
