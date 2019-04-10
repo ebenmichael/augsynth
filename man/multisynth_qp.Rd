@@ -8,7 +8,7 @@ multisynth_qp(X, trt, mask, gap = NULL, relative = T, alpha = 0,
   lambda = 0)
 }
 \arguments{
-\item{X}{Matrix of pre-final intervention outcomes}
+\item{X}{Matrix of pre-final intervention outcomes, or list of such matrices after transformations}
 
 \item{trt}{Vector of treatment levels/times}
 
