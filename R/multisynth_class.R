@@ -309,7 +309,7 @@ print.multisynth <- function(multisynth) {
 #' @param relative Whether to estimate effects for time relative to treatment
 #' @param levels Treatment levels to plot for, default plots for everything
 #' @param se Whether to plot standard errors
-#' @param jackknice Whether to compute jackknife standard errors, default T
+#' @param jackknife Whether to compute jackknife standard errors, default T
 #' @export
 plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, se=T, jackknife=T) {
     plot(summary(multisynth, relative, jackknife=jackknife), levels, se)
@@ -425,19 +425,14 @@ jackknife <- function(multisynth, relative=NULL) {
     jack_est <- vapply(1:n,
                        function(i) {
                            msyn_i <- drop_unit_i_(multisynth, i)
-                           predict(msyn_i, relative=relative, att=T)[,1]
+                           predict(msyn_i, relative=relative, att=T)
                        },
-                       numeric(outddim))
+                       matrix(0, nrow=outddim,ncol=(J+1)))
 
+    se2 <- apply(jack_est, c(1,2),
+                function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
 
-
-    
-    se <- apply(jack_est, 1, sd, na.rm=T)
-    ## se[1:(length(se)-gap-1)] <- NA
-    ## pad with NA
-    ## TODO: this is a dumb hack to work with existing code easily, fix this
-    se <- cbind(se, matrix(NA, nrow=length(se), ncol=J))
-    return(se)
+    return(sqrt(se2))
 
 }
 
