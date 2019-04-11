@@ -511,12 +511,14 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
         att <- data.frame(cbind(-(d-1):min(gap, ttot-grps[1]), att))
         names(att) <- c("Time", "Average", times[grps[1:J]])
         att %>% gather(Level, Estimate, -Time) %>%
-            rename("Time"=Time) -> att
+            rename("Time"=Time) %>%
+            mutate(Time=Time-1) -> att
 
         se <- data.frame(cbind(-(d-1):min(gap, ttot-grps[1]), se))
         names(se) <- c("Time", "Average", times[grps[1:J]])
         se %>% gather(Level, Std.Error, -Time) %>%
-            rename("Time"=Time) -> se
+            rename("Time"=Time) %>%
+            mutate(Time=Time-1)-> se
         
         
     } else {
