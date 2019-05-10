@@ -192,7 +192,7 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance),
                    global_l2=sqrt(sum(avg_imbal^2 * nw^2 / sum(nw^2))),
-                   ind_l2=sqrt(sum(imbalance^2) / J))
+                   ind_l2=sqrt(sum(imbalance[,-1]^2) / J))
     
     return(output)
     

@@ -217,6 +217,12 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                        , numeric(ttot)
                         )
     }
+
+    ## last row is post-treatment average
+    ## mu1hat_avg <- sapply(1:J, function(j) mean(mu1hat[fullmask[j,]==0,j]))
+    ## mu0hat_avg <- sapply(1:J, function(j) mean(mu0hat[fullmask[j,]==0,j]))
+    ## mu1hat <- rbind(mu1hat, mu1hat_avg)
+    ## mu0hat <- rbind(mu0hat, mu0hat_avg)
     
     tauhat <- mu1hat - mu0hat
 
@@ -228,18 +234,27 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                              vec <- c(rep(NA, d-grps[j]),
                                       mu0hat[1:grps[j],j],
                                       mu0hat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
-                             c(vec, rep(NA, total_len - length(vec)))
+                             ## last row is post-treatment average
+                             c(vec,
+                               rep(NA, total_len - length(vec)),
+                               mean(mu0hat[(grps[j]+1):(min(grps[j] + gap, ttot)), j]))
+                               
                          },
-                         numeric(total_len))
+                         numeric(total_len +1
+                                 ))
         
         tauhat <- vapply(1:J,
                          function(j) {
                              vec <- c(rep(NA, d-grps[j]),
                                       tauhat[1:grps[j],j],
                                       tauhat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
-                             c(vec, rep(NA, total_len - length(vec)))
+                             ## last row is post-treatment average
+                             c(vec,
+                               rep(NA, total_len - length(vec)),
+                               mean(tauhat[(grps[j]+1):(min(grps[j] + gap, ttot)), j]))
                          },
-                         numeric(total_len))
+                         numeric(total_len +1
+                                 ))
         ## get the overall average estimate
         avg <- apply(mu0hat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
         mu0hat <- cbind(avg, mu0hat)
@@ -420,15 +435,23 @@ jackknife <- function(multisynth, relative=NULL) {
     gap <- multisynth$gap
     n <- nrow(multisynth$data$X)
     outddim <- nrow(predict(multisynth, att=T))
+
     J <- length(multisynth$grps) - 1
     ## drop each unit and estimate overall treatment effect   
     jack_est <- vapply(1:n,
                        function(i) {
                            msyn_i <- drop_unit_i_(multisynth, i)
-                           predict(msyn_i, relative=relative, att=T)
+                           pred <- predict(msyn_i[[1]], relative=relative, att=T)
+                           if(length(msyn_i[[2]]) != 0) {
+                               out <- matrix(NA, nrow=nrow(pred), ncol=(J+1))
+                               out[,-(msyn_i[[2]]+1)] <- pred
+                           } else {
+                               out <- pred
+                           }
+                           out
                        },
                        matrix(0, nrow=outddim,ncol=(J+1)))
-
+    return(jack_est)
     se2 <- apply(jack_est, c(1,2),
                 function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
 
@@ -454,25 +477,26 @@ drop_unit_i_ <- function(msyn, i) {
 
     msyn_i$weights <- msyn$weights[-i,]
 
-    ## ## refit weights
-    ## if(typeof(msyn_i$residuals) == "list") {
-    ##     bal_mat <- lapply(msyn_i$residuals, function(x) x[,1:ncol(msyn_i$data$X)])
-    ## } else {
-    ##     bal_mat <- msyn_i$residuals[,1:ncol(msyn_i$data$X)]
-    ## }
-    ## msyn_i$grps <- unique(msyn_i$data$trt) %>% sort()
-    ## not_miss_j <- msyn$grps[is.finite(msyn$grps)] %in% msyn_i$grps[is.finite(msyn_i$grps)]
+    ## refit weights
+    if(typeof(msyn_i$residuals) == "list") {
+        bal_mat <- lapply(msyn_i$residuals, function(x) x[,1:ncol(msyn_i$data$X)])
+    } else {
+        bal_mat <- msyn_i$residuals[,1:ncol(msyn_i$data$X)]
+    }
+    msyn_i$grps <- unique(msyn_i$data$trt) %>% sort()
+    not_miss_j <- msyn$grps[is.finite(msyn$grps)] %in% msyn_i$grps[is.finite(msyn_i$grps)]
 
-    ## msyn_i$data$mask <- msyn$data$mask[not_miss_j,]
-    ## msyn_i$weights <- multisynth_qp(X=bal_mat,
-    ##                                 trt=msyn_i$data$trt,
-    ##                                 mask=msyn_i$data$mask,
-    ##                                 gap=msyn_i$gap,
-    ##                                 relative=msyn_i$relative,
-    ##                                 alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
+    msyn_i$data$mask <- msyn$data$mask[not_miss_j,]
+    msyn_i$weights <- multisynth_qp(X=bal_mat,
+                                    trt=msyn_i$data$trt,
+                                    mask=msyn_i$data$mask,
+                                    gap=msyn_i$gap,
+                                    relative=msyn_i$relative,
+                                    alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
     
     
-    return(msyn_i)
+    return(list(msyn_i,
+                which(!not_miss_j)))
 }
 
 #' Summary function for multisynth
@@ -508,18 +532,19 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     
 
     if(relative) {
-        att <- data.frame(cbind(-(d-1):min(gap, ttot-grps[1]), att))
+        att <- data.frame(cbind(c(-(d-1):min(gap, ttot-grps[1]), NA),
+                                att))
         names(att) <- c("Time", "Average", times[grps[1:J]])
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1) -> att
 
-        se <- data.frame(cbind(-(d-1):min(gap, ttot-grps[1]), se))
+        se <- data.frame(cbind(c(-(d-1):min(gap, ttot-grps[1]), NA),
+                               se))
         names(se) <- c("Time", "Average", times[grps[1:J]])
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1)-> se
-        
         
     } else {
         att <- data.frame(cbind(times, att))
@@ -581,6 +606,17 @@ print.summary.multisynth <- function(summ) {
               "\n\n",
               sep=""))
 
+    cat(paste("Average ATT Estimate (Std. Error)",
+              summ$att %>%
+              filter(Level=="Average", is.na(Time)) %>%
+              pull(Estimate) %>%
+              round(3) %>% format(nsmall=3),
+              "\t(",
+              summ$att %>%
+              filter(Level=="Average", is.na(Time)) %>%
+              pull(Std.Error) %>%
+              round(3) %>% format(nsmall=3),
+              ")\n\n", sep=""))
 
     print(att_est, row.names=F)
     
