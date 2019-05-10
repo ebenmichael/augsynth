@@ -66,73 +66,72 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 
     
     ## make matrices for QP
-    n0 <- sum(!is.finite(trt))
     idxs0  <- trt  > gap + min(grps)
-    n0 <- sum(idxs0)
-    
-    ## sum to n1 constraint
-    A1 <- do.call(Matrix::bdiag, lapply(1:(J+1), function(x) rep(1, n0)))
-    Amat <- as.matrix(Matrix::t(A1))
-    Amat <- Matrix::rbind2(Matrix::t(A1), Matrix::Diagonal(nrow(A1)))
-
-    ## sum to global weights
-    A2 <- Matrix::kronecker(t(c(-1, rep(1, J))), Matrix::Diagonal(n0))
-    Amat <- Matrix::rbind2(Amat, A2)
-
-    ## zero out weights for inelligible units
-    A3 <- do.call(Matrix::bdiag,
-                  c(lapply(1:J,
-                           function(j) {
-                               z <- numeric(n0)
-                               z[trt[idxs0] <= grps[j] + gap] <- 1
-                               z
-                           })))
-
-    
-    Amat <- Matrix::rbind2(Amat,
-                           Matrix::cbind2(Matrix::Matrix(0, ncol=n0, nrow=J),
-                                          Matrix::t(A3)))
-    
-    lvec <- c(sum(n1), n1, # sum to n1 constraint
-              numeric(nrow(A1)), # lower bound by zero
-              numeric(n0), # sum to global weights
-              numeric(J)) # zero out weights for impossible donors
-    
-    uvec <- c(sum(n1), n1, #sum to n1 constraint
-              rep(sum(n1), n0), sapply(n1, function(n1j) rep(n1j, n0)), # upper bound by n1j
-              numeric(n0), # sum to global weights
-              numeric(J)) # zero out weights for impossible donors
+    n0 <- sum(idxs0)    
+    const_mats <- make_constraint_mats(trt, grps, gap)
+    Amat <- const_mats$Amat
+    lvec <- const_mats$lvec
+    uvec <- const_mats$uvec
 
     ## quadratic balance measures
 
-    dvec <- lapply(1:J, function(j) c((1-alpha) / length(x_t[[j]]) * Xc[[j]] %*% x_t[[j]]))
+    dvec <- lapply(1:J, function(j) c(Xc[[j]] %*% x_t[[j]]) /
+                                    n1[j] ## length(x_t[[j]])
+                   )
 
-    dvec_avg <- lapply(x_t,
-                       function(xtk) {
-                           lapply(1:J,
-                                  function(j)  {
+    ## sumxt <- lapply(x_t,
+    ##                 function(xtk) {
+    ##                     if(relative) {
+    ##                         c(numeric(d-length(xtk)), xtk)
+    ##                     } else {
+    ##                         c(xtk, numeric(d-length(xtk)))
+    ##                     }
+    ##                 }) %>% reduce(`+`)
+
+    ## Xcmat <- lapply(Xc,
+    ##                 function(Xcj) {
+    ##                     if(relative) {
+    ##                         t(cbind(matrix(0, nrow=nrow(Xcj), ncol=(d-ncol(Xcj))),
+    ##                               Xcj))
+    ##                     } else {
+    ##                         t(cbind(Xcj, matrix(0, nrow=nrow(Xcj), ncol=(d-ncol(Xcj)))))
+    ##                     }
+    ##                 }) %>% do.call(cbind, .)
+    ## return(list(sumxt, Xcmat))
+
+
+    dvec_avg <- lapply(1:J,
+                       function(j)  {
+                           lapply(x_t,
+                                  function(xtk) {
+                                      
                                       dk <- length(xtk)
                                       dj <- ncol(Xc[[j]])
                                       ndim <- min(dk, dj)
                                       ## relative time: inner product from the end
                                       if(relative) {
                                           Xc[[j]][,(dj-ndim+1):dj] %*%
-                                              xtk[(dk-ndim+1):dk] *
-                                              n1[j] / sum(n1)
+                                              xtk[(dk-ndim+1):dk] / sum(n1)## *
+                                              ## n1[j] / sum(n1)
+                                           
                                       } else {
                                           ## absolute time: inner product from start
                                           Xc[[j]][,1:ndim] %*%
-                                              xtk[1:ndim] *
-                                              n1[j] / sum(n1)
+                                              xtk[1:ndim] / (J * ndim)## *
+                                              ## n1[j] / sum(n1) / ndim
                                       }
                                   }) %>% reduce(`+`)
-                       }) %>% reduce(`+`)
+                       }) %>% reduce(c)
+
     
-    dvec <- -c(alpha * dvec_avg, reduce(dvec,c))
+    ## dvec_avg <- c(t(sumxt) %*% Xcmat)
+    
+    dvec <- - (alpha * dvec_avg + (1 - alpha) * reduce(dvec,c))
 
 
     V1 <- do.call(Matrix::bdiag,
-                  lapply(Xc, function(x) x / sqrt(ncol(x))))
+                  lapply(1:J, function(j) Xc[[j]] / sqrt(n1[j]) ## sqrt(ncol(x)))
+                         ))
 
     lapply(1:J,
            function(k) {
@@ -144,30 +143,35 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
                           if(relative) {
                               ## inner product from end
                               Xc[[k]][,(dk-ndim+1):dk] %*%
-                                  t(Xc[[j]][,(dj-ndim+1):dj]) *
-                                  n1[k] * n1[j] / sum(n1)^2
+                                  t(Xc[[j]][,(dj-ndim+1):dj]) / sum(n1)## *
+                                  ## n1[k] * n1[j] / sum(n1)^2
                           } else {
                               ## inner product from start
                               Xc[[k]][,1:ndim] %*%
-                                  t(Xc[[j]][,1:ndim]) *
-                                  n1[k] * n1[j] / sum(n1)^2
+                                  t(Xc[[j]][,1:ndim])## *
+                                  ## n1[k] * n1[j] / sum(n1)^2
                           }
-                      }) %>% reduce(`+`)
-           }) %>% reduce(`+`) -> V2
+                      }) %>% do.call(cbind, .)
+           }) %>% do.call(rbind, .) -> V2
 
 
-    Hmat <- Matrix::bdiag(list(alpha * (V2 + lambda * Matrix::Diagonal(nrow(V2))),
-    (1-alpha) * (V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1)))))
+    Hmat <- alpha * V2 + (1 - alpha) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
+
+    ## return(list(dvec=dvec, Hmat=Hmat))
+    ## Hmat <- Matrix::bdiag(list(alpha * (V2 + lambda * Matrix::Diagonal(nrow(V2))),
+    ## (1-alpha) * (V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1)))))
 
 
 
     ## Optimize
-    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-8, eps_rel = 1e-8)
+    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-7, eps_rel = 1e-7,
+                                   max_iter=5000)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
-
+    ## return(out)
     ## get weights
-    weights <- matrix(out$x[-(1:n0)], nrow=n0)
-
+    ## weights <- matrix(out$x[-(1:n0)], nrow=n0)
+    weights <- matrix(out$x, nrow=n0)
+    ## return(weights)
     ## compute imbalance
     if(relative) {
         imbalance <- vapply(1:J,
@@ -186,8 +190,9 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 
     ## pad weights with zeros for treated units and divide by number of treated units
     weights <- matrix(0, nrow=n, ncol=J)
-    weights[idxs0,] <- matrix(out$x[-(1:n0)], nrow=n0)
-    weights <- t(t(weights) / n1)
+    weights[idxs0,] <- matrix(out$x, nrow=n0)
+    weights <- t(t(weights) ## / n1
+                 )
 
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance),
@@ -196,4 +201,70 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     
     return(output)
     
+}
+
+
+#' Create constraint matrices for multisynth QP
+#' @param trt Vector of treatment levels/times
+#' @param grps Unique treatment time groups
+#' @param gap Number of time periods after treatment to impute control values.
+#'            For units treated at time T_j, all units treated after T_j + gap
+#'            will be used as control values. If larger than the number of periods,
+#'            only never never treated units (pure controls) will be used as comparison units#'
+#' @return 
+#'         \itemize{
+#'          \item{"Amat"}{Linear constraint matrix}
+#'          \item{"lvec"}{Lower bounds for linear constraints}
+#'          \item{"uvec"}{Upper bounds for linear constraints}
+#'         }
+make_constraint_mats <- function(trt, grps, gap) {
+
+    J <- length(grps)
+    n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
+    idxs0  <- trt  > gap + min(grps)
+
+    n0 <- sum(idxs0)
+
+    ## sum to n1 constraint
+    A1 <- do.call(Matrix::bdiag, lapply(1:(J), function(x) rep(1, n0)))
+
+    Amat <- as.matrix(Matrix::t(A1))
+    Amat <- Matrix::rbind2(Matrix::t(A1), Matrix::Diagonal(nrow(A1)))
+
+    ## ## sum to global weights
+    ## A2 <- Matrix::kronecker(t(c(-1, rep(1, J))), Matrix::Diagonal(n0))
+    ## Amat <- Matrix::rbind2(Amat, A2)
+
+    ## zero out weights for inelligible units
+    A3 <- do.call(Matrix::bdiag,
+                  c(lapply(1:J,
+                           function(j) {
+                               z <- numeric(n0)
+                               z[trt[idxs0] <= grps[j] + gap] <- 1
+                               z
+                           })))
+    
+    ## Amat <- Matrix::rbind2(Amat,
+    ##                        Matrix::cbind2(Matrix::Matrix(0, ncol=n0, nrow=J),
+    ##                                       Matrix::t(A3)))
+
+    Amat <- Matrix::rbind2(Amat, Matrix::t(A3))
+
+    
+    lvec <- c(## sum(n1), 
+        n1, # sum to n1 constraint
+        numeric(nrow(A1)), # lower bound by zero
+## -              numeric(n0), # sum to global weights
+              numeric(J)) # zero out weights for impossible donors
+    
+    uvec <- c(## sum(n1), 
+        n1, #sum to n1 constraint
+        rep(Inf, nrow(A1)),
+        ## rep(sum(n1), n0),
+        ## sapply(n1, function(n1j) rep(n1j, n0)), # upper bound by n1j
+              ## numeric(n0), # sum to global weights
+        numeric(J)) # zero out weights for impossible donors
+
+
+    return(list(Amat=Amat, lvec=lvec, uvec=uvec))
 }
