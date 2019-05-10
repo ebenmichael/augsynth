@@ -106,8 +106,10 @@ multisynth <- function(form, unit, time, data,
                                    mask=wide$mask, gap=gap,
                                    relative=relative,
                                    alpha=0, lambda=lambda)
-
-        alpha <- alpha_fit$ind_l2^2 / (alpha_fit$global_l2^2 + alpha_fit$ind_l2^2)
+        ## select alpha by triangle inequality ratio
+        glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
+        ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
+        alpha <- glbl / ind
         
     }
     
