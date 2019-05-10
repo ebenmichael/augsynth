@@ -64,6 +64,7 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     }
 
 
+    n1tot <- sum(n1)
     
     ## make matrices for QP
     idxs0  <- trt  > gap + min(grps)
@@ -75,8 +76,10 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 
     ## quadratic balance measures
 
-    dvec <- lapply(1:J, function(j) c(Xc[[j]] %*% x_t[[j]]) /
-                                    n1[j] ## length(x_t[[j]])
+    dvec <- lapply(1:J, function(j) c(Xc[[j]] %*%
+                                      ## diag(nw[(d-ncol(Xc[[j]])+1):d] / n1tot) %*%
+                                      x_t[[j]]) / ## n1[j]
+                                    length(x_t[[j]])
                    )
 
     ## sumxt <- lapply(x_t,
@@ -111,14 +114,15 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
                                       ## relative time: inner product from the end
                                       if(relative) {
                                           Xc[[j]][,(dj-ndim+1):dj] %*%
-                                              xtk[(dk-ndim+1):dk] / sum(n1)## *
-                                              ## n1[j] / sum(n1)
+                                              ## diag(nw[(d-ndim+1):d] / n1tot) %*% 
+                                              xtk[(dk-ndim+1):dk] ## / n1tot
+                                               ## n1[j] / n1tot
                                            
                                       } else {
                                           ## absolute time: inner product from start
                                           Xc[[j]][,1:ndim] %*%
                                               xtk[1:ndim] / (J * ndim)## *
-                                              ## n1[j] / sum(n1) / ndim
+                                              ## n1[j] / n1tot / ndim
                                       }
                                   }) %>% reduce(`+`)
                        }) %>% reduce(c)
@@ -126,11 +130,15 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     
     ## dvec_avg <- c(t(sumxt) %*% Xcmat)
     
-    dvec <- - (alpha * dvec_avg + (1 - alpha) * reduce(dvec,c))
+    dvec <- - (alpha * dvec_avg / d + (1 - alpha) * reduce(dvec,c))
 
 
     V1 <- do.call(Matrix::bdiag,
-                  lapply(1:J, function(j) Xc[[j]] / sqrt(n1[j]) ## sqrt(ncol(x)))
+                  lapply(1:J, function(j) {
+                      (Xc[[j]] / sqrt(ncol(Xc[[j]]))##  sqrt(n1[j])
+                      ) ## %*%
+                          ## diag(sqrt(nw[(d-ncol(Xc[[j]])+1):d] / n1tot)) 
+                  }
                          ))
 
     lapply(1:J,
@@ -143,13 +151,14 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
                           if(relative) {
                               ## inner product from end
                               Xc[[k]][,(dk-ndim+1):dk] %*%
-                                  t(Xc[[j]][,(dj-ndim+1):dj]) / sum(n1)## *
-                                  ## n1[k] * n1[j] / sum(n1)^2
+                                  ## diag(nw[(d-ndim+1):d] / n1tot) %*% 
+                                  t(Xc[[j]][,(dj-ndim+1):dj]) / d
+                                  ## n1[k] * n1[j] / n1tot^2
                           } else {
                               ## inner product from start
                               Xc[[k]][,1:ndim] %*%
                                   t(Xc[[j]][,1:ndim])## *
-                                  ## n1[k] * n1[j] / sum(n1)^2
+                                  ## n1[k] * n1[j] / n1tot^2
                           }
                       }) %>% do.call(cbind, .)
            }) %>% do.call(rbind, .) -> V2
@@ -164,7 +173,7 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 
 
     ## Optimize
-    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-7, eps_rel = 1e-7,
+    settings <- osqp::osqpSettings(verbose = TRUE, eps_abs=1e-7, eps_rel = 1e-7,
                                    max_iter=5000)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
     ## return(out)
