@@ -453,7 +453,7 @@ jackknife <- function(multisynth, relative=NULL) {
                            out
                        },
                        matrix(0, nrow=outddim,ncol=(J+1)))
-    return(jack_est)
+    ## return(jack_est)
     se2 <- apply(jack_est, c(1,2),
                 function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
 
