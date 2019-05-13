@@ -4,8 +4,8 @@
 \alias{multisynth_qp}
 \title{Internal function to fit synth with staggered adoption with a QP solver}
 \usage{
-multisynth_qp(X, trt, mask, n_leads = NULL, relative = T, alpha = 0,
-  lambda = 0)
+multisynth_qp(X, trt, mask, n_leads = NULL, n_lags = NULL,
+  relative = T, alpha = 0, lambda = 0)
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes, or list of such matrices after transformations}
@@ -18,6 +18,8 @@ multisynth_qp(X, trt, mask, n_leads = NULL, relative = T, alpha = 0,
 For units treated at time T_j, all units treated after T_j + n_leads
 will be used as control values. If larger than the number of periods,
 only never never treated units (pure controls) will be used as comparison units}
+
+\item{n_lags}{Number of pre-treatment periods to balance, default is to balance all periods}
 
 \item{relative}{Whether to re-index time according to treatment date, default T}
 
