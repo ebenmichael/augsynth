@@ -5,8 +5,8 @@
 \title{Fit staggered synth}
 \usage{
 multisynth(form, unit, time, data, relative = T, n_leads = NULL,
-  alpha = NULL, lambda = 0, force = "two-way", n_factors = NULL,
-  opts_weights = NULL)
+  n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
+  n_factors = NULL, opts_weights = NULL)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -20,6 +20,8 @@ multisynth(form, unit, time, data, relative = T, n_leads = NULL,
 \item{relative}{Whether to compute balance by relative time}
 
 \item{n_leads}{How long past treatment effects should be estimated for}
+
+\item{n_lags}{Number of pre-treatment periods to balance, default is to balance all periods}
 
 \item{alpha}{Fraction of balance for individual balance}
 
