@@ -20,6 +20,7 @@
 #'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
+#' @export
 multisynth <- function(form, unit, time, data,
                        relative=T, n_leads=NULL, n_lags=NULL,
                        alpha=NULL, lambda=0,
