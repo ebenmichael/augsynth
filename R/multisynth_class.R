@@ -8,7 +8,7 @@
 #' @param time Name of time column
 #' @param data Panel data as dataframe
 #' @param relative Whether to compute balance by relative time
-#' @param gap How long past treatment effects should be estimated for
+#' @param n_leads How long past treatment effects should be estimated for
 #' @param alpha Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
@@ -20,7 +20,7 @@
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 multisynth <- function(form, unit, time, data,
-                       relative=T, gap=NULL,
+                       relative=T, n_leads=NULL,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
@@ -39,11 +39,11 @@ multisynth <- function(form, unit, time, data,
 
     
     
-    ## if gap is NULL set it to be the size of X
-    if(is.null(gap)) {
-        gap <- ncol(wide$X) + 1
-    } else if(gap > ncol(wide$X)) {
-        gap <- ncol(wide$X) + 1
+    ## if n_leads is NULL set it to be the size of X
+    if(is.null(n_leads)) {
+        n_leads <- ncol(wide$X) + 1
+    } else if(n_leads > ncol(wide$X)) {
+        n_leads <- ncol(wide$X) + 1
     }
 
 
@@ -103,7 +103,7 @@ multisynth <- function(form, unit, time, data,
         ## fit with alpha = 0
         alpha_fit <- multisynth_qp(X=bal_mat,
                                    trt=wide$trt,
-                                   mask=wide$mask, gap=gap,
+                                   mask=wide$mask, n_leads=n_leads,
                                    relative=relative,
                                    alpha=0, lambda=lambda)
         ## select alpha by triangle inequality ratio
@@ -115,7 +115,7 @@ multisynth <- function(form, unit, time, data,
     
     msynth <- multisynth_qp(X=bal_mat,
                             trt=wide$trt,
-                            mask=wide$mask, gap=gap,
+                            mask=wide$mask, n_leads=n_leads,
                             relative=relative,
                             alpha=alpha, lambda=lambda)
 
@@ -124,7 +124,7 @@ multisynth <- function(form, unit, time, data,
     msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     msynth$call <- call_name
     msynth$relative <- relative
-    msynth$gap <- gap
+    msynth$n_leads <- n_leads
     msynth$alpha <- alpha
 
     ## average together treatment groups
@@ -141,7 +141,7 @@ multisynth <- function(form, unit, time, data,
     ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
     unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
                           trt=wide$trt,
-                          mask=wide$mask, gap=gap,
+                          mask=wide$mask, n_leads=n_leads,
                           relative=relative,
                           alpha=0, lambda=1e10)
     ## scaled global balance
@@ -178,7 +178,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
-    gap <- multisynth$gap
+    n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
@@ -230,16 +230,16 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 
     ## re-index time if relative to treatment
     if(relative) {
-        total_len <- min(d + gap, ttot + d - grps[1]) ## total length of predictions
+        total_len <- min(d + n_leads, ttot + d - grps[1]) ## total length of predictions
         mu0hat <- vapply(1:J,
                          function(j) {
                              vec <- c(rep(NA, d-grps[j]),
                                       mu0hat[1:grps[j],j],
-                                      mu0hat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
+                                      mu0hat[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j])
                              ## last row is post-treatment average
                              c(vec,
                                rep(NA, total_len - length(vec)),
-                               mean(mu0hat[(grps[j]+1):(min(grps[j] + gap, ttot)), j]))
+                               mean(mu0hat[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j]))
                                
                          },
                          numeric(total_len +1
@@ -249,11 +249,11 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                          function(j) {
                              vec <- c(rep(NA, d-grps[j]),
                                       tauhat[1:grps[j],j],
-                                      tauhat[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
+                                      tauhat[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j])
                              ## last row is post-treatment average
                              c(vec,
                                rep(NA, total_len - length(vec)),
-                               mean(tauhat[(grps[j]+1):(min(grps[j] + gap, ttot)), j]))
+                               mean(tauhat[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j]))
                          },
                          numeric(total_len +1
                                  ))
@@ -266,15 +266,15 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
         
     } else {
 
-        ## remove all estimates for t > T_j + gap
+        ## remove all estimates for t > T_j + n_leads
         vapply(1:J,
-               function(j) c(mu0hat[1:min(grps[j]+gap, ttot),j],
-                             rep(NA, max(0, ttot-(grps[j] + gap)))),
+               function(j) c(mu0hat[1:min(grps[j]+n_leads, ttot),j],
+                             rep(NA, max(0, ttot-(grps[j] + n_leads)))),
                numeric(ttot)) -> mu0hat
 
         vapply(1:J,
-               function(j) c(tauhat[1:min(grps[j]+gap, ttot),j],
-                             rep(NA, max(0, ttot-(grps[j] + gap)))),
+               function(j) c(tauhat[1:min(grps[j]+n_leads, ttot),j],
+                             rep(NA, max(0, ttot-(grps[j] + n_leads)))),
                numeric(ttot)) -> tauhat
 
         
@@ -339,7 +339,7 @@ compute_se <- function(multisynth, relative=NULL) {
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
-    gap <- multisynth$gap
+    n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
@@ -387,13 +387,13 @@ compute_se <- function(multisynth, relative=NULL) {
 
     ## re-index time if relative to treatment
     if(relative) {
-        total_len <- min(d + gap, ttot + d - grps[1]) ## total length of predictions
+        total_len <- min(d + n_leads, ttot + d - grps[1]) ## total length of predictions
         
         se <- vapply(1:J,
                      function(j) {
                          vec <- c(rep(NA, d-grps[j]),
                                   se[1:grps[j],j],
-                                  se[(grps[j]+1):(min(grps[j] + gap, ttot)), j])
+                                  se[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j])
                          c(vec, rep(NA, total_len - length(vec)))
                          },
                          numeric(total_len))
@@ -403,10 +403,10 @@ compute_se <- function(multisynth, relative=NULL) {
         
     } else {
 
-        ## remove all estimates for t > T_j + gap
+        ## remove all estimates for t > T_j + n_leads
         vapply(1:J,
-               function(j) c(se[1:min(grps[j]+gap, ttot),j],
-                             rep(NA, max(0, ttot-(grps[j] + gap)))),
+               function(j) c(se[1:min(grps[j]+n_leads, ttot),j],
+                             rep(NA, max(0, ttot-(grps[j] + n_leads)))),
                numeric(ttot)) -> tauhat
 
         
@@ -434,7 +434,7 @@ jackknife <- function(multisynth, relative=NULL) {
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
-    gap <- multisynth$gap
+    n_leads <- multisynth$n_leads
     n <- nrow(multisynth$data$X)
     outddim <- nrow(predict(multisynth, att=T))
 
@@ -492,7 +492,7 @@ drop_unit_i_ <- function(msyn, i) {
     msyn_i$weights <- multisynth_qp(X=bal_mat,
                                     trt=msyn_i$data$trt,
                                     mask=msyn_i$data$mask,
-                                    gap=msyn_i$gap,
+                                    n_leads=msyn_i$n_leads,
                                     relative=msyn_i$relative,
                                     alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
     
@@ -516,7 +516,7 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     
     grps <- unique(multisynth$data$trt) %>% sort()
     J <- length(grps) - 1    
-    gap <- multisynth$gap
+    n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
     ttot <- d + ncol(multisynth$data$y)
 
@@ -534,14 +534,14 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     
 
     if(relative) {
-        att <- data.frame(cbind(c(-(d-1):min(gap, ttot-grps[1]), NA),
+        att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-grps[1]), NA),
                                 att))
         names(att) <- c("Time", "Average", times[grps[1:J]])
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1) -> att
 
-        se <- data.frame(cbind(c(-(d-1):min(gap, ttot-grps[1]), NA),
+        se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-grps[1]), NA),
                                se))
         names(se) <- c("Time", "Average", times[grps[1:J]])
         se %>% gather(Level, Std.Error, -Time) %>%

@@ -14,7 +14,7 @@
 
 \item{se}{Whether to plot standard errors}
 
-\item{jackknice}{Whether to compute jackknife standard errors, default T}
+\item{jackknife}{Whether to compute jackknife standard errors, default T}
 }
 \description{
 Plot function for multisynth

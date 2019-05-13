@@ -4,7 +4,7 @@
 \alias{multisynth_qp}
 \title{Internal function to fit synth with staggered adoption with a QP solver}
 \usage{
-multisynth_qp(X, trt, mask, gap = NULL, relative = T, alpha = 0,
+multisynth_qp(X, trt, mask, n_leads = NULL, relative = T, alpha = 0,
   lambda = 0)
 }
 \arguments{
@@ -14,8 +14,8 @@ multisynth_qp(X, trt, mask, gap = NULL, relative = T, alpha = 0,
 
 \item{mask}{Matrix with indicators for observed pre-intervention times for each treatment group}
 
-\item{gap}{Number of time periods after treatment to impute control values.
-For units treated at time T_j, all units treated after T_j + gap
+\item{n_leads}{Number of time periods after treatment to impute control values.
+For units treated at time T_j, all units treated after T_j + n_leads
 will be used as control values. If larger than the number of periods,
 only never never treated units (pure controls) will be used as comparison units}
 

@@ -7,8 +7,8 @@
 #' @param X Matrix of pre-final intervention outcomes, or list of such matrices after transformations
 #' @param trt Vector of treatment levels/times
 #' @param mask Matrix with indicators for observed pre-intervention times for each treatment group
-#' @param gap Number of time periods after treatment to impute control values.
-#'            For units treated at time T_j, all units treated after T_j + gap
+#' @param n_leads Number of time periods after treatment to impute control values.
+#'            For units treated at time T_j, all units treated after T_j + n_leads
 #'            will be used as control values. If larger than the number of periods,
 #'            only never never treated units (pure controls) will be used as comparison units
 #' @param relative Whether to re-index time according to treatment date, default T
@@ -21,15 +21,15 @@
 #' 
 #'
 #' @importMethodsFrom Matrix %*%
-multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0) {
+multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambda=0) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
 
-    if(is.null(gap)) {
-        gap <- d+1
-    } else if(gap > d) {
-        gap <- d+1
+    if(is.null(n_leads)) {
+        n_leads <- d+1
+    } else if(n_leads > d) {
+        n_leads <- d+1
     }
 
     ## average over treatment times/groups
@@ -44,13 +44,13 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
         
         ## All possible donor units for all treatment groups
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[[j]][trt > gap + min(grps), mask[j,]==1, drop=F])
+                 function(j) X[[j]][trt > n_leads + min(grps), mask[j,]==1, drop=F])
     } else {
         x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
         
         ## All possible donor units for all treatment groups
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[trt > gap + min(grps), mask[j,]==1, drop=F])
+                 function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])
     }
     
     n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
@@ -67,9 +67,9 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
     n1tot <- sum(n1)
     
     ## make matrices for QP
-    idxs0  <- trt  > gap + min(grps)
+    idxs0  <- trt  > n_leads + min(grps)
     n0 <- sum(idxs0)    
-    const_mats <- make_constraint_mats(trt, grps, gap)
+    const_mats <- make_constraint_mats(trt, grps, n_leads)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
     uvec <- const_mats$uvec
@@ -175,8 +175,8 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 #' Create constraint matrices for multisynth QP
 #' @param trt Vector of treatment levels/times
 #' @param grps Unique treatment time groups
-#' @param gap Number of time periods after treatment to impute control values.
-#'            For units treated at time T_j, all units treated after T_j + gap
+#' @param n_leads Number of time periods after treatment to impute control values.
+#'            For units treated at time T_j, all units treated after T_j + n_leads
 #'            will be used as control values. If larger than the number of periods,
 #'            only never never treated units (pure controls) will be used as comparison units#'
 #' @return 
@@ -185,11 +185,11 @@ multisynth_qp <- function(X, trt, mask, gap=NULL, relative=T, alpha=0, lambda=0)
 #'          \item{"lvec"}{Lower bounds for linear constraints}
 #'          \item{"uvec"}{Upper bounds for linear constraints}
 #'         }
-make_constraint_mats <- function(trt, grps, gap) {
+make_constraint_mats <- function(trt, grps, n_leads) {
 
     J <- length(grps)
     n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
-    idxs0  <- trt  > gap + min(grps)
+    idxs0  <- trt  > n_leads + min(grps)
 
     n0 <- sum(idxs0)
 
@@ -204,7 +204,7 @@ make_constraint_mats <- function(trt, grps, gap) {
                   c(lapply(1:J,
                            function(j) {
                                z <- numeric(n0)
-                               z[trt[idxs0] <= grps[j] + gap] <- 1
+                               z[trt[idxs0] <= grps[j] + n_leads] <- 1
                                z
                            })))
     
