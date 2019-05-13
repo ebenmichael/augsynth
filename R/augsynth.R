@@ -328,5 +328,4 @@ plot.summary.augsynth <- function(summ, se = T) {
 #' @import LowRankQP
 #' @import tidyr
 #' @useDynLib augsynth
-#' @importFrom Rcpp sourceCpp
 NULL
