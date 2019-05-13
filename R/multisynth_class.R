@@ -9,6 +9,7 @@
 #' @param data Panel data as dataframe
 #' @param relative Whether to compute balance by relative time
 #' @param n_leads How long past treatment effects should be estimated for
+#' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
 #' @param alpha Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
@@ -20,7 +21,7 @@
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 multisynth <- function(form, unit, time, data,
-                       relative=T, n_leads=NULL,
+                       relative=T, n_leads=NULL, n_lags=NULL,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
@@ -39,11 +40,18 @@ multisynth <- function(form, unit, time, data,
 
     
     
-    ## if n_leads is NULL set it to be the size of X
+    ## if n_leads is NULL set it to be the largest possible number of leads
     if(is.null(n_leads)) {
-        n_leads <- ncol(wide$X) + 1
-    } else if(n_leads > ncol(wide$X)) {
-        n_leads <- ncol(wide$X) + 1
+        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+    } else if(n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
+        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+    }
+
+    ## if n_lags is NULL set it to the largets number of pre-treatment periods
+    if(is.null(n_lags)) {
+        n_lags <- ncol(wide$X)
+    } else if(n_lags > ncol(wide$X)) {
+        n_lags <- ncol(wide$X)
     }
 
 
@@ -103,7 +111,9 @@ multisynth <- function(form, unit, time, data,
         ## fit with alpha = 0
         alpha_fit <- multisynth_qp(X=bal_mat,
                                    trt=wide$trt,
-                                   mask=wide$mask, n_leads=n_leads,
+                                   mask=wide$mask,
+                                   n_leads=n_leads,
+                                   n_lags=n_lags,
                                    relative=relative,
                                    alpha=0, lambda=lambda)
         ## select alpha by triangle inequality ratio
@@ -115,7 +125,9 @@ multisynth <- function(form, unit, time, data,
     
     msynth <- multisynth_qp(X=bal_mat,
                             trt=wide$trt,
-                            mask=wide$mask, n_leads=n_leads,
+                            mask=wide$mask,
+                            n_leads=n_leads,
+                            n_lags=n_lags,
                             relative=relative,
                             alpha=alpha, lambda=lambda)
 
@@ -125,6 +137,7 @@ multisynth <- function(form, unit, time, data,
     msynth$call <- call_name
     msynth$relative <- relative
     msynth$n_leads <- n_leads
+    msynth$n_lags <- n_lags
     msynth$alpha <- alpha
 
     ## average together treatment groups
@@ -141,7 +154,9 @@ multisynth <- function(form, unit, time, data,
     ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
     unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
                           trt=wide$trt,
-                          mask=wide$mask, n_leads=n_leads,
+                          mask=wide$mask,
+                          n_leads=n_leads,
+                          n_lags=n_lags,
                           relative=relative,
                           alpha=0, lambda=1e10)
     ## scaled global balance
@@ -493,6 +508,7 @@ drop_unit_i_ <- function(msyn, i) {
                                     trt=msyn_i$data$trt,
                                     mask=msyn_i$data$mask,
                                     n_leads=msyn_i$n_leads,
+                                    n_lags=msyn_i$n_lags,
                                     relative=msyn_i$relative,
                                     alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
     

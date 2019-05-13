@@ -11,6 +11,7 @@
 #'            For units treated at time T_j, all units treated after T_j + n_leads
 #'            will be used as control values. If larger than the number of periods,
 #'            only never never treated units (pure controls) will be used as comparison units
+#' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
 #' @param relative Whether to re-index time according to treatment date, default T
 #' @param alpha Hyper-parameter that controls trade-off between overall and individual balance.
 #'              Larger values of alpha place more emphasis on individual balance.
@@ -21,7 +22,8 @@
 #' 
 #'
 #' @importMethodsFrom Matrix %*%
-multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambda=0) {
+multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
+                          relative=T, alpha=0, lambda=0) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
@@ -30,6 +32,12 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
         n_leads <- d+1
     } else if(n_leads > d) {
         n_leads <- d+1
+    }
+
+    if(is.null(n_lags)) {
+        n_lags <- d
+    } else if(n_lags > d) {
+        n_lags <- d
     }
 
     ## average over treatment times/groups
@@ -75,10 +83,14 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
     uvec <- const_mats$uvec
 
     ## quadratic balance measures
-    dvec <- lapply(1:J, function(j) c(Xc[[j]] %*%
-                                      ## diag(nw[(d-ncol(Xc[[j]])+1):d] / n1tot) %*%
-                                      x_t[[j]]) / ## n1[j]
-                                    length(x_t[[j]])
+    dvec <- lapply(1:J,
+                   function(j) {
+                       dj <- length(x_t[[j]])
+                       ndim <- min(dj, n_lags)
+                       c(Xc[[j]][,(dj-ndim+1):dj, drop=F] %*%
+                         x_t[[j]][(dj-ndim+1):dj]) /
+                           ndim
+                   }
                    )
 
     dvec_avg <- lapply(1:J,
@@ -88,10 +100,10 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
                                       
                                       dk <- length(xtk)
                                       dj <- ncol(Xc[[j]])
-                                      ndim <- min(dk, dj)
+                                      ndim <- min(dk, dj, n_lags)
                                       ## relative time: inner product from the end
                                       if(relative) {
-                                          Xc[[j]][,(dj-ndim+1):dj] %*%
+                                          Xc[[j]][,(dj-ndim+1):dj, drop=F] %*%
                                               xtk[(dk-ndim+1):dk]
                                            
                                       } else {
@@ -102,10 +114,17 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
                                   }) %>% reduce(`+`)
                        }) %>% reduce(c)
     
-    dvec <- - (alpha * dvec_avg / d + (1 - alpha) * reduce(dvec,c))
+    dvec <- - (alpha * dvec_avg / n_lags + (1 - alpha) * reduce(dvec,c))
 
     V1 <- do.call(Matrix::bdiag,
-                  lapply(1:J, function(j) Xc[[j]] / sqrt(ncol(Xc[[j]]))))
+                  lapply(1:J,
+                         function(j) {
+                             dj <- length(x_t[[j]])
+                             ndim <- min(dj, n_lags)
+                             Xc[[j]][,(dj-ndim+1):dj, drop=F] / sqrt(ndim)
+                         })
+                  )
+                         
 
     lapply(1:J,
            function(k) {
@@ -113,15 +132,15 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
                       function(j) {
                           dk <- ncol(Xc[[k]])
                           dj <- ncol(Xc[[j]])
-                          ndim <- min(dk, dj)
+                          ndim <- min(dk, dj, n_lags)
                           if(relative) {
                               ## inner product from end
-                              Xc[[k]][,(dk-ndim+1):dk] %*%
-                                  t(Xc[[j]][,(dj-ndim+1):dj]) / d
+                              Xc[[k]][,(dk-ndim+1):dk, drop=F] %*%
+                                  t(Xc[[j]][,(dj-ndim+1):dj, drop=F]) / n_lags
                           } else {
                               ## inner product from start
                               Xc[[k]][,1:ndim] %*%
-                                  t(Xc[[j]][,1:ndim]) / d
+                                  t(Xc[[j]][,1:ndim]) / n_lags
                           }
                       }) %>% do.call(cbind, .)
            }) %>% do.call(rbind, .) -> V2
@@ -140,8 +159,13 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, relative=T, alpha=0, lambd
     ## compute imbalance
     if(relative) {
         imbalance <- vapply(1:J,
-                            function(j) c(numeric(d-length(x_t[[j]])),
-                                          x_t[[j]] -  t(Xc[[j]]) %*% weights[,j]),
+                            function(j) {
+                                dj <- length(x_t[[j]])
+                                ndim <- min(dj, n_lags)
+                                c(numeric(d-ndim),
+                                x_t[[j]][(dj-ndim+1):dj] -
+                                    t(Xc[[j]][,(dj-ndim+1):dj]) %*% weights[,j])
+                            },
                             numeric(d))
     } else {
         imbalance <- vapply(1:J,
