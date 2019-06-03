@@ -9,7 +9,7 @@ make_constraint_mats(trt, grps, n_leads)
 \arguments{
 \item{trt}{Vector of treatment levels/times}
 
-\item{grps}{Unique treatment time groups}
+\item{grps}{Treatment times}
 
 \item{n_leads}{Number of time periods after treatment to impute control values.
 For units treated at time T_j, all units treated after T_j + n_leads
