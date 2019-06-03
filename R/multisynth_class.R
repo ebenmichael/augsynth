@@ -142,8 +142,9 @@ multisynth <- function(form, unit, time, data,
     msynth$alpha <- alpha
 
     ## average together treatment groups
-    grps <- unique(wide$trt) %>% sort()
-    J <- length(grps)-1
+    ## grps <- unique(wide$trt) %>% sort()
+    grps <- wide$trt[is.finite(wide$trt)]
+    J <- length(grps)
     msynth$grps <- grps
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
@@ -196,28 +197,30 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     }
     n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
+    n <- nrow(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
     grps <- multisynth$grps
-    J <- length(grps) - 1
+    J <- length(grps)
+    which_t <- (1:n)[is.finite(multisynth$data$trt)]    
 
-    n1 <- sapply(1:J, function(j) sum(multisynth$data$trt == grps[j]))
-
+    n1 <- sapply(1:J, function(j) 1)
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
 
     ## estimate the post-treatment values to get att estimates
     mu1hat <- vapply(1:J,
-                     function(j) colMeans(fulldat[multisynth$data$trt ==grps[j],
+                     function(j) colMeans(fulldat[which_t[j],
                                                 , drop=FALSE]),
                      numeric(ttot))
+
 
 
     ## get average outcome model estimates and reweight residuals
     if(typeof(multisynth$y0hat) == "list") {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[[j]][multisynth$data$trt ==grps[j],
+                            y0hat <- colMeans(multisynth$y0hat[[j]][which_t[j],
                                                                   , drop=FALSE])
                             y0hat + t(multisynth$residuals[[j]]) %*%
                                 multisynth$weights[,j] / sum(multisynth$weights[,j])
@@ -227,7 +230,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     } else {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[multisynth$data$trt ==grps[j],
+                            y0hat <- colMeans(multisynth$y0hat[which_t[j],
                                                                   , drop=FALSE])
                             y0hat + t(multisynth$residuals) %*%
                                 multisynth$weights[,j] / sum(multisynth$weights[,j])
@@ -236,17 +239,11 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         )
     }
 
-    ## last row is post-treatment average
-    ## mu1hat_avg <- sapply(1:J, function(j) mean(mu1hat[fullmask[j,]==0,j]))
-    ## mu0hat_avg <- sapply(1:J, function(j) mean(mu0hat[fullmask[j,]==0,j]))
-    ## mu1hat <- rbind(mu1hat, mu1hat_avg)
-    ## mu0hat <- rbind(mu0hat, mu0hat_avg)
-    
     tauhat <- mu1hat - mu0hat
 
     ## re-index time if relative to treatment
     if(relative) {
-        total_len <- min(d + n_leads, ttot + d - grps[1]) ## total length of predictions
+        total_len <- min(d + n_leads, ttot + d - min(grps)) ## total length of predictions
         mu0hat <- vapply(1:J,
                          function(j) {
                              vec <- c(rep(NA, d-grps[j]),
@@ -359,10 +356,10 @@ compute_se <- function(multisynth, relative=NULL) {
     d <- ncol(multisynth$data$X)
     fulldat <- cbind(multisynth$data$X, multisynth$data$y)
     ttot <- ncol(fulldat)
-    grps <- unique(multisynth$data$trt) %>% sort()
-    J <- length(grps) - 1
+    J <- length(multisynth$grps)
     n1 <- multisynth$data$trt[is.finite(multisynth$data$trt)] %>%
         table() %>% as.numeric()
+    grps <- multisynth$grps
     fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
     
     
@@ -403,7 +400,7 @@ compute_se <- function(multisynth, relative=NULL) {
 
     ## re-index time if relative to treatment
     if(relative) {
-        total_len <- min(d + n_leads, ttot + d - grps[1]) ## total length of predictions
+        total_len <- min(d + n_leads, ttot + d - min(grps)) ## total length of predictions
         
         se <- vapply(1:J,
                      function(j) {
@@ -454,7 +451,7 @@ jackknife <- function(multisynth, relative=NULL) {
     n <- nrow(multisynth$data$X)
     outddim <- nrow(predict(multisynth, att=T))
 
-    J <- length(multisynth$grps) - 1
+    J <- length(multisynth$grps)
     ## drop each unit and estimate overall treatment effect   
     jack_est <- vapply(1:n,
                        function(i) {
@@ -480,6 +477,8 @@ jackknife <- function(multisynth, relative=NULL) {
 #' Helper function to drop unit i from the multisynth object
 drop_unit_i_ <- function(msyn, i) {
 
+    n <- nrow(msyn$data$X)
+    which_t <- (1:n)[is.finite(msyn$data$trt)]    
     msyn_i <- msyn
     msyn_i$data$X <- msyn$data$X[-i,]
     msyn_i$data$y <- msyn$data$y[-i,]
@@ -501,10 +500,10 @@ drop_unit_i_ <- function(msyn, i) {
     } else {
         bal_mat <- msyn_i$residuals[,1:ncol(msyn_i$data$X)]
     }
-    msyn_i$grps <- unique(msyn_i$data$trt) %>% sort()
-    not_miss_j <- msyn$grps[is.finite(msyn$grps)] %in% msyn_i$grps[is.finite(msyn_i$grps)]
-
-    msyn_i$data$mask <- msyn$data$mask[not_miss_j,]
+    msyn_i$grps <- msyn_i$data$trt[is.finite(msyn_i$data$trt)]
+    not_miss_j <- which_t %in% setdiff(which_t, i)
+    
+    msyn_i$data$mask <- msyn$data$mask[not_miss_j,,drop=F]
     msyn_i$weights <- multisynth_qp(X=bal_mat,
                                     trt=msyn_i$data$trt,
                                     mask=msyn_i$data$mask,
@@ -532,11 +531,12 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
 
     
     grps <- unique(multisynth$data$trt) %>% sort()
-    J <- length(grps) - 1    
+    J <- length(grps)
     n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
+    n <- nrow(multisynth$data$X)
     ttot <- d + ncol(multisynth$data$y)
-
+    which_t <- (1:n)[is.finite(multisynth$data$trt)]
     times <- multisynth$data$time
     
     summ <- list()
@@ -551,16 +551,16 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     
 
     if(relative) {
-        att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-grps[1]), NA),
+        att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                 att))
-        names(att) <- c("Time", "Average", times[grps[1:J]])
+        names(att) <- c("Time", "Average", multisynth$data$units[which_t])
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1) -> att
 
-        se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-grps[1]), NA),
+        se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                se))
-        names(se) <- c("Time", "Average", times[grps[1:J]])
+        names(se) <- c("Time", "Average", multisynth$data$units[which_t])
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1)-> se
@@ -588,6 +588,8 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     summ$scaled_ind_l2 <- multisynth$scaled_ind_l2
     
     summ$level <- level
+    summ$n_leads <- multisynth$n_leads
+    summ$n_lags <- multisynth$n_lags
     
     class(summ) <- "summary.multisynth"
     return(summ)
@@ -649,7 +651,9 @@ plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
 
     ## get the last time period for each level
     summ$att %>%
-        filter(!is.na(Estimate)) %>%
+        filter(!is.na(Estimate),
+               Time >= -summ$n_lags,
+               Time <= summ$n_leads) %>%
         group_by(Level) %>%
         summarise(last_time=max(Time)) -> last_times
 
