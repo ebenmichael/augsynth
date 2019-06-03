@@ -70,9 +70,9 @@ fit_feff <- function(X, trt, mask, force) {
 
     ttot <- ncol(X)
     n <- nrow(X)
-
-    grps <- unique(trt)
-    J <- length(grps)-1
+    grps <- trt[is.finite(trt)]
+    J <- length(grps)
+    which_t <- (1:n)[is.finite(trt)]        
 
     residuals <- lapply(1:J, function(j) X)
     if(force %in% c(2,3)) {

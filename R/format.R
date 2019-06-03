@@ -72,6 +72,19 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
         summarise(t_int=max(trt_time)) %>% pull(t_int)
 
     
+    ## ## boolean mask of available data for treatment groups
+    ## mask <- data %>% inner_join(trt_time %>%
+    ##                             filter(is.finite(trt_time))) %>%
+    ##     filter(!!time < t_int) %>%
+    ##     mutate(trt=1-!!trt) %>%
+    ##     select(!!unit, !!time, trt_time, trt) %>%
+    ##     spread(!!time, trt) %>% 
+    ##     group_by(trt_time) %>% 
+    ##     summarise_all(list(max)) %>%
+    ##     arrange(trt_time) %>% 
+    ##     select(-trt_time, -!!unit) %>%
+    ##     as.matrix()
+
     ## boolean mask of available data for treatment groups
     mask <- data %>% inner_join(trt_time %>%
                                 filter(is.finite(trt_time))) %>%
@@ -79,12 +92,10 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
         mutate(trt=1-!!trt) %>%
         select(!!unit, !!time, trt_time, trt) %>%
         spread(!!time, trt) %>% 
-        group_by(trt_time) %>% 
-        summarise_all(list(max)) %>%
-        arrange(trt_time) %>% 
+        ## arrange(!!unit) %>% 
         select(-trt_time, -!!unit) %>%
         as.matrix()
-
+    
     ## pre treatment outcomes
     X <- data %>%
         filter(!!time < t_int) %>%
@@ -105,11 +116,19 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
     trt <- sapply(trt_time$trt_time, function(x) which(t_vec == x)-1) %>%
         as.numeric() %>%
         replace_na(Inf)
+
+    units <- data %>%
+        filter(!!time < t_int) %>%
+        select(!!unit, !!time, !!outcome) %>%
+        spread(!!time, !!outcome) %>%
+        pull(!!unit)
+
     
     return(list(X=X,
                 trt=trt,
                 y=y,
-                mask=mask))
+                mask=mask,
+                units=units))
 }
 
 

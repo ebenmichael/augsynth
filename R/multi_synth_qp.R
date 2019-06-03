@@ -40,38 +40,34 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
         n_lags <- d
     }
 
-    ## average over treatment times/groups
-    grps <- sort(unique(trt[is.finite(trt)]))
+    ## treatment times
+    grps <- trt[is.finite(trt)]
 
     J <- length(grps)
 
 
+    n_t <- sum(is.finite(trt))
+    which_t <- (1:n)[is.finite(trt)]
+
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
-        x_t <- lapply(1:J, function(j) colSums(X[[j]][trt ==grps[j], mask[j,]==1, drop=F]))    
-        
+        ## x_t <- lapply(1:J, function(j) colSums(X[[j]][trt ==grps[j], mask[j,]==1, drop=F]))    
+        x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[j], mask[j,]==1, drop=F]))
         ## All possible donor units for all treatment groups
         Xc <- lapply(1:nrow(mask),
                  function(j) X[[j]][trt > n_leads + min(grps), mask[j,]==1, drop=F])
     } else {
-        x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
-        
+        ## x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
+        x_t <- lapply(1:J, function(j) colSums(X[which_t[j], mask[j,]==1, drop=F]))        
         ## All possible donor units for all treatment groups
+        ## Xc <- lapply(1:nrow(mask),
+        ##              function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])
+                 function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])        
     }
     
-    n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
+    n1 <- sapply(1:J, function(j) 1)
     
-    ## weight the global parameters by the number of treated units still untreated in calander time
-    nw <- sapply(1:max(trt[is.finite(trt)]), function(t) sum(trt[is.finite(trt)] >= t))
-
-    ## reverse to get relative absolute time
-    if(relative) {
-        nw <- rev(nw)
-    }
-
-
     n1tot <- sum(n1)
     
     ## make matrices for QP
@@ -198,7 +194,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 
 #' Create constraint matrices for multisynth QP
 #' @param trt Vector of treatment levels/times
-#' @param grps Unique treatment time groups
+#' @param grps Treatment times
 #' @param n_leads Number of time periods after treatment to impute control values.
 #'            For units treated at time T_j, all units treated after T_j + n_leads
 #'            will be used as control values. If larger than the number of periods,
@@ -212,7 +208,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 make_constraint_mats <- function(trt, grps, n_leads) {
 
     J <- length(grps)
-    n1 <- sapply(1:J, function(j) sum(trt==grps[j]))
+    n1 <- sapply(1:J, function(j) 1)
     idxs0  <- trt  > n_leads + min(grps)
 
     n0 <- sum(idxs0)
