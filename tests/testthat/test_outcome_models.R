@@ -58,7 +58,7 @@ test_that("Augmenting synth with gsynth runs", {
                      "you must install the gsynth package")
 
         ## install gsynth
-        devtools::install_github("xuyiqing/gsynth")
+        install.packages("gsynth")
     }
 
     ## should run because gsynth is installed
