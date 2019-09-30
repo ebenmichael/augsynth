@@ -13,12 +13,9 @@ Imports:
     ggplot2,
     MASS,
     Synth,
-    plyr,
     LiblineaR,
-    gsynth,
     Formula
 Remotes:
-    xuyiqing/gsynth,
     susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -28,6 +25,7 @@ Suggests:
     testthat,
     CausalImpact,
     keras,
+    gsynth,
     knitr,
     rmarkdown,
     softImpute,
