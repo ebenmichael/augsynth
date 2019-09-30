@@ -2,6 +2,7 @@
 
 S3method(plot,augsynth)
 S3method(plot,summary.augsynth)
+S3method(predict,augsynth)
 S3method(print,augsynth)
 S3method(print,summary.augsynth)
 S3method(summary,augsynth)

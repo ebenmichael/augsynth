@@ -105,11 +105,12 @@ augsynth <- function(form, unit, time, t_int, data,
     return(augsynth)
 }
 
-#' Get prediction of average outcome under control
+#' Get prediction of ATT or average outcome under control
 #' @param augsynth augsynth object
 #'
 #' @return Vector of predicted post-treatment control averages
-predict.augsynth <- function(augsynth) {
+#' @export
+predict.augsynth <- function(augsynth, type = c("att", "outcome")) {
 
     y <- augsynth$data$y
     trt <- augsynth$data$trt
@@ -119,7 +120,13 @@ predict.augsynth <- function(augsynth) {
 
     resid <- (y[trt==0,,drop=F] - mhat[trt==0,drop=F])
 
-    return(m1 + t(resid) %*% augsynth$weights)
+    y0 <- m1 + t(resid) %*% augsynth$weights
+    if(type == "att") {
+        return(colMeans(y[trt == 1,, drop = F]) - c(y0))
+    } else if (type == "outcome") {
+        return(y0)
+    }
+    return()
 }
 
 
