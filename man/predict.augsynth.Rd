@@ -4,10 +4,12 @@
 \alias{predict.augsynth}
 \title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth}(augsynth, type = c("att", "outcome"))
+\method{predict}{augsynth}(augsynth, type = "outcome")
 }
 \arguments{
 \item{augsynth}{augsynth object}
+
+\item{type}{Either "outcome" for average outcome under control, or "att" for ATT}
 }
 \value{
 Vector of predicted post-treatment control averages
