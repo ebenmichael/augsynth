@@ -107,10 +107,11 @@ augsynth <- function(form, unit, time, t_int, data,
 
 #' Get prediction of ATT or average outcome under control
 #' @param augsynth augsynth object
+#' @param type Either "outcome" for average outcome under control, or "att" for ATT
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
-predict.augsynth <- function(augsynth, type = c("att", "outcome")) {
+predict.augsynth <- function(augsynth, type = "outcome") {
 
     y <- augsynth$data$y
     trt <- augsynth$data$trt
