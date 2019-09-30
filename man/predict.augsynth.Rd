@@ -2,9 +2,9 @@
 % Please edit documentation in R/augsynth.R
 \name{predict.augsynth}
 \alias{predict.augsynth}
-\title{Get prediction of average outcome under control}
+\title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth}(augsynth)
+\method{predict}{augsynth}(augsynth, type = c("att", "outcome"))
 }
 \arguments{
 \item{augsynth}{augsynth object}
@@ -13,5 +13,5 @@
 Vector of predicted post-treatment control averages
 }
 \description{
-Get prediction of average outcome under control
+Get prediction of ATT or average outcome under control
 }
