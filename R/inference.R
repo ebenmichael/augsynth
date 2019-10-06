@@ -7,8 +7,6 @@
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
-#' @param cols Column names corresponding to the units,
-#'             time variable, outcome, and treated indicator
 #' 
 #' @return att estimates, test statistics, p-values
 loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
@@ -65,9 +63,11 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 
     sig2 <- apply(errs^2, 2, mean) ## estimate of variance
 
-    se2 <- (1 / sum(wide_data$trt==1) + ## contribution from treated unit
+    se2 <- (#1 / sum(wide_data$trt==1) + ## contribution from treated unit
            sum(aug_t$weights^2)) * ## contribution from weights
         sig2
+
+    # se2 <- t(errs) %*% aug_t$weights^2
 
     se <- sqrt(se2)
     ## se <- (1 / sqrt(sum(wide_data$trt==1)) + 

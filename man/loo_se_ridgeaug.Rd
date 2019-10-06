@@ -14,9 +14,6 @@ loo_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL,
 \item{ridge}{Include ridge or not}
 
 \item{scm}{Include SCM or not}
-
-\item{cols}{Column names corresponding to the units,
-time variable, outcome, and treated indicator}
 }
 \value{
 att estimates, test statistics, p-values
