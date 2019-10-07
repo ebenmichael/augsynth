@@ -146,15 +146,18 @@ print.augsynth <- function(augsynth) {
 
 
 #' Plot function for augsynth
+#' @param se Whether to plot standard errors
+#' @param jackknife Whether to use jackknife or weighted SEs
 #' @export
-plot.augsynth <- function(augsynth) {
-    plot(summary(augsynth))
+plot.augsynth <- function(augsynth, se = T, jackknife = T) {
+    plot(summary(augsynth, jackknife = jackknife), se = se)
 }
 
 
 #' Summary function for augsynth
+#' @param jackknife Whether to use jackknife or weighted SEs
 #' @export
-summary.augsynth <- function(augsynth) {
+summary.augsynth <- function(augsynth, jackknife = T) {
 
     summ <- list()
     if(augsynth$progfunc == "Ridge" |
@@ -166,9 +169,17 @@ summary.augsynth <- function(augsynth) {
         synth_data <- format_synth(augsynth$data$X, augsynth$data$trt,
                                    augsynth$data$y)
 
-        att_se <- loo_se_ridgeaug(augsynth$data, synth_data, augsynth$data$Z,
-                                  lambda=augsynth$lambda,
-                                  ridge=ridge, scm=scm)
+        if(jackknife) {
+            att_se <- jackknife_se_ridgeaug(augsynth$data, synth_data,
+                                            augsynth$data$Z, augsynth$lambda,
+                                            ridge, scm)
+        } else {
+            att_se <- loo_se_ridgeaug(augsynth$data, synth_data, 
+                                      augsynth$data$Z,
+                                      augsynth$lambda,
+                                      ridge, scm)
+        }
+
         att <- data.frame(augsynth$data$time,
                           att_se$att,
                           att_se$se)
@@ -256,15 +267,18 @@ print.summary.augsynth <- function(summ) {
 }
 
 #' Plot function for summary function for augsynth
+#' @param se Whether to plot standard error
 #' @export
-plot.summary.augsynth <- function(summ) {
+plot.summary.augsynth <- function(summ, se = T) {
 
-    summ$att %>%
-        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate)) +
-        ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+    p <- summ$att %>%
+        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
+    if(se) {
+        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
-                    alpha=0.2) +
-        ggplot2::geom_line() +
+                    alpha=0.2)
+    }
+    p + ggplot2::geom_line() +
         ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
         ggplot2::geom_hline(yintercept=0, lty=2) + 
         ggplot2::theme_bw()
