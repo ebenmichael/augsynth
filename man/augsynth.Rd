@@ -6,7 +6,7 @@
 \usage{
 augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None",
   "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
-  weightfunc = c("SCM", "None"), opts_out = NULL,
+  weightfunc = c("SCM", "None"), fixedeff = FALSE, opts_out = NULL,
   opts_weights = NULL, cov_agg = NULL)
 }
 \arguments{
@@ -29,6 +29,8 @@ CausalImpact=Bayesian structural time series with CausalImpact
 seq2seq=Sequence to sequence learning with feedforward nets}
 
 \item{weightfunc}{Weighting function to use, default is SCM}
+
+\item{fixedeff}{Whether to include a unit fixed effect, default F}
 
 \item{opts_out}{Optional options for fitting outcome model}
 

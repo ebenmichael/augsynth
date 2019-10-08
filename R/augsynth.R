@@ -17,6 +17,7 @@
 #'                 CausalImpact=Bayesian structural time series with CausalImpact
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc Weighting function to use, default is SCM
+#' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param opts_out Optional options for fitting outcome model
 #' @param opts_weights Optional options for fitting synth weights
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
@@ -31,13 +32,15 @@
 #'         }
 #' @export
 augsynth <- function(form, unit, time, t_int, data,
-                     progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
+                     progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
+                                "CITS", "CausalImpact", "seq2seq"),
                      weightfunc=c("SCM", "None"),
+                     fixedeff = FALSE,
                      opts_out=NULL, opts_weights=NULL,
                      cov_agg=NULL) {
 
     call_name <- match.call()
-    
+
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
@@ -48,12 +51,16 @@ augsynth <- function(form, unit, time, t_int, data,
     wide <- format_data(outcome, trt, unit, time, t_int, data)
     synth_data <- do.call(format_synth, wide)
 
+    n <- nrow(wide$X)
+    t0 <- ncol(wide$X)
+    ttot <- t0 + ncol(wide$y)
+
     ## add covariates
     if(length(form)[2] == 2) {
 
         ## if no aggregation functions, use the mean (omitting NAs)
         cov_agg <- c(function(x) mean(x, na.rm=T))
-        
+
         cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
                            ~. - 1) ## ensure that there is no intercept
 
@@ -72,27 +79,51 @@ augsynth <- function(form, unit, time, t_int, data,
     } else {
         Z <- NULL
     }
+
+    if(fixedeff) {
+        demeaned <- demean_data(wide, synth_data)
+        fit_wide <- demeaned$wide
+        fit_synth_data <- demeaned$synth_data
+        mhat <- demeaned$mhat
+    } else {
+        fit_wide <- wide
+        fit_synth_data <- synth_data
+        mhat <- matrix(0, n, ttot)
+    }
+
     ## fit augsynth
     if(progfunc == "Ridge") {
         if(weightfunc == "SCM") {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data=wide, synth_data=synth_data, Z=Z),
+                            c(list(wide_data = fit_wide, 
+                                   synth_data = fit_synth_data, 
+                                   Z = Z),
                               opts_out, opts_weights))
         } else if(weightfunc == "None") {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data=wide, synth_data=synth_data,
-                                   Z=Z, ridge=T, scm=F), opts_out, opts_weights))
+                            c(list(wide_data = fit_wide, 
+                                   synth_data = fit_synth_data,
+                                   Z = Z, ridge = T, scm = F),
+                             opts_out, opts_weights))
         }
     } else if(progfunc == "None") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
-                        c(list(wide_data=wide, synth_data=synth_data, Z=Z, ridge=F, scm=T), opts_weights))
+                        c(list(wide_data = fit_wide, 
+                               synth_data = fit_synth_data,
+                               Z = Z, ridge = F, scm = T),
+                          opts_weights))
     } else {
         ## Other outcome models
-        augsynth <- fit_augsyn(wide, synth_data, progfunc, weightfunc, opts_out, opts_weights)
+        augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
+                               progfunc, weightfunc, 
+                               opts_out, opts_weights)
     }
+
+    augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
+                                  augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     augsynth$data$Z <- Z
@@ -100,6 +131,7 @@ augsynth <- function(form, unit, time, t_int, data,
     augsynth$progfunc <- progfunc
     augsynth$weightfunc <- weightfunc
     augsynth$call <- call_name
+    augsynth$fixedeff <- fixedeff
     ##format output
     class(augsynth) <- "augsynth"
     return(augsynth)
@@ -113,17 +145,19 @@ augsynth <- function(form, unit, time, t_int, data,
 #' @export
 predict.augsynth <- function(augsynth, att = F) {
 
+    X <- augsynth$data$X
     y <- augsynth$data$y
+    comb <- cbind(X, y)
     trt <- augsynth$data$trt
     mhat <- augsynth$mhat
     
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
-    resid <- (y[trt==0,,drop=F] - mhat[trt==0,drop=F])
+    resid <- (comb[trt==0,,drop=F] - mhat[trt==0,drop=F])
 
     y0 <- m1 + t(resid) %*% augsynth$weights
     if(att) {
-        return(colMeans(y[trt == 1,, drop = F]) - c(y0))
+        return(colMeans(comb[trt == 1,, drop = F]) - c(y0))
     } else {
         return(y0)
     }
@@ -160,6 +194,19 @@ plot.augsynth <- function(augsynth, se = T, jackknife = T) {
 summary.augsynth <- function(augsynth, jackknife = T) {
 
     summ <- list()
+
+    # ## post treatment estimate
+    # att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
+    #     predict(augsynth)
+
+    # ## pre treatment estimate
+    # att_pre <- colMeans(augsynth$data$X[augsynth$data$trt == 1,,drop=F]) -
+    #     t(augsynth$data$X[augsynth$data$trt==0,,drop=F]) %*% augsynth$weights
+    att_est <- predict(augsynth, att = T)
+    att <- data.frame(Time = augsynth$data$time,
+                        Estimate = att_est)
+
+
     if(augsynth$progfunc == "Ridge" |
        augsynth$progfunc == "None" & augsynth$weightfunc == "SCM") {
         ridge <- augsynth$progfunc == "Ridge"
@@ -172,7 +219,7 @@ summary.augsynth <- function(augsynth, jackknife = T) {
         if(jackknife) {
             att_se <- jackknife_se_ridgeaug(augsynth$data, synth_data,
                                             augsynth$data$Z, augsynth$lambda,
-                                            ridge, scm)
+                                            ridge, scm, augsynth$fixedeff)
         } else {
             att_se <- loo_se_ridgeaug(augsynth$data, synth_data, 
                                       augsynth$data$Z,
@@ -180,26 +227,12 @@ summary.augsynth <- function(augsynth, jackknife = T) {
                                       ridge, scm)
         }
 
-        att <- data.frame(augsynth$data$time,
-                          att_se$att,
-                          att_se$se)
-        names(att) <- c("Time", "Estimate", "Std.Error")
+        att$Std.Error <- att_se$se
 
         summ$att <- att
         summ$sigma <- att_se$sigma
     } else {
         ## no standard errors
-
-        ## post treatment estimate
-        att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
-            predict(augsynth)
-
-        ## pre treatment estimate
-        att_pre <- colMeans(augsynth$data$X[augsynth$data$trt == 1,,drop=F]) -
-            t(augsynth$data$X[augsynth$data$trt==0,,drop=F]) %*% augsynth$weights
-        
-        att <- data.frame(Time=augsynth$data$time,
-                          Estimate=c(att_pre, att_post))
         att$Std.Error <- NA
         summ$att <- att
         summ$sigma <- NA
