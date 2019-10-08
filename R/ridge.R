@@ -21,7 +21,7 @@
 #'          \item{"synw"}{The synth weights(for estimating the bias)}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
-                                   Z=NULL, lambda=NULL, ridge=T, scm=T, lambda_min_ratio = 0.00001, n_lambda = 20) {
+                                   Z=NULL, lambda=NULL, ridge=T, scm=T, lambda_min_ratio = 0.001, n_lambda = 20) {
 
     X <- wide_data$X
     y <- wide_data$y
@@ -88,15 +88,14 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                     scaler <- (lambda_min_ratio) ^ (1/n_lambda)
                     lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
                     lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
-                    lambda <- lambda_errors[which.min(lambda_errors)]
-                    #plot(log(lambdas), get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=10))
+                    lambda <- lambdas[which.min(lambda_errors)]
                 } else {
                     # lambda <- glmnet::cv.glmnet(X_c, y[trt==0], alpha=0, family="gaussian")$lambda.min
                     lambda_max <- 1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2))^2
                     scaler <- (lambda_min_ratio) ^ (1/n_lambda)
                     lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
                     lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
-                    lambda <- lambda_errors[which.min(lambda_errors)]
+                    lambda <- lambdas[which.min(lambda_errors)]
                 }
             }
         }
@@ -142,11 +141,24 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     } else {
         ridge_mhat <- NULL
     }
-    return(list(weights=weights,
-                l2_imbalance=l2_imbalance,
-                scaled_l2_imbalance=scaled_l2_imabalance,
-                mhat=mhat,
-                lambda=lambda,
-                ridge_mhat=ridge_mhat,
-                synw=syn))
+    
+    if(!is.null(Z) & ridge) {
+        return(list(weights=weights,
+                    l2_imbalance=l2_imbalance,
+                    scaled_l2_imbalance=scaled_l2_imabalance,
+                    mhat=mhat,
+                    lambda=lambda,
+                    ridge_mhat=ridge_mhat,
+                    synw=syn))
+    } else {
+        return(list(weights=weights,
+                    l2_imbalance=l2_imbalance,
+                    scaled_l2_imbalance=scaled_l2_imabalance,
+                    mhat=mhat,
+                    lambda=lambda,
+                    ridge_mhat=ridge_mhat,
+                    synw=syn,
+                    lambdas=lambdas,
+                    lambda_errors=lambda_errors))
+    }
 }
