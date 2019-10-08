@@ -21,7 +21,7 @@
 #'          \item{"synw"}{The synth weights(for estimating the bias)}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
-                                   Z=NULL, lambda=NULL, ridge=T, scm=T, lambda_ratio = 0.00001, lambda_steps = 40) {
+                                   Z=NULL, lambda=NULL, ridge=T, scm=T, lambda_min_ratio = 0.00001, n_lambda = 20) {
 
     X <- wide_data$X
     y <- wide_data$y
@@ -85,16 +85,16 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                 if(ncol(y) > 1) {
                     # lambda <- glmnet::cv.glmnet(X_c, y[trt==0,,drop=FALSE], alpha=0, family="mgaussian")$lambda.min
                     lambda_max <- 1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2))^2
-                    scaler <- (lambda_ratio) ^ (1/lambda_steps)
-                    lambdas <- lambda_max * (scaler ^ (seq(0:lambda_steps) - 1))
+                    scaler <- (lambda_min_ratio) ^ (1/n_lambda)
+                    lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
                     lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
                     lambda <- lambda_errors[which.min(lambda_errors)]
                     #plot(log(lambdas), get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=10))
                 } else {
                     # lambda <- glmnet::cv.glmnet(X_c, y[trt==0], alpha=0, family="gaussian")$lambda.min
                     lambda_max <- 1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2))^2
-                    scaler <- (lambda_ratio) ^ (1/lambda_steps)
-                    lambdas <- lambda_max * (scaler ^ (seq(0:lambda_steps) - 1))
+                    scaler <- (lambda_min_ratio) ^ (1/n_lambda)
+                    lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
                     lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
                     lambda <- lambda_errors[which.min(lambda_errors)]
                 }
