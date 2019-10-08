@@ -117,12 +117,12 @@ drop_unit_i <- function(wide_data, Z, i) {
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
-#' 
+#' @param fixedeff Take out fixed effects or not
 #' @return att estimates, test statistics, p-values
 jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
-                            ridge=T, scm=T) {
-
+                            ridge = T, scm = T, fixedeff = F) {
+    
     n <- nrow(wide_data$X)
     n_c <- dim(synth_data$Z0)[2]
 
@@ -149,12 +149,23 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     ests <- vapply(trt_idxs, 
                    function(i) {
                        new_data <- drop_unit_i(wide_data, Z, i)
+                       if(fixedeff) {
+                           demeaned <- demean_data(new_data$wide, 
+                                                   new_data$synth_data)
+                            new_data$wide_data <- demeaned$wide
+                            new_data$synth_data <- demeaned$synth_data
+                            mhat <- demeaned$mhat[, (t0 + 1):t_final, drop = F]
+                       } else {
+                           mhat <- matrix(0, n - 1, tpost)
+                       }
+                       
                        new_y <- new_data$wide_data$y
                        new_trt <- new_data$wide_data$trt
-                       aug <- do.call(fit_ridgeaug_formatted, 
-                                c(new_data, 
+                       aug <- do.call(fit_ridgeaug_formatted,
+                                c(new_data,
                                 list(lambda = lam, ridge = ridge, scm = scm)))
-                       c(t(new_y[new_trt == 0,, drop = F]) %*% aug$weights)
+                       c(#colMeans(mhat[new_trt == 1,, drop = FALSE]) + 
+                         t(new_y[new_trt == 0,, drop = F]) %*% aug$weights)
                    },
                    numeric(tpost))
 

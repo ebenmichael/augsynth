@@ -41,7 +41,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         Z_cent <- apply(Z, 2, function(x) x - mean(x[trt==0]))
         Z_c <- Z_cent[trt==0,,drop=FALSE]
         Z_1 <- matrix(colMeans(Z_cent[trt==1,,drop=FALSE]), nrow=1)
-        
 
         ## use CV to choose lambda if it's null
         if(is.null(lambda)) {

@@ -6,7 +6,7 @@
 Do this for ridge-augmented synth}
 \usage{
 jackknife_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL,
-  ridge = T, scm = T)
+  ridge = T, scm = T, fixedeff = F)
 }
 \arguments{
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
@@ -14,6 +14,8 @@ jackknife_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL,
 \item{ridge}{Include ridge or not}
 
 \item{scm}{Include SCM or not}
+
+\item{fixedeff}{Take out fixed effects or not}
 }
 \value{
 att estimates, test statistics, p-values
