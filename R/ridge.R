@@ -10,6 +10,10 @@
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
+#' @param lambda_min_ratio Ratio of the smallest to largest lambda when tuning lambda values
+#' @param n_lambda Number of lambdas to consider between the smallest and largest lambda value
+#' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
+#' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -19,9 +23,13 @@
 #'          \item{"lambda"}{Value of the ridge hyperparameter}
 #'          \item{"ridge_mhat"}{The ridge regression predictions (for estimating the bias)}
 #'          \item{"synw"}{The synth weights(for estimating the bias)}
+#'          \item{"lambdas"}{List of lambda values evaluated to tune ridge regression}
+#'          \item{"lambda_errors"}{"The sum of squared error associated with each lambda term in lambdas."}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
-                                   Z=NULL, lambda=NULL, ridge=T, scm=T, lambda_min_ratio = 0.001, n_lambda = 20) {
+                                   Z=NULL, lambda=NULL, ridge=T, scm=T, 
+                                   lambda_min_ratio = 0.001, n_lambda = 20, lambda_max = NULL,
+                                   holdout_length = 1) {
 
     X <- wide_data$X
     y <- wide_data$y
@@ -82,19 +90,18 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         ## use CV to choose lambda if it's null
         if(ridge) {
             if(is.null(lambda)) {
+                if(is.null(lambda_max)) {
+                    lambda_max <- (1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2)))^2
+                }
                 if(ncol(y) > 1) {
-                    # lambda <- glmnet::cv.glmnet(X_c, y[trt==0,,drop=FALSE], alpha=0, family="mgaussian")$lambda.min
-                    lambda_max <- 1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2))^2
                     scaler <- (lambda_min_ratio) ^ (1/n_lambda)
                     lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
-                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
+                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=holdout_length)
                     lambda <- lambdas[which.min(lambda_errors)]
                 } else {
-                    # lambda <- glmnet::cv.glmnet(X_c, y[trt==0], alpha=0, family="gaussian")$lambda.min
-                    lambda_max <- 1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2))^2
                     scaler <- (lambda_min_ratio) ^ (1/n_lambda)
                     lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
-                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=1)
+                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=holdout_length)
                     lambda <- lambdas[which.min(lambda_errors)]
                 }
             }

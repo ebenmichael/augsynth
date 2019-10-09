@@ -1,3 +1,18 @@
+################################################################################
+## Function to calculate error on different lambda values if using Ridge Augmented SCM
+################################################################################
+
+#' Get Lambda Errors
+#'
+#' @param lambdas Vector of lambda values to compute errors for
+#' @param X_c Matrix of control group pre-treatment outcomes
+#' @param X_t Matrix of treatment group pre-treatment outcomes
+#' @param synth_data Output of `format_synth`
+#' @param trt Boolean vector of treatment assignments
+#' @param holdout_length Length of conseuctive holdout period for when tuning lambdas
+#' @param scm Include SCM or not
+#' 
+#' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
 get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
   lambda_errors = numeric(length(lambdas)) # vector that stores the sum MSE across all CV sets
   for (i in 1:(ncol(X_c) - holdout_length)) {

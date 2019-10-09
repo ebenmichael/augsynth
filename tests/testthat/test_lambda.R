@@ -18,5 +18,5 @@ test_that("Lambda sequence is generated correctly", {
 
 test_that("Smallest lambda is chosen", {
   syn <- augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="Ridge", weightfunc="SCM")
-  expect_equivalent(syn$lambda, min(syn$lambdas))
+  expect_equivalent(syn$lambda, syn$lambdas[which.min(syn$lambda_errors)])
 })

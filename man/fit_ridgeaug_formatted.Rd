@@ -5,7 +5,8 @@
 \title{Ridge augmented weights (possibly with covariates)}
 \usage{
 fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
-  ridge = T, scm = T)
+  ridge = T, scm = T, lambda_min_ratio = 0.001, n_lambda = 20,
+  lambda_max = NULL, holdout_length = 1)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
@@ -19,6 +20,14 @@ fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
 \item{ridge}{Include ridge or not}
 
 \item{scm}{Include SCM or not}
+
+\item{lambda_min_ratio}{Ratio of the smallest to largest lambda when tuning lambda values}
+
+\item{n_lambda}{Number of lambdas to consider between the smallest and largest lambda value}
+
+\item{lambda_max}{Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2}
+
+\item{holdout_length}{Length of conseuctive holdout period for when tuning lambdas}
 }
 \value{
 \itemize{
@@ -29,6 +38,8 @@ fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
          \item{"lambda"}{Value of the ridge hyperparameter}
          \item{"ridge_mhat"}{The ridge regression predictions (for estimating the bias)}
          \item{"synw"}{The synth weights(for estimating the bias)}
+         \item{"lambdas"}{List of lambda values evaluated to tune ridge regression}
+         \item{"lambda_errors"}{"The sum of squared error associated with each lambda term in lambdas."}
 }
 }
 \description{
