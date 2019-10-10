@@ -14,6 +14,7 @@
 #' @param n_lambda Number of lambdas to consider between the smallest and largest lambda value
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
+#' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -27,14 +28,18 @@
 #'          \item{"lambda_errors"}{"The sum of squared error associated with each lambda term in lambdas."}
 #' }
 fit_ridgeaug_formatted <- function(wide_data, synth_data,
-                                   Z=NULL, lambda=NULL, ridge=T, scm=T, 
-                                   lambda_min_ratio = 0.001, n_lambda = 20, lambda_max = NULL,
-                                   holdout_length = 1) {
+                                   Z=NULL, lambda=NULL, ridge=T, scm=T,
+                                   lambda_min_ratio = 1e-8, n_lambda = 20,
+                                   lambda_max = NULL,
+                                   holdout_length = 1, min_1se = T) {
 
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
 
+    lambda_errors <- NULL
+    lambda_errors_se <- NULL
+    lambdas <- NULL
 
     ## center outcomes
     X_cent <- apply(X, 2, function(x) x - mean(x[trt==0]))
@@ -91,19 +96,24 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         if(ridge) {
             if(is.null(lambda)) {
                 if(is.null(lambda_max)) {
-                    lambda_max <- (1 + sqrt(sum((X_1 - t(as.matrix(apply(X_c, 2, mean))))^2)))^2
+                    lambda_max <- svd(X_c)$d[1] ^ 2
                 }
-                if(ncol(y) > 1) {
-                    scaler <- (lambda_min_ratio) ^ (1/n_lambda)
-                    lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
-                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=holdout_length)
-                    lambda <- lambdas[which.min(lambda_errors)]
-                } else {
-                    scaler <- (lambda_min_ratio) ^ (1/n_lambda)
-                    lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
-                    lambda_errors <- get_lambda_errors(lambdas, X_c, X_1, synth_data, trt, holdout_length=holdout_length)
-                    lambda <- lambdas[which.min(lambda_errors)]
-                }
+                scaler <- (lambda_min_ratio) ^ (1/n_lambda)
+                lambdas <- lambda_max * (scaler ^ (seq(0:n_lambda) - 1))
+                lambda_out <- get_lambda_errors(lambdas, X_c, X_1,
+                                                   synth_data, trt,
+                                                   holdout_length, scm)
+                lambda_errors <- lambda_out$lambda_errors
+                lambda_errors_se <- lambda_out$lambda_errors_se
+                # lambda with smallest error
+                min_idx <- which.min(lambda_errors)
+                min_error <- lambda_errors[min_idx]
+                min_se <- lambda_errors_se[min_idx]
+                lambda_min <- lambdas[min_idx]
+                # max lambda with error within one se of min
+                lambda_1se <- max(lambdas[lambda_errors <= min_error + min_se])
+                lambda <- if(min_1se) lambda_1se else lambda_min
+
             }
         }
         ## if SCM fit scm
@@ -116,9 +126,11 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
         ## if ridge fit ridge
         if(ridge) {
-            ridge_w <- t(t(X_1) - t(X_c) %*% syn) %*% solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*% t(X_c)
+            ridge_w <- t(t(X_1) - t(X_c) %*% syn) %*% 
+                        solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*%
+                        t(X_c)
         } else {
-            ridge_w <- matrix(0, ncol=sum(trt==0), nrow=1)
+            ridge_w <- matrix(0, ncol = sum(trt == 0), nrow=1)
         }
         ## combine weights
         weights <- syn + t(ridge_w)
@@ -148,24 +160,15 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     } else {
         ridge_mhat <- NULL
     }
-    
-    if(!is.null(Z) & ridge) {
-        return(list(weights=weights,
-                    l2_imbalance=l2_imbalance,
-                    scaled_l2_imbalance=scaled_l2_imabalance,
-                    mhat=mhat,
-                    lambda=lambda,
-                    ridge_mhat=ridge_mhat,
-                    synw=syn))
-    } else {
-        return(list(weights=weights,
-                    l2_imbalance=l2_imbalance,
-                    scaled_l2_imbalance=scaled_l2_imabalance,
-                    mhat=mhat,
-                    lambda=lambda,
-                    ridge_mhat=ridge_mhat,
-                    synw=syn,
-                    lambdas=lambdas,
-                    lambda_errors=lambda_errors))
-    }
+
+    return(list(weights = weights,
+                l2_imbalance = l2_imbalance,
+                scaled_l2_imbalance = scaled_l2_imabalance,
+                mhat = mhat,
+                lambda = lambda,
+                ridge_mhat = ridge_mhat,
+                synw = syn,
+                lambdas = lambdas,
+                lambda_errors = lambda_errors,
+                lambda_errors_se = lambda_errors_se))
 }

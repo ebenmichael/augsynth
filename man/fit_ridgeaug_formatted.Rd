@@ -5,8 +5,8 @@
 \title{Ridge augmented weights (possibly with covariates)}
 \usage{
 fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
-  ridge = T, scm = T, lambda_min_ratio = 0.001, n_lambda = 20,
-  lambda_max = NULL, holdout_length = 1)
+  ridge = T, scm = T, lambda_min_ratio = 1e-08, n_lambda = 20,
+  lambda_max = NULL, holdout_length = 1, min_1se = T)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
@@ -28,6 +28,8 @@ fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
 \item{lambda_max}{Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2}
 
 \item{holdout_length}{Length of conseuctive holdout period for when tuning lambdas}
+
+\item{min_1se}{If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE}
 }
 \value{
 \itemize{
