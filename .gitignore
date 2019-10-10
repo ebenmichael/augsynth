@@ -1,6 +1,7 @@
 Meta
 doc
 inst/doc
+
 ## Files
 # Emacs autosave files
 *~
@@ -12,3 +13,8 @@ inst/doc
 # R stuff
 *.Rout
 *.Rhistory
+*.RData 
+*.Rapp.history
+
+# Mac stuff
+*.DS_store
