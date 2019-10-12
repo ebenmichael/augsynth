@@ -19,7 +19,6 @@
 #' @param weightfunc Weighting function to use, default is SCM
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param opts_out Optional options for fitting outcome model
-#' @param opts_weights Optional options for fitting synth weights
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #'
 #' @return augsynth object that contains:
@@ -36,7 +35,7 @@ augsynth <- function(form, unit, time, t_int, data,
                                 "CITS", "CausalImpact", "seq2seq"),
                      weightfunc=c("SCM", "None"),
                      fixedeff = FALSE,
-                     opts_out=NULL, opts_weights=NULL,
+                     opts_out=NULL,
                      cov_agg=NULL) {
 
     call_name <- match.call()
@@ -99,27 +98,26 @@ augsynth <- function(form, unit, time, t_int, data,
                             c(list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data, 
                                    Z = Z),
-                              opts_out, opts_weights))
+                              opts_out))
         } else if(weightfunc == "None") {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data,
                                    Z = Z, ridge = T, scm = F),
-                             opts_out, opts_weights))
+                             opts_out))
         }
     } else if(progfunc == "None") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
                                synth_data = fit_synth_data,
-                               Z = Z, ridge = F, scm = T),
-                          opts_weights))
+                               Z = Z, ridge = F, scm = T)))
     } else {
         ## Other outcome models
         augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
                                progfunc, weightfunc, 
-                               opts_out, opts_weights)
+                               opts_out)
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
