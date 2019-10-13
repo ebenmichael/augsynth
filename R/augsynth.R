@@ -35,7 +35,7 @@ augsynth <- function(form, unit, time, t_int, data,
                                 "CITS", "CausalImpact", "seq2seq"),
                      weightfunc=c("SCM", "None"),
                      fixedeff = FALSE,
-                     opts_out=NULL,
+                     ...,
                      cov_agg=NULL) {
 
     call_name <- match.call()
@@ -95,17 +95,14 @@ augsynth <- function(form, unit, time, t_int, data,
         if(weightfunc == "SCM") {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data = fit_wide, 
+                                list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data, 
-                                   Z = Z),
-                              opts_out))
+                                   Z = Z, ...))
         } else if(weightfunc == "None") {
             ## Just ridge regression
-            augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data = fit_wide, 
+            augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data,
-                                   Z = Z, ridge = T, scm = F),
-                             opts_out))
+                                   Z = Z, ridge = T, scm = F, ...))
         }
     } else if(progfunc == "None") {
         ## Just SCM
@@ -116,8 +113,7 @@ augsynth <- function(form, unit, time, t_int, data,
     } else {
         ## Other outcome models
         augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
-                               progfunc, weightfunc, 
-                               opts_out)
+                               progfunc, weightfunc, ...)
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 

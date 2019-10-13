@@ -17,20 +17,15 @@
 #'          \item{"mhat"}{Outcome model estimate (zero in this case)}
 #' }
 fit_progsyn_formatted <- function(wide_data, synth_data,
-                                  fit_progscore, fit_weights,
-                                  opts_out=NULL) {
+                                  fit_progscore, fit_weights, ...) {
 
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts_out)) {
-        fitout <- fit_progscore(X, y, trt)
-    } else {
-        fitout <- do.call(fit_progscore,
-                          c(list(X=X, y=y, trt=trt), opts_out))
-    }
+
+    fitout <- do.call(fit_progscore, list(X=X, y=y, trt=trt, ...))
 
     y0hat <- fitout$y0hat
 
@@ -40,7 +35,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 
     ## fit synth/maxent weights
     syn <- fit_weights(synth_data)
-    
+
     syn$params <- fitout$params
 
     ## no outcome model
@@ -72,8 +67,7 @@ fit_progsyn_formatted <- function(wide_data, synth_data,
 #' }
 fit_progsyn <- function(wide_data, synth_data,
                         progfunc=c("EN", "RF", "GSYN", "CITS", "CausalImpact", "seq2seq"),
-                        weightfunc=c("SCM"),
-                        opts_out=NULL) {
+                        weightfunc=c("SCM"), ...) {
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
         progf <- fit_prog_reg
@@ -99,7 +93,7 @@ fit_progsyn <- function(wide_data, synth_data,
     }
 
     return(fit_progsyn_formatted(wide_data, synth_data,
-                                 fit_progscore, fit_weights))
+                                 fit_progscore, fit_weights, ...))
 }
 
 ##### Augmented SCM with general outcome models
@@ -141,8 +135,7 @@ fit_zero_weights <- function(synth_data) {
 #'          \item{"mhat"}{Outcome model estimate}
 #' }
 fit_augsyn_formatted <- function(wide_data, synth_data,
-                                fit_progscore, fit_weights,
-                                opts_out=NULL) {
+                                fit_progscore, fit_weights, ...) {
 
 
     X <- wide_data$X
@@ -150,13 +143,8 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
     
     ## fit prognostic scores
-    if(is.null(opts_out)) {
-        fitout <- fit_progscore(X, y, trt)
-    } else {
-        fitout <- do.call(fit_progscore,
-                          c(list(X=X, y=y, trt=trt),
-                            opts_out))
-    }
+    fitout <- do.call(fit_progscore,
+                          list(X=X, y=y, trt=trt, ...))
     
     ## fit synth
     syn <- fit_weights(synth_data)
@@ -189,8 +177,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #' }
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
-                       weightfunc=c("SCM"),
-                       opts_out = NULL) {
+                       weightfunc=c("SCM"), ...) {
 
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
@@ -221,8 +208,7 @@ fit_augsyn <- function(wide_data, synth_data,
         stop("weightfunc must be one of `SCM`, `NONE`")
     }
     return(fit_augsyn_formatted(wide_data, synth_data,
-                                progf, weightf,
-                                opts_out))
+                                progf, weightf, ...))
 }
 
 
@@ -243,8 +229,7 @@ fit_augsyn <- function(wide_data, synth_data,
 #'          \item{"mhat"}{Outcome model estimate}
 #' }
 fit_residaug_formatted <- function(wide_data, synth_data,
-                                  fit_progscore, fit_weights,
-                                  opts_out=NULL) {
+                                  fit_progscore, fit_weights, ...) {
 
 
     X <- wide_data$X
@@ -252,13 +237,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
     trt <- wide_data$trt
 
     ## fit prognostic scores
-    if(is.null(opts_out)) {
-        fitout <- fit_progscore(X, y, trt)
-    } else {
-        fitout <- do.call(fit_progscore,
-                          c(list(X=X, y=y, trt=trt),
-                            opts_out))
-    }
+    fitout <- do.call(fit_progscore, list(X=X, y=y, trt=trt, ...))
 
     
     y0hat <- fitout$y0hat
@@ -304,8 +283,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
 #' }
 fit_residaug <- function(wide_data, synth_data,
                         progfunc=c("GSYN", "MCP", "CITS", "CausalImpact"),
-                        weightfunc=c("SC","ENT", "SVD", "NONE"),
-                        opts_out = NULL) {
+                        weightfunc=c("SC","ENT", "SVD", "NONE"), ...) {
 
     ## prognostic score and weight functions to use
     if(progfunc == "GSYN"){
@@ -333,7 +311,6 @@ fit_residaug <- function(wide_data, synth_data,
     }
 
     return(fit_residaug_formatted(wide_data, synth_data,
-                                  progf, weightf,
-                                  opts_out))
+                                  progf, weightf, ...))
 }
 

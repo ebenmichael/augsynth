@@ -32,7 +32,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
-                                   holdout_length = 1, min_1se = T) {
+                                   holdout_length = 1, min_1se = T, ...) {
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
@@ -163,7 +163,6 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
                                holdout_length, min_1se) {
-    
     lambda_errors <- NULL
     lambda_errors_se <- NULL
     lambdas <- NULL

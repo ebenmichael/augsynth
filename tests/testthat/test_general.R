@@ -32,7 +32,7 @@ test_that("SCM gives the right answer", {
 test_that("Ridge ASCM gives the right answer", {
 
     asyn <- augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="Ridge",
-                     weightfunc="SCM", opts_out=list(lambda=8))
+                     weightfunc="SCM", lambda=8)
 
     ## average att estimate is as expected
     expect_equal(-.363, mean(summary(asyn)$att$Estimate), tolerance=1e-3)
