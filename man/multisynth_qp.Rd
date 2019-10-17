@@ -31,6 +31,14 @@ Default: 0}
 
 \item{lambda}{Regularization hyper-parameter. Default, 0}
 }
+\value{
+\itemize{
+         \item{"weights"}{Matrix of unit weights}
+         \item{"imbalance"}{Matrix of overall and group specific imbalance}
+         \item{"global_l2"}{Imbalance overall}
+         \item{"ind_l2"}{Matrix of imbalance for each group}
+        }
+}
 \description{
 Internal function to fit synth with staggered adoption with a QP solver
 }

@@ -20,8 +20,12 @@
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
 #' 
-#'
-#' @importMethodsFrom Matrix %*%
+#' @return \itemize{
+#'          \item{"weights"}{Matrix of unit weights}
+#'          \item{"imbalance"}{Matrix of overall and group specific imbalance}
+#'          \item{"global_l2"}{Imbalance overall}
+#'          \item{"ind_l2"}{Matrix of imbalance for each group}
+#'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                           relative=T, alpha=0, lambda=0) {
 
