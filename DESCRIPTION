@@ -1,11 +1,10 @@
 Package: augsynth
 Title: The Augmented Synthetic Control Method
-Version: 0.1.0
+Version: 0.2.0
 Authors@R: person("Eli", "Ben-Michael", email = "ebenmichael@berkeley.edu", role = c("aut", "cre"))
 Description: A package implementing the Augmented Synthetic Controls Method.
 Depends:
-    R (>= 3.4.2),
-    RcppArmadillo
+    R (>= 3.4.2)
 Imports:
     dplyr,
     tidyr,
@@ -15,11 +14,7 @@ Imports:
     MASS,
     Synth,
     LiblineaR,
-    gsynth,
     Formula,
-    Rcpp,
-    RcppArmadillo,
-    balancer,
     Matrix,
     osqp
 Remotes:
@@ -40,6 +35,3 @@ Suggests:
     glmnet,
     randomForest
 VignetteBuilder: knitr
-LinkingTo: 
-    Rcpp,
-    RcppArmadillo
