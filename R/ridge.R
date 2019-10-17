@@ -15,6 +15,7 @@
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
+#' @param ... optional arguments for outcome model
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}

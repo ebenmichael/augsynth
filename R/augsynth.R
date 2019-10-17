@@ -18,7 +18,7 @@
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param weightfunc Weighting function to use, default is SCM
 #' @param fixedeff Whether to include a unit fixed effect, default F 
-#' @param opts_out Optional options for fitting outcome model
+#' @param ... optional arguments for outcome model
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #'
 #' @return augsynth object that contains:
