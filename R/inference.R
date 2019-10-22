@@ -164,7 +164,7 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                        aug <- do.call(fit_ridgeaug_formatted,
                                 c(new_data,
                                 list(lambda = lam, ridge = ridge, scm = scm)))
-                       c(#colMeans(mhat[new_trt == 1,, drop = FALSE]) +
+                       c(colMeans(mhat[new_trt == 1,, drop = FALSE]) +
                          t(new_y[new_trt == 0,, drop = F]) %*% aug$weights)
                    },
                    numeric(tpost))
