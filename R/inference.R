@@ -164,11 +164,12 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                        aug <- do.call(fit_ridgeaug_formatted,
                                 c(new_data,
                                 list(lambda = lam, ridge = ridge, scm = scm)))
-                       c(#colMeans(mhat[new_trt == 1,, drop = FALSE]) + 
+                       c(#colMeans(mhat[new_trt == 1,, drop = FALSE]) +
                          t(new_y[new_trt == 0,, drop = F]) %*% aug$weights)
                    },
                    numeric(tpost))
-
+    # convert to matrix
+    ests <- matrix(ests, nrow = tpost, ncol = length(trt_idxs))
     ## standard errors
     se2 <- apply(ests, 1,
                  function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
