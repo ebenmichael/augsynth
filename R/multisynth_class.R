@@ -140,6 +140,7 @@ multisynth <- function(form, unit, time, data,
     msynth$n_leads <- n_leads
     msynth$n_lags <- n_lags
     msynth$alpha <- alpha
+    msynth$lambda <- lambda
 
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
