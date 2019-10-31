@@ -83,7 +83,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #' }
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
-                       weightfunc=c("SCM"), ...) {
+                       scm=T, ...) {
 
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
@@ -104,14 +104,12 @@ fit_augsyn <- function(wide_data, synth_data,
         stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
     }
 
-    if(weightfunc == "SCM") {
+    if(scm) {
         weightf <- fit_synth_formatted
-    } else if(weightfunc == "NONE") {
+    } else {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
         weightf <- fit_zero_weights
-    } else {
-        stop("weightfunc must be one of `SCM`, `NONE`")
     }
     return(fit_augsyn_formatted(wide_data, synth_data,
                                 progf, weightf, ...))
