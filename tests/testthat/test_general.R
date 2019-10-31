@@ -73,10 +73,10 @@ test_that("Ridge ASCM with covariates gives the right answer", {
 test_that("Test interaction between all types of prog_func and optional parameters", {
     
     expect_error(augsynth(gdpcap ~ trt| invest + popdens, regionno, year, 
-                          1975, basque, progfunc="EN", scm=T, opts_out=list(lambda=8), "Unused input parameter"))
+                          1975, basque, progfunc="EN", scm=T, lambda=8, "Unused input parameter"))
     
     expect_error(augsynth(gdpcap ~ trt| invest + popdens, regionno, year, 
-                          1975, basque, progfunc="RF", scm=T, opts_out=list(lambda=8), "Unused input parameter"))
+                          1975, basque, progfunc="RF", scm=T, lambda=8, "Unused input parameter"))
     
     
     
