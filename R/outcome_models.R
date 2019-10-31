@@ -22,7 +22,6 @@
 #'           \item{params }{Regression parameters}}
 fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
                          poly_order=1, type="sep", ...) {
-
     if(!requireNamespace("glmnet", quietly = TRUE)) {
         stop("In order to fit an elastic net outcome model, you must install the glmnet package.")
     }

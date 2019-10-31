@@ -37,7 +37,6 @@ augsynth <- function(form, unit, time, t_int, data,
                      fixedeff = FALSE,
                      ...,
                      cov_agg=NULL) {
-
     call_name <- match.call()
 
     form <- Formula::Formula(form)

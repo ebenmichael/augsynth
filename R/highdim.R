@@ -84,7 +84,6 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
                        scm=T, ...) {
-
     ## prognostic score and weight functions to use
     if(progfunc == "EN") {
         progf <- fit_prog_reg
