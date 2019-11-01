@@ -89,7 +89,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_prog_rf <- function(X, y, trt, avg=FALSE) {
+fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 
     if(!requireNamespace("randomForest", quietly = TRUE)) {
         stop("In order to fit a random forest outcome model, you must install the randomForest package.")
@@ -98,7 +98,7 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
     
     ## helper function to fit RF
     outfit <- function(x, y) {
-            fit <- randomForest::randomForest(x, y)
+            fit <- randomForest::randomForest(x, y, ...)
             return(fit)
     }
 
@@ -160,7 +160,7 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
+fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
@@ -219,7 +219,7 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
+fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 
 
     if(!requireNamespace("MCPanel", quietly = TRUE)) {
@@ -279,7 +279,7 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
+fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 
     ## combine back into a panel structure
     ids <- 1:nrow(X)
@@ -385,7 +385,7 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL) {
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
-fit_prog_causalimpact <- function(X, y, trt) {
+fit_prog_causalimpact <- function(X, y, trt, ...) {
 
 
     if(!requireNamespace("CausalImpact", quietly = TRUE)) {
@@ -460,7 +460,7 @@ fit_prog_seq2seq <- function(X, y, trt,
                              epochs=500,
                              patience=5,
                              val_split=0.2,
-                             verbose=F) {
+                             verbose=F, ...) {
 
     if(!requireNamespace("keras", quietly = TRUE)) {
         stop("In order to fit a neural network, you must install the keras package.")
