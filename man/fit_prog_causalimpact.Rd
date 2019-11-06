@@ -5,7 +5,7 @@
 \title{Fit a bayesian structural time series
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_causalimpact(X, y, trt)
+fit_prog_causalimpact(X, y, trt, ...)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -13,6 +13,8 @@ fit_prog_causalimpact(X, y, trt)
 \item{y}{Matrix of post-period outcomes}
 
 \item{trt}{Vector of treatment indicator}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

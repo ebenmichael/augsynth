@@ -5,9 +5,8 @@
 \title{Fit Augmented SCM}
 \usage{
 augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None",
-  "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
-  weightfunc = c("SCM", "None"), fixedeff = FALSE, opts_out = NULL,
-  opts_weights = NULL, cov_agg = NULL)
+  "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"), scm = T,
+  fixedeff = FALSE, ..., cov_agg = NULL)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -28,13 +27,11 @@ MCP=MCPanel, CITS=CITS
 CausalImpact=Bayesian structural time series with CausalImpact
 seq2seq=Sequence to sequence learning with feedforward nets}
 
-\item{weightfunc}{Weighting function to use, default is SCM}
+\item{scm}{Whether the SCM weighting function is used}
 
 \item{fixedeff}{Whether to include a unit fixed effect, default F}
 
-\item{opts_out}{Optional options for fitting outcome model}
-
-\item{opts_weights}{Optional options for fitting synth weights}
+\item{...}{optional arguments for outcome model}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 }

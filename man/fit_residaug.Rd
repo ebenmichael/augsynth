@@ -5,8 +5,7 @@
 \title{Fit outcome model and balance residuals}
 \usage{
 fit_residaug(wide_data, synth_data, progfunc = c("GSYN", "MCP", "CITS",
-  "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"),
-  opts_out = NULL, opts_weights = NULL)
+  "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"), ...)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}
@@ -22,9 +21,7 @@ CausalImpact=Bayesian structural time series with CausalImpact}
 SCM=Vanilla Synthetic Controls
 NONE=No reweighting, just outcome model}
 
-\item{opts_weights}{Optional options for fitting synth weights}
-
-\item{opts.gsyn}{Optional options for gsynth}
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

@@ -5,7 +5,7 @@
 \title{Fit a Comparitive interupted time series
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_cits(X, y, trt, poly_order = 1, weights = NULL)
+fit_prog_cits(X, y, trt, poly_order = 1, weights = NULL, ...)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}
@@ -17,6 +17,8 @@ fit_prog_cits(X, y, trt, poly_order = 1, weights = NULL)
 \item{poly_order}{Order of time trend polynomial to fit, default 1}
 
 \item{weights}{Weights to use in WLS, default is no weights}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

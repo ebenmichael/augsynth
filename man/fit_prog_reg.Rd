@@ -21,7 +21,9 @@ fit_prog_reg(X, y, trt, alpha = 1, lambda = NULL, poly_order = 1,
 
 \item{poly_order}{Order of polynomial to fit, default 1}
 
-\item{type}{How to fit outcome model(s)
+\item{type}{How to fit outcome model(s)}
+
+\item{...}{optional arguments for outcome model
 \itemize{
  \item{sep }{Separate outcome models}
  \item{avg }{Average responses into 1 outcome}

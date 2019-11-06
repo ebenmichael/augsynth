@@ -113,11 +113,11 @@ plot(asyn)
 
 
 
-There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values. We also set `lambda=0` to fit OLS.
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values and regress out the auxiliary covariates.
 ```{r fit_covsynth, message=F, warning=F}
 covsyn <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
                    regionno, year, 1975, basque,
-                   progfunc="Ridge", scm=T, lambda=0)
+                   progfunc="None", scm=T)
 ```
 
 Again we can look at the summary and plot the results.
@@ -131,6 +131,25 @@ plot(covsyn)
 
 ```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(covsyn)
+```
+
+Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
+```{r fit_covsynth_aug, message=F, warning=F}
+covsyn_aug <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
+                   regionno, year, 1975, basque,
+                   progfunc="Ridge", scm=T, lambda = 1e-1)
+```
+
+```{r summ_cvsyn_aug}
+summary(covsyn_aug)
+```
+
+```{r fig_covsyn_aug_hide, fig.show="hide"}
+plot(covsyn_aug)
+```
+
+```{r fig_covsyn_aug, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(covsyn_aug)
 ```
 
 
