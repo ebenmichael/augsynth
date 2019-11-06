@@ -16,10 +16,9 @@
 #'                 MCP=MCPanel, CITS=CITS
 #'                 CausalImpact=Bayesian structural time series with CausalImpact
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
-#' @param weightfunc Weighting function to use, default is SCM
+#' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
-#' @param opts_out Optional options for fitting outcome model
-#' @param opts_weights Optional options for fitting synth weights
+#' @param ... optional arguments for outcome model
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #'
 #' @return augsynth object that contains:
@@ -34,11 +33,10 @@
 augsynth <- function(form, unit, time, t_int, data,
                      progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
                                 "CITS", "CausalImpact", "seq2seq"),
-                     weightfunc=c("SCM", "None"),
+                     scm=T,
                      fixedeff = FALSE,
-                     opts_out=NULL, opts_weights=NULL,
+                     ...,
                      cov_agg=NULL) {
-
     call_name <- match.call()
 
     form <- Formula::Formula(form)
@@ -93,33 +91,28 @@ augsynth <- function(form, unit, time, t_int, data,
 
     ## fit augsynth
     if(progfunc == "Ridge") {
-        if(weightfunc == "SCM") {
+        if(scm) {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data = fit_wide, 
+                                list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data, 
-                                   Z = Z),
-                              opts_out, opts_weights))
-        } else if(weightfunc == "None") {
+                                   Z = Z, ...))
+        } else {
             ## Just ridge regression
-            augsynth <- do.call(fit_ridgeaug_formatted,
-                            c(list(wide_data = fit_wide, 
+            augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data,
-                                   Z = Z, ridge = T, scm = F),
-                             opts_out, opts_weights))
+                                   Z = Z, ridge = T, scm = F, ...))
         }
     } else if(progfunc == "None") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
                                synth_data = fit_synth_data,
-                               Z = Z, ridge = F, scm = T),
-                          opts_weights))
+                               Z = Z, ridge = F, scm = T)))
     } else {
         ## Other outcome models
         augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
-                               progfunc, weightfunc, 
-                               opts_out, opts_weights)
+                               progfunc, scm, ...)
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
@@ -129,7 +122,7 @@ augsynth <- function(form, unit, time, t_int, data,
     augsynth$data$Z <- Z
     augsynth$t_int <- t_int
     augsynth$progfunc <- progfunc
-    augsynth$weightfunc <- weightfunc
+    augsynth$scm <- scm
     augsynth$call <- call_name
     augsynth$fixedeff <- fixedeff
     ##format output
@@ -208,9 +201,9 @@ summary.augsynth <- function(augsynth, jackknife = T) {
 
 
     if(augsynth$progfunc == "Ridge" |
-       augsynth$progfunc == "None" & augsynth$weightfunc == "SCM") {
+       augsynth$progfunc == "None" & augsynth$scm) {
         ridge <- augsynth$progfunc == "Ridge"
-        scm <- augsynth$weightfunc == "SCM"
+        scm <- augsynth$scm
 
         ## get standard errors
         synth_data <- format_synth(augsynth$data$X, augsynth$data$trt,
@@ -255,7 +248,7 @@ summary.augsynth <- function(augsynth, jackknife = T) {
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
     summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
-    if(augsynth$progfunc == "None" | augsynth$weightfunc == "None") {
+    if(augsynth$progfunc == "None" | (!augsynth$scm)) {
         summ$bias_est <- NA
     }
     

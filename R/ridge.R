@@ -15,6 +15,7 @@
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
+#' @param ... optional arguments for outcome model
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -32,7 +33,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
-                                   holdout_length = 1, min_1se = T) {
+                                   holdout_length = 1, min_1se = T, ...) {
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
@@ -163,7 +164,6 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
                                holdout_length, min_1se) {
-    
     lambda_errors <- NULL
     lambda_errors_se <- NULL
     lambdas <- NULL
