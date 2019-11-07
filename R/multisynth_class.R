@@ -27,6 +27,7 @@ multisynth <- function(form, unit, time, data,
                        force="two-way",
                        n_factors=NULL,
                        opts_weights=NULL) {
+    print("RUNNING MULTI")
     
     call_name <- match.call()
     

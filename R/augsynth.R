@@ -37,18 +37,20 @@ augsynth <- function(form, unit, time, t_int, data,
                      fixedeff = FALSE,
                      ...,
                      cov_agg=NULL) {
+   
     call_name <- match.call()
 
     form <- Formula::Formula(form)
-    unit <- enquo(unit)
-    time <- enquo(time)
+    # unit <- enquo(unit)
+    # time <- enquo(time)
     
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data(outcome, trt, unit, time, t_int, data)
     synth_data <- do.call(format_synth, wide)
-
+    print("RUNNING SINGLE")
+    
     n <- nrow(wide$X)
     t0 <- ncol(wide$X)
     ttot <- t0 + ncol(wide$y)
@@ -88,7 +90,6 @@ augsynth <- function(form, unit, time, t_int, data,
         fit_synth_data <- synth_data
         mhat <- matrix(0, n, ttot)
     }
-
     ## fit augsynth
     if(progfunc == "Ridge") {
         if(scm) {
