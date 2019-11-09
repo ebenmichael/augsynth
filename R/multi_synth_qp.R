@@ -149,7 +149,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     Hmat <- alpha * V2 + (1 - alpha) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
 
     ## Optimize
-    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-7, eps_rel = 1e-7,
+    settings <- osqp::osqpSettings(verbose = FALSE, #eps_abs=1e-1, eps_rel = 1e-1,
                                    max_iter=5000)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
 
