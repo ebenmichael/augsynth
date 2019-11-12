@@ -16,6 +16,7 @@
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
 #' @param time_w Whether to fit time weights
+#' @param residuals Whether to fit SCM on the residuals or not
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -29,7 +30,8 @@ multisynth <- function(form, unit, time, data,
                        force="two-way",
                        n_factors=NULL,
                        scm=T, time_w=F,
-                       lambda_t=0, ...) {
+                       lambda_t=0,
+                       fit_resids=T, ...) {
     
     call_name <- match.call()
     
@@ -78,6 +80,7 @@ multisynth <- function(form, unit, time, data,
         out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
         y0hat <- out$y0hat
         params <- out$params
+        n_factors <- ncol(params$factor)
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
         
@@ -110,13 +113,17 @@ multisynth <- function(form, unit, time, data,
 
     }
 
-    
     ## balance the residuals
-    if(typeof(residuals) == "list") {
-        bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
+    if(fit_resids) {
+        if(typeof(residuals) == "list") {
+            bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
+        } else {
+            bal_mat <- residuals[,1:ncol(wide$X)]
+        }
     } else {
-        bal_mat <- residuals[,1:ncol(wide$X)]
+        bal_mat <- wide$X
     }
+    
 
     if(scm) {
         ## if no alpha value is provided, use default based on

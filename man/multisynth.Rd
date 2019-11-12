@@ -6,7 +6,11 @@
 \usage{
 multisynth(form, unit, time, data, relative = T, n_leads = NULL,
   n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
+<<<<<<< HEAD
   n_factors = NULL, scm = T, time_w = F, lambda_t = 0, ...)
+=======
+  n_factors = NULL, fit_resids = T)
+>>>>>>> 8487c0c... Added option to fit on residuals or not on residuals
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -31,9 +35,13 @@ multisynth(form, unit, time, data, relative = T, n_leads = NULL,
 
 \item{n_factors}{Number of factors for interactive fixed effects, default does CV}
 
+<<<<<<< HEAD
 \item{scm}{Whether to fit scm weights}
 
 \item{time_w}{Whether to fit time weights}
+=======
+\item{residuals}{Whether to fit SCM on the residuals or not}
+>>>>>>> 8487c0c... Added option to fit on residuals or not on residuals
 }
 \value{
 augsynth object that contains:
