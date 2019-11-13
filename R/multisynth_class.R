@@ -14,6 +14,7 @@
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
+#' @param scm Whether to fit scm weights
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -26,7 +27,7 @@ multisynth <- function(form, unit, time, data,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
-                       opts_weights=NULL, ...) {
+                       scm=T, ...) {
     
     call_name <- match.call()
     
@@ -39,7 +40,10 @@ multisynth <- function(form, unit, time, data,
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
 
-    
+    ## average together treatment groups
+    ## grps <- unique(wide$trt) %>% sort()
+    grps <- wide$trt[is.finite(wide$trt)]
+    J <- length(grps)
     
     ## if n_leads is NULL set it to be the largest possible number of leads
     if(is.null(n_leads)) {
@@ -105,34 +109,40 @@ multisynth <- function(form, unit, time, data,
         bal_mat <- residuals[,1:ncol(wide$X)]
     }
 
-
-    ## if no alpha value is provided, use default based on
-    ## global and individual imbalance for no-pooling estimator
-    if(is.null(alpha)) {
-        ## fit with alpha = 0
-        alpha_fit <- multisynth_qp(X=bal_mat,
-                                   trt=wide$trt,
-                                   mask=wide$mask,
-                                   n_leads=n_leads,
-                                   n_lags=n_lags,
-                                   relative=relative,
-                                   alpha=0, lambda=lambda,
-                                   ...)
-        ## select alpha by triangle inequality ratio
-        glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
-        ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
-        alpha <- glbl / ind
+    if(scm) {
+        ## if no alpha value is provided, use default based on
+        ## global and individual imbalance for no-pooling estimator
+        if(is.null(alpha)) {
+            ## fit with alpha = 0
+            alpha_fit <- multisynth_qp(X=bal_mat,
+                                    trt=wide$trt,
+                                    mask=wide$mask,
+                                    n_leads=n_leads,
+                                    n_lags=n_lags,
+                                    relative=relative,
+                                    alpha=0, lambda=lambda,
+                                    ...)
+            ## select alpha by triangle inequality ratio
+            glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
+            ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
+            alpha <- glbl / ind
+            
+        }
         
+        msynth <- multisynth_qp(X=bal_mat,
+                                trt=wide$trt,
+                                mask=wide$mask,
+                                n_leads=n_leads,
+                                n_lags=n_lags,
+                                relative=relative,
+                                alpha=alpha, lambda=lambda,
+                                ...)
+    } else {
+        msynth <- list(weights = matrix(0, nrow = nrow(wide$X), ncol = J),
+                       imbalance=NA,
+                       global_l2=NA,
+                       ind_l2=NA)
     }
-    
-    msynth <- multisynth_qp(X=bal_mat,
-                            trt=wide$trt,
-                            mask=wide$mask,
-                            n_leads=n_leads,
-                            n_lags=n_lags,
-                            relative=relative,
-                            alpha=alpha, lambda=lambda,
-                            ...)
 
     ## put in data and hyperparams
     msynth$data <- wide
@@ -143,11 +153,9 @@ multisynth <- function(form, unit, time, data,
     msynth$n_lags <- n_lags
     msynth$alpha <- alpha
     msynth$lambda <- lambda
+    msynth$scm <- scm
 
-    ## average together treatment groups
-    ## grps <- unique(wide$trt) %>% sort()
-    grps <- wide$trt[is.finite(wide$trt)]
-    J <- length(grps)
+    
     msynth$grps <- grps
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
@@ -155,22 +163,24 @@ multisynth <- function(form, unit, time, data,
     msynth$n_factors <- n_factors
     msynth$force <- force
     
-    ## Get imbalance for uniform weights on raw data
-    ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
-    unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
-                          trt=wide$trt,
-                          mask=wide$mask,
-                          n_leads=n_leads,
-                          n_lags=n_lags,
-                          relative=relative,
-                          alpha=0, lambda=1e10)
-    ## scaled global balance
-    ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
-    msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
+    if(scm) {
+        ## Get imbalance for uniform weights on raw data
+        ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
+        unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
+                            trt=wide$trt,
+                            mask=wide$mask,
+                            n_leads=n_leads,
+                            n_lags=n_lags,
+                            relative=relative,
+                            alpha=0, lambda=1e10)
+        ## scaled global balance
+        ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
+        msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
 
-    ## balance for individual estimates
-    ## msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
-    msynth$scaled_ind_l2 <- msynth$ind_l2  / unif$ind_l2
+        ## balance for individual estimates
+        ## msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
+        msynth$scaled_ind_l2 <- msynth$ind_l2  / unif$ind_l2
+    }
 
     ## outcome model parameters
     msynth$params <- params
@@ -225,8 +235,13 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[[j]][which_t[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals[[j]]) %*%
-                                multisynth$weights[,j] / sum(multisynth$weights[,j])
+                            if(!all(multisynth$weights == 0)) {
+                                y0hat + t(multisynth$residuals[[j]]) %*%
+                                    multisynth$weights[,j] / 
+                                    sum(multisynth$weights[,j])
+                            } else {
+                                y0hat
+                            }
                         }
                        , numeric(ttot)
                         )
@@ -235,8 +250,13 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[which_t[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals) %*%
-                                multisynth$weights[,j] / sum(multisynth$weights[,j])
+                            if(!all(multisynth$weights == 0)) {
+                                y0hat + t(multisynth$residuals) %*%
+                                    multisynth$weights[,j] / 
+                                    sum(multisynth$weights[,j])
+                            } else {
+                                y0hat
+                            }
                         }
                        , numeric(ttot)
                         )
