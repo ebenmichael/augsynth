@@ -26,7 +26,7 @@ multisynth <- function(form, unit, time, data,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
-                       opts_weights=NULL) {
+                       opts_weights=NULL, ...) {
     
     call_name <- match.call()
     
@@ -116,7 +116,8 @@ multisynth <- function(form, unit, time, data,
                                    n_leads=n_leads,
                                    n_lags=n_lags,
                                    relative=relative,
-                                   alpha=0, lambda=lambda)
+                                   alpha=0, lambda=lambda,
+                                   ...)
         ## select alpha by triangle inequality ratio
         glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
         ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
@@ -130,7 +131,8 @@ multisynth <- function(form, unit, time, data,
                             n_leads=n_leads,
                             n_lags=n_lags,
                             relative=relative,
-                            alpha=alpha, lambda=lambda)
+                            alpha=alpha, lambda=lambda,
+                            ...)
 
     ## put in data and hyperparams
     msynth$data <- wide
