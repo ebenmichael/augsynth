@@ -70,7 +70,7 @@ multisynth <- function(form, unit, time, data,
     if(time_w) {
         # Autoregressive model
         out <- fit_time_reg(cbind(wide$X, wide$y), wide$trt,
-                            n_leads, 0, 1, lambda_t, ...)
+                            n_leads, lambda_t, ...)
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- out$time_weights

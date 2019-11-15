@@ -24,7 +24,6 @@ fit_time_reg <- function(X, trt, n_leads, reg_param, lowlim = 0, uplim = 1, ...)
     # fit QP
     reg_weights <- fit_time_reg_qp_(X, trt, n_leads, lowlim, uplim, reg_param, ...)
 
-
     # get predicted outcomes (repeated as a matrix) and residuals
     y0hat <- lapply(1:J, 
         function(j) {
