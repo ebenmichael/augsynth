@@ -24,8 +24,6 @@ fit_prog_seq2seq(X, y, trt, layers = list(c(50, "relu"), c(5, "relu")),
 \item{val_split}{Proportion of control units to use for validation}
 
 \item{verbose}{Whether to print training progress}
-
-\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

@@ -12,7 +12,7 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                             
 test_that("SCM gives the right answer", {
 
-    syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T, t_int = 1975)
+    syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T)
     ## average att estimate is as expected
     expect_equal(-.36, mean(summary(syn)$att$Estimate), tolerance=1e-4)
 
@@ -31,7 +31,7 @@ test_that("SCM gives the right answer", {
 test_that("Ridge ASCM gives the right answer", {
 
     asyn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="Ridge",
-                     scm=T, lambda=8, t_int = 1975)
+                     scm=T, lambda=8)
 
     ## average att estimate is as expected
     expect_equal(-.363, mean(summary(asyn)$att$Estimate), tolerance=1e-3)
