@@ -128,6 +128,7 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
                 trt=trt,
                 y=y,
                 mask=mask,
+                time = t_vec,
                 units=units))
 }
 
