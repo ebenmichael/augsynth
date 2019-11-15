@@ -27,7 +27,7 @@
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
-                          relative=T, alpha=0, lambda=0) {
+                          relative=T, alpha=0, lambda=0, ...) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
@@ -149,8 +149,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     Hmat <- alpha * V2 + (1 - alpha) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
 
     ## Optimize
-    settings <- osqp::osqpSettings(verbose = FALSE, eps_abs=1e-7, eps_rel = 1e-7,
-                                   max_iter=5000)
+    settings <- osqp::osqpSettings(verbose = FALSE, ...)
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
 
     ## get weights
