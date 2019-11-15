@@ -6,7 +6,7 @@
 \usage{
 multisynth(form, unit, time, data, relative = T, n_leads = NULL,
   n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
-  n_factors = NULL, scm = T, ...)
+  n_factors = NULL, scm = T, time_w = F, lambda_t = 0, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -32,6 +32,8 @@ multisynth(form, unit, time, data, relative = T, n_leads = NULL,
 \item{n_factors}{Number of factors for interactive fixed effects, default does CV}
 
 \item{scm}{Whether to fit scm weights}
+
+\item{time_w}{Whether to fit time weights}
 }
 \value{
 augsynth object that contains:

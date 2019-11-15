@@ -15,6 +15,7 @@
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
+#' @param time_w Whether to fit time weights
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -27,7 +28,8 @@ multisynth <- function(form, unit, time, data,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
-                       scm=T, ...) {
+                       scm=T, time_w=F,
+                       lambda_t=0, ...) {
     
     call_name <- match.call()
     
@@ -64,8 +66,15 @@ multisynth <- function(form, unit, time, data,
                        force == "unit" ~ 1,
                        force == "time" ~ 2,
                        TRUE ~ 3)
-    ## fit interactive fixed effects model
-    if(is.null(n_factors)) {
+    ## fit outcome models
+    if(time_w) {
+        # Autoregressive model
+        out <- fit_time_reg(cbind(wide$X, wide$y), wide$trt,
+                            n_leads, 0, 1, lambda_t, ...)
+        y0hat <- out$y0hat
+        residuals <- out$residuals
+        params <- out$time_weights
+    } else if(is.null(n_factors)) {
         out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
         y0hat <- out$y0hat
         params <- out$params
