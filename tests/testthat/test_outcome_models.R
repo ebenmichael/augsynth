@@ -15,7 +15,7 @@ test_that("Augmenting synth with glmnet runs", {
 
     if(!requireNamespace("glmnet", quietly = TRUE)) {
         ## should fail because glmnet isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="EN", scm=T),
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="EN", scm=T),
                      "you must install the glmnet package")
 
         ## install glmnet
@@ -23,7 +23,7 @@ test_that("Augmenting synth with glmnet runs", {
     }
 
     ## should run because glmnet is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="EN", scm=T),
+    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="EN", scm=T),
                  NA)    
 }
 )
@@ -34,7 +34,7 @@ test_that("Augmenting synth with random forest runs", {
 
     if(!requireNamespace("randomForest", quietly = TRUE)) {
         ## should fail because randomForest isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="RF", scm=T),
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="RF", scm=T),
                      "you must install the randomForest package")
 
         ## install randomForest
@@ -42,7 +42,7 @@ test_that("Augmenting synth with random forest runs", {
     }
 
     ## should run because randomForest is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="RF", scm=T),
+    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="RF", scm=T),
                  NA)    
 }
 )
@@ -54,7 +54,7 @@ test_that("Augmenting synth with gsynth runs", {
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         ## should fail because gsynth isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="GSYN", scm=T),
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="GSYN", scm=T),
                      "you must install the gsynth package")
 
         ## install gsynth
@@ -62,7 +62,7 @@ test_that("Augmenting synth with gsynth runs", {
     }
 
     ## should run because gsynth is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="GSYN", scm=T),
+    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="GSYN", scm=T),
                  NA)    
 }
 )
@@ -73,7 +73,7 @@ test_that("Augmenting synth with MCPanel runs", {
 
     if(!requireNamespace("MCPanel", quietly = TRUE)) {
         ## should fail because MCPanel isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="MCP", scm=T),
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
                      "you must install the MCPanel package")
 
         ## install MCPanel
@@ -81,7 +81,7 @@ test_that("Augmenting synth with MCPanel runs", {
     }
 
     ## should run because MCPanel is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="MCP", scm=T),
+    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
                  NA)    
 }
 )
@@ -93,7 +93,7 @@ test_that("Augmenting synth with CausalImpact runs", {
 
     if(!requireNamespace("CausalImpact", quietly = TRUE)) {
         ## should fail because CausalImpact isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="CausalImpact", scm=T),
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="CausalImpact", scm=T),
                      "you must install the CausalImpact package")
 
         ## install CausalImpact
@@ -101,7 +101,7 @@ test_that("Augmenting synth with CausalImpact runs", {
     }
 
     ## should run because CausalImpact is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, 1975, basque, progfunc="CausalImpact", scm=T),
+    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="CausalImpact", scm=T),
                  NA)    
 }
 )

@@ -30,27 +30,27 @@
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 #' @export
-augsynth <- function(form, unit, time, t_int, data,
+single_augsynth <- function(form, unit, time, t_int, data,
                      progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
                                 "CITS", "CausalImpact", "seq2seq"),
                      scm=T,
                      fixedeff = FALSE,
                      ...,
                      cov_agg=NULL) {
-   
     call_name <- match.call()
 
     form <- Formula::Formula(form)
-    # unit <- enquo(unit)
-    # time <- enquo(time)
-    
+    unit <- enquo(unit)
+    time <- enquo(time)
+
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
+
     wide <- format_data(outcome, trt, unit, time, t_int, data)
+
     synth_data <- do.call(format_synth, wide)
-    print("RUNNING SINGLE")
-    
+
     n <- nrow(wide$X)
     t0 <- ncol(wide$X)
     ttot <- t0 + ncol(wide$y)

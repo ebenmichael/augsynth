@@ -1,41 +1,44 @@
 #' @export
-augsynth3 <- function(form, unit, time, data,
-                        relative=T, n_leads=NULL, n_lags=NULL,
-                        scm = T, progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
-                                            "CITS", "CausalImpact", "seq2seq"), t_int = NULL,
-                        alpha=NULL, lambda=0,
-                        force="two-way",
-                        n_factors=NULL,
-                        opts_weights=NULL) {
+#' 
+augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
+
+# augsynth <- function(form, unit, time, data,
+#                      scm = T, progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"), t_int = NULL,
+#                      fixedeff = FALSE, cov_agg=NULL, ...,
+#                      alpha=NULL, lambda=0,
+#                      relative=T, n_leads=NULL, n_lags=NULL,
+#                      force="two-way",
+#                      n_factors=NULL) {
   call_name <- match.call()
   
   form <- Formula::Formula(form)
-  unit <- enquo(unit)
-  time <- enquo(time)
+  unit_quosure <- enquo(unit)
+  time_quosure <- enquo(time)
   
-  print("e")
   ## format data
   outcome <- terms(formula(form, rhs=1))[[2]]
   trt <- terms(formula(form, rhs=1))[[3]]
-  wide <- format_data_stag(outcome, trt, unit, time, data)
-  
+  wide <- format_data_stag(outcome, trt, unit_quosure, time_quosure, data=data)
+
   trt_year = -1
   multi = F
-  for (unit in wide$trt) {
-    if (is.finite(unit)) {
-      if (trt_year == -1) { # if 2 units receive treatment in the same year, does it go to multi synth or single synth?
-        trt_year = unit
+  for (u in wide$trt) {
+    if (is.finite(u) && u != trt_year) {
+      if (trt_year == -1) {
+        trt_year = u
       } else {
         multi = T
         break
       }
     }
   }
+
   if (multi) {
-    return(multisynth(form, unit, time, data,
-               force="time", n_factors, n_leads))
-    
+    return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
   } else {
-    return(augsynth(form, unit, time, t_int, data, progfunc=progfunc, scm=scm))
+    if (is.null(t_int)) {
+      t_int = data %>% pull(!!time_quosure) %>% unique() %>% sort() %>% `[`(trt_year+1)
+    }
+    return(single_augsynth(form, !!enquo(unit), !!enquo(time), t_int, data=data, ...))
   }
 }

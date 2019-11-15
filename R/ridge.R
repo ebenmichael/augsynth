@@ -34,6 +34,11 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
                                    holdout_length = 1, min_1se = T, ...) {
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters in using ridge augmented weights: ", paste(names(extra_params), collapse = ", "))
+    }
+    
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt

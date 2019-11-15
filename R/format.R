@@ -17,7 +17,6 @@
 #'         }
 format_data <- function(outcome, trt, unit, time, t_int, data) {
 
-
     ## pre treatment outcomes
     X <- data %>%
         filter(!!time < t_int) %>%
@@ -61,17 +60,16 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
 #'         }
 format_data_stag <- function(outcome, trt, unit, time, data) {
 
-
     ## get first treatment times
     trt_time <- data %>%
         group_by(!!unit) %>%
         summarise(trt_time=(!!time)[(!!trt) == 1][1]) %>%
         mutate(trt_time=replace_na(trt_time, Inf))
+    
 
     t_int <- trt_time %>% filter(is.finite(trt_time)) %>%
         summarise(t_int=max(trt_time)) %>% pull(t_int)
 
-    
     ## ## boolean mask of available data for treatment groups
     ## mask <- data %>% inner_join(trt_time %>%
     ##                             filter(is.finite(trt_time))) %>%
@@ -116,6 +114,7 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
     trt <- sapply(trt_time$trt_time, function(x) which(t_vec == x)-1) %>%
         as.numeric() %>%
         replace_na(Inf)
+   
 
     units <- data %>%
         filter(!!time < t_int) %>%

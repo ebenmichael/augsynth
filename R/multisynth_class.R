@@ -25,10 +25,8 @@ multisynth <- function(form, unit, time, data,
                        relative=T, n_leads=NULL, n_lags=NULL,
                        alpha=NULL, lambda=0,
                        force="two-way",
-                       n_factors=NULL,
-                       opts_weights=NULL) {
-    print("RUNNING MULTI")
-    
+                       n_factors=NULL) {
+
     call_name <- match.call()
     
     form <- Formula::Formula(form)
@@ -40,13 +38,12 @@ multisynth <- function(form, unit, time, data,
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
 
-    
-    
-    ## if n_leads is NULL set it to be the largest possible number of leads
-    if(is.null(n_leads)) {
-        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
-    } else if(n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
-        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+
+    ## if n_leads is NULL set it to be the largest possible number of leads where all treatment units still have data  
+    if(is.null(n_leads) || n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
+        # n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+        n_leads <- dim(wide$y)[2]
+        print(n_leads)
     }
 
     ## if n_lags is NULL set it to the largets number of pre-treatment periods
