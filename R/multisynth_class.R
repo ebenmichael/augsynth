@@ -146,12 +146,15 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
         
         
     } else if(force == 0 & n_factors == 0) {
-        ## if no fixed effects or factors, just do nothing
-        y0hat <- matrix(0, nrow=nrow(wide$X), ncol=(ncol(wide$X) + ncol(wide$y)))
-        params <- NULL
-        ## get residuals from outcome model
+        # if no fixed effects or factors, just take out 
+        # control averages at each time point
+        # time fixed effects from pure controls
+        pure_ctrl <- cbind(wide$X, wide$y)[!is.finite(wide$trt), , drop = F]
+        y0hat <- matrix(colMeans(pure_ctrl),
+                          nrow = nrow(wide$X), ncol = ncol(pure_ctrl), 
+                          byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
-        
+        params <- NULL
     } else if(force != 0) {
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
@@ -181,7 +184,11 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
             bal_mat <- residuals[,1:ncol(wide$X)]
         }
     } else {
-        bal_mat <- wide$X
+        # if not balancing residuals, then take out control averages
+        # for each time
+        ctrl_avg <- matrix(colMeans(wide$X[!is.finite(wide$trt), , drop = F]),
+                          nrow = nrow(wide$X), ncol = ncol(wide$X), byrow = T)
+        bal_mat <- wide$X - ctrl_avg
     }
     
 
