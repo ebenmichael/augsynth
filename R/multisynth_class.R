@@ -178,7 +178,13 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
 
     ## balance the residuals
     if(fit_resids) {
-        if(typeof(residuals) == "list") {
+        if(time_w) {
+            # fit scm on residuals after taking out unit fixed effects
+            fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
+                                            ncol=ncol(wide$y)))
+            out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force)
+            bal_mat <- lapply(out$residuals, function(x) x[,1:ncol(wide$X)])
+        } else if(typeof(residuals) == "list") {
             bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
         } else {
             bal_mat <- residuals[,1:ncol(wide$X)]
