@@ -182,3 +182,69 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     out$sigma <- NA
     return(out)
 }
+
+
+#' Estimate standard errors for single ASCM with the jackknife
+#' Do this for ridge-augmented synth
+#' @param ascm Fitted augsynth object
+jackknife_se_single <- function(ascm) {
+    
+    wide_data <- ascm$data
+    synth_data <-format_synth(wide_data$X, wide_data$trt, wide_data$y)
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    ## att on actual sample
+    # aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, 
+    #                                 lambda, ridge, scm)
+    # att <- as.numeric(synth_data$Y1plot -
+    #         synth_data$Y0plot %*% aug_t$weights)
+    # lam <- aug_t$lambda
+
+    # only drop out control units with non-zero weights
+    nnz_weights <- numeric(n)
+    nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+
+    trt_idxs <- (1:n)[as.logical(nnz_weights)]
+    n_jack <- length(trt_idxs)
+
+    # jackknife estimates
+    ests <- vapply(trt_idxs, 
+                   function(i) {
+                       # drop unit i
+                       new_data <- drop_unit_i(wide_data, Z, i)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_internal,
+                                c(list(wide = new_data$wide,
+                                       synth_data = new_data$synth_data,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                       # get ATT estimates
+                       est <- predict(new_ascm, att = T)[(t0 + 1):t_final]
+                       c(est, mean(est))
+                   },
+                   numeric(tpost + 1))
+    # convert to matrix
+    ests <- matrix(ests, nrow = tpost + 1, ncol = length(trt_idxs))
+    ## standard errors
+    se2 <- apply(ests, 1,
+                 function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
+    se <- sqrt(se2)
+
+    out <- list()
+    att <- predict(ascm, att = T)
+    out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    return(out)
+}

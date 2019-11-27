@@ -49,9 +49,7 @@ augsynth <- function(form, unit, time, t_int, data,
     wide <- format_data(outcome, trt, unit, time, t_int, data)
     synth_data <- do.call(format_synth, wide)
 
-    n <- nrow(wide$X)
-    t0 <- ncol(wide$X)
-    ttot <- t0 + ncol(wide$y)
+    
 
     ## add covariates
     if(length(form)[2] == 2) {
@@ -78,6 +76,32 @@ augsynth <- function(form, unit, time, t_int, data,
         Z <- NULL
     }
 
+    # fit augmented SCM
+    augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc, 
+                                      scm, fixedeff, ...)
+
+    # add some extra data
+    augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    augsynth$call <- call_name
+    augsynth$t_int <- t_int 
+
+    return(augsynth)
+}
+
+#' Internal function to fit augmented SCM
+#' @param wide Data formatted from format_data
+#' @param synth_data Data formatted from foramt_synth
+#' @param Z Matrix of auxiliary covariates
+#' @param progfunc outcome model to use
+#' @param scm Whether to fit SCM
+#' @param fixed_eff Whether to de-mean synth
+#' @param ... Extra args for outcome model
+fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
+                                  scm, fixedeff, ...) {
+
+    n <- nrow(wide$X)
+    t0 <- ncol(wide$X)
+    ttot <- t0 + ncol(wide$y)
     if(fixedeff) {
         demeaned <- demean_data(wide, synth_data)
         fit_wide <- demeaned$wide
@@ -118,13 +142,11 @@ augsynth <- function(form, unit, time, t_int, data,
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
                                   augsynth$mhat)
     augsynth$data <- wide
-    augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     augsynth$data$Z <- Z
-    augsynth$t_int <- t_int
     augsynth$progfunc <- progfunc
     augsynth$scm <- scm
-    augsynth$call <- call_name
     augsynth$fixedeff <- fixedeff
+    augsynth$extra_args <- list(...)
     ##format output
     class(augsynth) <- "augsynth"
     return(augsynth)
@@ -176,61 +198,42 @@ print.augsynth <- function(augsynth) {
 #' @param se Whether to plot standard errors
 #' @param jackknife Whether to use jackknife or weighted SEs
 #' @export
-plot.augsynth <- function(augsynth, se = T, jackknife = T) {
-    plot(summary(augsynth, jackknife = jackknife), se = se)
+plot.augsynth <- function(augsynth, se = T) {
+    plot(summary(augsynth, se), se = se)
 }
 
 
 #' Summary function for augsynth
 #' @param jackknife Whether to use jackknife or weighted SEs
 #' @export
-summary.augsynth <- function(augsynth, jackknife = T) {
+summary.augsynth <- function(augsynth, se = T) {
 
     summ <- list()
 
-    # ## post treatment estimate
-    # att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
-    #     predict(augsynth)
+    t0 <- ncol(augsynth$data$X)
+    t_final <- t0 + ncol(augsynth$data$y)
 
-    # ## pre treatment estimate
-    # att_pre <- colMeans(augsynth$data$X[augsynth$data$trt == 1,,drop=F]) -
-    #     t(augsynth$data$X[augsynth$data$trt==0,,drop=F]) %*% augsynth$weights
-    att_est <- predict(augsynth, att = T)
-    att <- data.frame(Time = augsynth$data$time,
-                        Estimate = att_est)
+    if(se) {
+        att_se <- jackknife_se_single(augsynth)
+        att <- data.frame(Time = augsynth$data$time,
+                          Estimate = att_se$att[1:t_final],
+                          Std.Error = att_se$se[1:t_final])
+        att_avg <- att_se$att[t_final + 1]
+        att_avg_se <- att_se$se[t_final + 1]
 
-
-    if(augsynth$progfunc == "Ridge" |
-       augsynth$progfunc == "None" & augsynth$scm) {
-        ridge <- augsynth$progfunc == "Ridge"
-        scm <- augsynth$scm
-
-        ## get standard errors
-        synth_data <- format_synth(augsynth$data$X, augsynth$data$trt,
-                                   augsynth$data$y)
-
-        if(jackknife) {
-            att_se <- jackknife_se_ridgeaug(augsynth$data, synth_data,
-                                            augsynth$data$Z, augsynth$lambda,
-                                            ridge, scm, augsynth$fixedeff)
-        } else {
-            att_se <- loo_se_ridgeaug(augsynth$data, synth_data, 
-                                      augsynth$data$Z,
-                                      augsynth$lambda,
-                                      ridge, scm)
-        }
-
-        att$Std.Error <- att_se$se
-
-        summ$att <- att
-        summ$sigma <- att_se$sigma
     } else {
-        ## no standard errors
+        t0 <- ncol(augsynth$data$X)
+        t_final <- t0 + ncol(augsynth$data$y)
+        att_est <- predict(augsynth, att = T)
+        att <- data.frame(Time = augsynth$data$time,
+                          Estimate = att_est)
         att$Std.Error <- NA
-        summ$att <- att
-        summ$sigma <- NA
+        att_avg <- mean(att_est[(t0 + 1):t_final])
+        att_avg_se <- NA
     }
 
+    summ$att <- att
+    summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
@@ -262,6 +265,8 @@ print.summary.augsynth <- function(summ) {
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
+    t_final <- nrow(summ$att)
+
     ## distinction between pre and post treatment
     att_est <- summ$att$Estimate
     t_total <- length(att_est)
@@ -274,12 +279,13 @@ print.summary.augsynth <- function(summ) {
     se_est <- summ$att$Std.Error
 
     se_pool <- sqrt(mean(se_est[t_int:t_total]^2))
-    cat(paste("Average ATT Estimate (Pooled Std. Error): ",
-              format(round(mean(att_post),3), nsmall=3), "  (",
+
+    att_post <- summ$average_att$Estimate
+    se_pool <- summ$average_att$Std.Error
+    
+    cat(paste("Average ATT Estimate (Std. Error): ",
+              format(round(att_post,3), nsmall=3), "  (",
               format(round(se_pool,3)), ")\n",
-              "Std. Deviation: ",
-              format(round(sqrt(mean(summ$sigma^2)),3)),
-              "\n\n",
               "L2 Imbalance (Scaled): ",
               format(round(summ$l2_imbalance,3), nsmall=3), "  (",
               format(round(summ$scaled_l2_imbalance,3), nsmall=3), ")\t",
@@ -288,7 +294,7 @@ print.summary.augsynth <- function(summ) {
               sep=""))
 
 
-    print(summ$att[t_int:t_total,], row.names=F)
+    print(summ$att[t_int:t_final,], row.names=F)
     
 }
 

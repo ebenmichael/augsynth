@@ -4,7 +4,7 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(augsynth, jackknife = T)
+\method{summary}{augsynth}(augsynth, se = T)
 }
 \arguments{
 \item{jackknife}{Whether to use jackknife or weighted SEs}
