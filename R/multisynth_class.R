@@ -15,8 +15,6 @@
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
-#' @param time_w Whether to fit time weights
-#' @param residuals Whether to fit SCM on the residuals or not
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -29,16 +27,14 @@ multisynth <- function(form, unit, time, data,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
-                       scm=T, time_w=F,
-                       lambda_t=0,
-                       fit_resids=T, ...) {
-    
+                       scm=T, ...) {
+
     call_name <- match.call()
-    
+
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
-    
+
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
@@ -67,9 +63,9 @@ multisynth <- function(form, unit, time, data,
                                 n_leads = n_leads, n_lags = n_lags, 
                                 alpha = alpha, lambda = lambda,
                                 force = force, n_factors = n_factors, 
-                                scm = scm, time_w = time_w, 
-                                lambda_t = lambda_t, 
-                                fit_resids = fit_resids, ...)
+                                scm = scm, time_w = F, 
+                                lambda_t = 0, 
+                                fit_resids = T, ...)
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
