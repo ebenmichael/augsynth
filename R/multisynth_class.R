@@ -14,6 +14,7 @@
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
+#' @param scm Whether to fit scm weights
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -26,21 +27,24 @@ multisynth <- function(form, unit, time, data,
                        alpha=NULL, lambda=0,
                        force="two-way",
                        n_factors=NULL,
-                       opts_weights=NULL, ...) {
-    
+                       scm=T, ...) {
+
     call_name <- match.call()
-    
+
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
-    
+
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
 
-    
-    
+    force <- case_when(force == "none" ~ 0,
+                       force == "unit" ~ 1,
+                       force == "time" ~ 2,
+                       TRUE ~ 3)
+
     ## if n_leads is NULL set it to be the largest possible number of leads
     if(is.null(n_leads)) {
         n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
@@ -55,27 +59,98 @@ multisynth <- function(form, unit, time, data,
         n_lags <- ncol(wide$X)
     }
 
+    msynth <- multisynth_formatted(wide = wide, relative = relative, 
+                                n_leads = n_leads, n_lags = n_lags, 
+                                alpha = alpha, lambda = lambda,
+                                force = force, n_factors = n_factors, 
+                                scm = scm, time_w = F, 
+                                lambda_t = 0, 
+                                fit_resids = T, ...)
 
-    force <- case_when(force == "none" ~ 0,
-                       force == "unit" ~ 1,
-                       force == "time" ~ 2,
-                       TRUE ~ 3)
-    ## fit interactive fixed effects model
-    if(is.null(n_factors)) {
+    if(scm) {
+        ## Get imbalance for uniform weights on raw data
+        ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
+        unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
+                            trt=wide$trt,
+                            mask=wide$mask,
+                            n_leads=n_leads,
+                            n_lags=n_lags,
+                            relative=relative,
+                            alpha=0, lambda=1e10)
+        ## scaled global balance
+        ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
+        msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
+
+        ## balance for individual estimates
+        ## msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
+        msynth$scaled_ind_l2 <- msynth$ind_l2  / unif$ind_l2
+    }
+
+    msynth$call <- call_name
+
+    return(msynth)
+
+}
+
+
+#' Internal funciton to fit staggered synth with formatted data
+#' @param wide List containing data elements
+#' @param relative Whether to compute balance by relative time
+#' @param n_leads How long past treatment effects should be estimated for
+#' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
+#' @param alpha Fraction of balance for individual balance
+#' @param lambda Regularization hyperparameter, default = 0
+#' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
+#' @param n_factors Number of factors for interactive fixed effects, default does CV
+#' @param scm Whether to fit scm weights
+#' @param time_w Whether to fit time weights
+#' @param residuals Whether to fit SCM on the residuals or not
+#'
+#' @return augsynth object that contains:
+#'         \itemize{
+#'          \item{"weights"}{weights}
+#'          \item{"data"}{Panel data as matrices}
+#'         }
+multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
+                       alpha=NULL, lambda=0,
+                       force="two-way",
+                       n_factors=NULL,
+                       scm=T, time_w=F,
+                       lambda_t=0,
+                       fit_resids=T, ...) {
+    
+    ## average together treatment groups
+    ## grps <- unique(wide$trt) %>% sort()
+    grps <- wide$trt[is.finite(wide$trt)]
+    J <- length(grps)
+
+    ## fit outcome models
+    if(time_w) {
+        # Autoregressive model
+        out <- fit_time_reg(cbind(wide$X, wide$y), wide$trt,
+                            n_leads, lambda_t, ...)
+        y0hat <- out$y0hat
+        residuals <- out$residuals
+        params <- out$time_weights
+    } else if(is.null(n_factors)) {
         out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
         y0hat <- out$y0hat
         params <- out$params
+        n_factors <- ncol(params$factor)
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
         
         
     } else if(force == 0 & n_factors == 0) {
-        ## if no fixed effects or factors, just do nothing
-        y0hat <- matrix(0, nrow=nrow(wide$X), ncol=(ncol(wide$X) + ncol(wide$y)))
-        params <- NULL
-        ## get residuals from outcome model
+        # if no fixed effects or factors, just take out 
+        # control averages at each time point
+        # time fixed effects from pure controls
+        pure_ctrl <- cbind(wide$X, wide$y)[!is.finite(wide$trt), , drop = F]
+        y0hat <- matrix(colMeans(pure_ctrl),
+                          nrow = nrow(wide$X), ncol = ncol(pure_ctrl), 
+                          byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
-        
+        params <- NULL
     } else if(force != 0) {
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
@@ -97,57 +172,75 @@ multisynth <- function(form, unit, time, data,
 
     }
 
-    
     ## balance the residuals
-    if(typeof(residuals) == "list") {
-        bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
+    if(fit_resids) {
+        if(time_w) {
+            # fit scm on residuals after taking out unit fixed effects
+            fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
+                                            ncol=ncol(wide$y)))
+            out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force)
+            bal_mat <- lapply(out$residuals, function(x) x[,1:ncol(wide$X)])
+        } else if(typeof(residuals) == "list") {
+            bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
+        } else {
+            bal_mat <- residuals[,1:ncol(wide$X)]
+        }
     } else {
-        bal_mat <- residuals[,1:ncol(wide$X)]
-    }
-
-
-    ## if no alpha value is provided, use default based on
-    ## global and individual imbalance for no-pooling estimator
-    if(is.null(alpha)) {
-        ## fit with alpha = 0
-        alpha_fit <- multisynth_qp(X=bal_mat,
-                                   trt=wide$trt,
-                                   mask=wide$mask,
-                                   n_leads=n_leads,
-                                   n_lags=n_lags,
-                                   relative=relative,
-                                   alpha=0, lambda=lambda,
-                                   ...)
-        ## select alpha by triangle inequality ratio
-        glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
-        ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
-        alpha <- glbl / ind
-        
+        # if not balancing residuals, then take out control averages
+        # for each time
+        ctrl_avg <- matrix(colMeans(wide$X[!is.finite(wide$trt), , drop = F]),
+                          nrow = nrow(wide$X), ncol = ncol(wide$X), byrow = T)
+        bal_mat <- wide$X - ctrl_avg
     }
     
-    msynth <- multisynth_qp(X=bal_mat,
-                            trt=wide$trt,
-                            mask=wide$mask,
-                            n_leads=n_leads,
-                            n_lags=n_lags,
-                            relative=relative,
-                            alpha=alpha, lambda=lambda,
-                            ...)
+
+    if(scm) {
+        ## if no alpha value is provided, use default based on
+        ## global and individual imbalance for no-pooling estimator
+        if(is.null(alpha)) {
+            ## fit with alpha = 0
+            alpha_fit <- multisynth_qp(X=bal_mat,
+                                    trt=wide$trt,
+                                    mask=wide$mask,
+                                    n_leads=n_leads,
+                                    n_lags=n_lags,
+                                    relative=relative,
+                                    alpha=0, lambda=lambda,
+                                    ...)
+            ## select alpha by triangle inequality ratio
+            glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
+            ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
+            alpha <- glbl / ind
+            
+        }
+        
+        msynth <- multisynth_qp(X=bal_mat,
+                                trt=wide$trt,
+                                mask=wide$mask,
+                                n_leads=n_leads,
+                                n_lags=n_lags,
+                                relative=relative,
+                                alpha=alpha, lambda=lambda,
+                                ...)
+    } else {
+        msynth <- list(weights = matrix(0, nrow = nrow(wide$X), ncol = J),
+                       imbalance=NA,
+                       global_l2=NA,
+                       ind_l2=NA)
+    }
 
     ## put in data and hyperparams
     msynth$data <- wide
-    msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
-    msynth$call <- call_name
+    # msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    
     msynth$relative <- relative
     msynth$n_leads <- n_leads
     msynth$n_lags <- n_lags
     msynth$alpha <- alpha
     msynth$lambda <- lambda
+    msynth$scm <- scm
 
-    ## average together treatment groups
-    ## grps <- unique(wide$trt) %>% sort()
-    grps <- wide$trt[is.finite(wide$trt)]
-    J <- length(grps)
+    
     msynth$grps <- grps
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
@@ -155,26 +248,18 @@ multisynth <- function(form, unit, time, data,
     msynth$n_factors <- n_factors
     msynth$force <- force
     
-    ## Get imbalance for uniform weights on raw data
-    ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
-    unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
-                          trt=wide$trt,
-                          mask=wide$mask,
-                          n_leads=n_leads,
-                          n_lags=n_lags,
-                          relative=relative,
-                          alpha=0, lambda=1e10)
-    ## scaled global balance
-    ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
-    msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
-
-    ## balance for individual estimates
-    ## msynth$scaled_ind_l2 <- msynth$ind_l2  / sqrt(sum(unif$imbalance[,-1]^2))
-    msynth$scaled_ind_l2 <- msynth$ind_l2  / unif$ind_l2
+    
 
     ## outcome model parameters
     msynth$params <- params
-    
+
+    # more arguments
+    msynth$scm <- scm
+    msynth$time_w <- time_w
+    msynth$lambda_t <- lambda_t
+    msynth$fit_resids <- fit_resids
+    msynth$extra_pars <- list(...)
+
     ##format output
     class(msynth) <- "multisynth"
     return(msynth)
@@ -225,8 +310,13 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[[j]][which_t[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals[[j]]) %*%
-                                multisynth$weights[,j] / sum(multisynth$weights[,j])
+                            if(!all(multisynth$weights == 0)) {
+                                y0hat + t(multisynth$residuals[[j]]) %*%
+                                    multisynth$weights[,j] / 
+                                    sum(multisynth$weights[,j])
+                            } else {
+                                y0hat
+                            }
                         }
                        , numeric(ttot)
                         )
@@ -235,8 +325,13 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[which_t[j],
                                                                   , drop=FALSE])
-                            y0hat + t(multisynth$residuals) %*%
-                                multisynth$weights[,j] / sum(multisynth$weights[,j])
+                            if(!all(multisynth$weights == 0)) {
+                                y0hat + t(multisynth$residuals) %*%
+                                    multisynth$weights[,j] / 
+                                    sum(multisynth$weights[,j])
+                            } else {
+                                y0hat
+                            }
                         }
                        , numeric(ttot)
                         )
@@ -477,45 +572,31 @@ jackknife <- function(multisynth, relative=NULL) {
 
 }
 
-#' Helper function to drop unit i from the multisynth object
+#' Helper function to drop unit i and refit
 drop_unit_i_ <- function(msyn, i) {
 
     n <- nrow(msyn$data$X)
     which_t <- (1:n)[is.finite(msyn$data$trt)]    
-    msyn_i <- msyn
-    msyn_i$data$X <- msyn$data$X[-i,]
-    msyn_i$data$y <- msyn$data$y[-i,]
-    msyn_i$data$trt <- msyn$data$trt[-i]
-    if(typeof(msyn$residuals) == "list") {
-        msyn_i$residuals <- lapply(msyn$residuals, function(x) x[-i,])
-        msyn_i$y0hat <- lapply(msyn$y0hat, function(x) x[-i,])
-
-    } else {
-        msyn_i$residuals <- msyn$residuals[-i,]
-        msyn_i$y0hat <- msyn$y0hat[-i,]
-    }
-
-    msyn_i$weights <- msyn$weights[-i,]
-
-    ## refit weights
-    if(typeof(msyn_i$residuals) == "list") {
-        bal_mat <- lapply(msyn_i$residuals, function(x) x[,1:ncol(msyn_i$data$X)])
-    } else {
-        bal_mat <- msyn_i$residuals[,1:ncol(msyn_i$data$X)]
-    }
-    msyn_i$grps <- msyn_i$data$trt[is.finite(msyn_i$data$trt)]
     not_miss_j <- which_t %in% setdiff(which_t, i)
-    
-    msyn_i$data$mask <- msyn$data$mask[not_miss_j,,drop=F]
-    msyn_i$weights <- multisynth_qp(X=bal_mat,
-                                    trt=msyn_i$data$trt,
-                                    mask=msyn_i$data$mask,
-                                    n_leads=msyn_i$n_leads,
-                                    n_lags=msyn_i$n_lags,
-                                    relative=msyn_i$relative,
-                                    alpha=msyn_i$alpha, lambda=msyn_i$lambda)$weights
-    
-    
+
+    # drop unit i from data
+    drop_i <- list()
+    drop_i$X <- msyn$data$X[-i,]
+    drop_i$y <- msyn$data$y[-i,]
+    drop_i$trt <- msyn$data$trt[-i]
+    drop_i$mask <- msyn$data$mask[not_miss_j,,drop=F]
+
+    # re-fit everything
+    args_list <- list(wide = drop_i, relative = msyn$relative, 
+                      n_leads = msyn$n_leads, n_lags = msyn$n_lags, 
+                      alpha = msyn$alpha, lambda = msyn$lambda,
+                      force = msyn$force, n_factors = msyn$n_factors, 
+                      scm = msyn$scm, time_w = msyn$time_w, 
+                      lambda_t = msyn$lambda_t,
+                      fit_resids = msyn$fit_resids)
+
+    msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
+                      
     return(list(msyn_i,
                 which(!not_miss_j)))
 }

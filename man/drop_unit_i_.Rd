@@ -2,10 +2,10 @@
 % Please edit documentation in R/multisynth_class.R
 \name{drop_unit_i_}
 \alias{drop_unit_i_}
-\title{Helper function to drop unit i from the multisynth object}
+\title{Helper function to drop unit i and refit}
 \usage{
 drop_unit_i_(msyn, i)
 }
 \description{
-Helper function to drop unit i from the multisynth object
+Helper function to drop unit i and refit
 }
