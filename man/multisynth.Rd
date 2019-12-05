@@ -4,12 +4,12 @@
 \alias{multisynth}
 \title{Fit staggered synth}
 \usage{
-multisynth(form, unit, time, data, relative = T, n_leads = NULL,
-  n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
-  n_factors = NULL, scm = T, ...)
+multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
+  nu = NULL, lambda = 0, fixedeff = FALSE, n_factors = 0,
+  scm = T, ...)
 }
 \arguments{
-\item{form}{outcome ~ treatment | auxillary covariates}
+\item{form}{outcome ~ treatment}
 
 \item{unit}{Name of unit column}
 
@@ -17,27 +17,40 @@ multisynth(form, unit, time, data, relative = T, n_leads = NULL,
 
 \item{data}{Panel data as dataframe}
 
-\item{relative}{Whether to compute balance by relative time}
-
-\item{n_leads}{How long past treatment effects should be estimated for}
+\item{n_leads}{How long past treatment effects should be estimated for, default is number of post treatment periods for last treated unit}
 
 \item{n_lags}{Number of pre-treatment periods to balance, default is to balance all periods}
 
-\item{alpha}{Fraction of balance for individual balance}
+\item{nu}{Fraction of balance for individual balance}
 
 \item{lambda}{Regularization hyperparameter, default = 0}
 
-\item{force}{Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"}
+\item{fixedeff}{Whether to include a unit fixed effect, default F}
 
-\item{n_factors}{Number of factors for interactive fixed effects, default does CV}
+\item{n_factors}{Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0}
 
 \item{scm}{Whether to fit scm weights}
+
+\item{...}{Extra arguments for optimization solver osqp}
 }
 \value{
-augsynth object that contains:
+multisynth object that contains:
         \itemize{
-         \item{"weights"}{weights}
+         \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
          \item{"data"}{Panel data as matrices}
+         \item{"imbalance"}{Matrix of treatment minus synthetic control for pre-treatment time periods, each column corresponds to a treated unit}
+         \item{"global_l2"}{L2 imbalance for the pooled synthetic control}
+         \item{"scaled_global_l2"}{L2 imbalance for the pooled synthetic control, scaled by the imbalance for unitform weights}
+         \item{"ind_l2"}{Average L2 imbalance for the individual synthetic controls}
+         \item{"scaled_ind_l2"}{Average L2 imbalance for the individual synthetic controls, scaled by the imbalance for unitform weights}
+        \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
+         \item{"nu"}{Fraction of balance for individual balance}
+         \item{"lambda"}{Regularization hyperparameter}
+         \item{"scm"}{Whether to fit scm weights}
+         \item{"grps"}{Time periods for treated units}
+         \item{"y0hat"}{Pilot estimates of control outcomes}
+         \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
+         \item{"n_factors"}{Number of factors for interactive fixed effects}
         }
 }
 \description{

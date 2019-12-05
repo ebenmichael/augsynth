@@ -3,30 +3,43 @@
 ################################################################################
 
 #' Fit staggered synth
-#' @param form outcome ~ treatment | auxillary covariates
+#' @param form outcome ~ treatment
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
-#' @param relative Whether to compute balance by relative time
-#' @param n_leads How long past treatment effects should be estimated for
+#' @param n_leads How long past treatment effects should be estimated for, default is number of post treatment periods for last treated unit
 #' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
-#' @param alpha Fraction of balance for individual balance
+#' @param nu Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
-#' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
-#' @param n_factors Number of factors for interactive fixed effects, default does CV
+#' @param fixedeff Whether to include a unit fixed effect, default F 
+#' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
+#' @param ... Extra arguments for optimization solver osqp
 #'
-#' @return augsynth object that contains:
+#' @return multisynth object that contains:
 #'         \itemize{
-#'          \item{"weights"}{weights}
+#'          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
 #'          \item{"data"}{Panel data as matrices}
+#'          \item{"imbalance"}{Matrix of treatment minus synthetic control for pre-treatment time periods, each column corresponds to a treated unit}
+#'          \item{"global_l2"}{L2 imbalance for the pooled synthetic control}
+#'          \item{"scaled_global_l2"}{L2 imbalance for the pooled synthetic control, scaled by the imbalance for unitform weights}
+#'          \item{"ind_l2"}{Average L2 imbalance for the individual synthetic controls}
+#'          \item{"scaled_ind_l2"}{Average L2 imbalance for the individual synthetic controls, scaled by the imbalance for unitform weights}
+#'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
+#'          \item{"nu"}{Fraction of balance for individual balance}
+#'          \item{"lambda"}{Regularization hyperparameter}
+#'          \item{"scm"}{Whether to fit scm weights}
+#'          \item{"grps"}{Time periods for treated units}
+#'          \item{"y0hat"}{Pilot estimates of control outcomes}
+#'          \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
+#'          \item{"n_factors"}{Number of factors for interactive fixed effects}
 #'         }
 #' @export
 multisynth <- function(form, unit, time, data,
-                       relative=T, n_leads=NULL, n_lags=NULL,
-                       alpha=NULL, lambda=0,
-                       force="two-way",
-                       n_factors=NULL,
+                       n_leads=NULL, n_lags=NULL,
+                       nu=NULL, lambda=0,
+                       fixedeff = FALSE,
+                       n_factors=0,
                        scm=T, ...) {
 
     call_name <- match.call()
@@ -40,14 +53,12 @@ multisynth <- function(form, unit, time, data,
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
 
-    force <- case_when(force == "none" ~ 0,
-                       force == "unit" ~ 1,
-                       force == "time" ~ 2,
-                       TRUE ~ 3)
+    force <- if(fixedeff) 3 else 2
 
-    ## if n_leads is NULL set it to be the largest possible number of leads
+    # if n_leads is NULL set it to be the largest possible number of leads
+    # for the last treated unit
     if(is.null(n_leads)) {
-        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+        n_leads <- ncol(wide$y)
     } else if(n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
         n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
     }
@@ -59,12 +70,12 @@ multisynth <- function(form, unit, time, data,
         n_lags <- ncol(wide$X)
     }
 
-    msynth <- multisynth_formatted(wide = wide, relative = relative, 
-                                n_leads = n_leads, n_lags = n_lags, 
-                                alpha = alpha, lambda = lambda,
-                                force = force, n_factors = n_factors, 
-                                scm = scm, time_w = F, 
-                                lambda_t = 0, 
+    msynth <- multisynth_formatted(wide = wide, relative = T,
+                                n_leads = n_leads, n_lags = n_lags,
+                                nu = nu, lambda = lambda,
+                                force = force, n_factors = n_factors,
+                                scm = scm, time_w = F,
+                                lambda_t = 0,
                                 fit_resids = T, ...)
 
     if(scm) {
@@ -75,8 +86,8 @@ multisynth <- function(form, unit, time, data,
                             mask=wide$mask,
                             n_leads=n_leads,
                             n_lags=n_lags,
-                            relative=relative,
-                            alpha=0, lambda=1e10)
+                            relative=T,
+                            nu=0, lambda=1e10)
         ## scaled global balance
         ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
         msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
@@ -98,27 +109,29 @@ multisynth <- function(form, unit, time, data,
 #' @param relative Whether to compute balance by relative time
 #' @param n_leads How long past treatment effects should be estimated for
 #' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
-#' @param alpha Fraction of balance for individual balance
+#' @param nu Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
-#' @param force Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"
+#' @param force c(0,1,2,3) what type of fixed effects to include
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
 #' @param time_w Whether to fit time weights
-#' @param residuals Whether to fit SCM on the residuals or not
+#' @param fit_resids Whether to fit SCM on the residuals or not
+#' @param eps_abs Absolute error tolerance for osqp
+#' @param eps_rel Relative error tolerance for osqp
+#' @param ... Extra arguments for optimization solver osqp
 #'
-#' @return augsynth object that contains:
-#'         \itemize{
-#'          \item{"weights"}{weights}
-#'          \item{"data"}{Panel data as matrices}
-#'         }
-multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
-                       alpha=NULL, lambda=0,
-                       force="two-way",
-                       n_factors=NULL,
-                       scm=T, time_w=F,
-                       lambda_t=0,
-                       fit_resids=T, ...) {
-    
+#' @return multisynth object
+multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
+                       nu, lambda,
+                       force,
+                       n_factors,
+                       scm, time_w,
+                       lambda_t,
+                       fit_resids,
+                       eps_abs = 1e-5,
+                       eps_rel = 1e-5,
+                       ...) {
+
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
     grps <- wide$trt[is.finite(wide$trt)]
@@ -195,32 +208,32 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
     
 
     if(scm) {
-        ## if no alpha value is provided, use default based on
+        ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
-        if(is.null(alpha)) {
-            ## fit with alpha = 0
-            alpha_fit <- multisynth_qp(X=bal_mat,
+        if(is.null(nu)) {
+            ## fit with nu = 0
+            nu_fit <- multisynth_qp(X=bal_mat,
                                     trt=wide$trt,
                                     mask=wide$mask,
                                     n_leads=n_leads,
                                     n_lags=n_lags,
                                     relative=relative,
-                                    alpha=0, lambda=lambda,
+                                    nu=0, lambda=lambda,
                                     ...)
-            ## select alpha by triangle inequality ratio
-            glbl <- sqrt(sum(alpha_fit$imbalance[,1]^2))
-            ind <- sum(apply(alpha_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
-            alpha <- glbl / ind
-            
+            ## select nu by triangle inequality ratio
+            glbl <- sqrt(sum(nu_fit$imbalance[,1]^2))
+            ind <- sum(apply(nu_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
+            nu <- glbl / ind
+
         }
-        
+
         msynth <- multisynth_qp(X=bal_mat,
                                 trt=wide$trt,
                                 mask=wide$mask,
                                 n_leads=n_leads,
                                 n_lags=n_lags,
                                 relative=relative,
-                                alpha=alpha, lambda=lambda,
+                                nu=nu, lambda=lambda,
                                 ...)
     } else {
         msynth <- list(weights = matrix(0, nrow = nrow(wide$X), ncol = J),
@@ -231,24 +244,21 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
 
     ## put in data and hyperparams
     msynth$data <- wide
-    # msynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
-    
     msynth$relative <- relative
     msynth$n_leads <- n_leads
     msynth$n_lags <- n_lags
-    msynth$alpha <- alpha
+    msynth$nu <- nu
     msynth$lambda <- lambda
     msynth$scm <- scm
 
-    
+
     msynth$grps <- grps
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
 
     msynth$n_factors <- n_factors
     msynth$force <- force
-    
-    
+
 
     ## outcome model parameters
     msynth$params <- params
@@ -258,7 +268,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
     msynth$time_w <- time_w
     msynth$lambda_t <- lambda_t
     msynth$fit_resids <- fit_resids
-    msynth$extra_pars <- list(...)
+    msynth$extra_pars <- c(list(eps_abs = eps_abs, eps_rel = eps_rel), list(...))
 
     ##format output
     class(msynth) <- "multisynth"
@@ -270,12 +280,12 @@ multisynth_formatted <- function(wide, relative=T, n_leads=NULL, n_lags=NULL,
 
 
 
-#' Get prediction of average outcome under control
+#' Get prediction of average outcome under control or ATT
 #' @param multisynth Fit multisynth object
 #' @param relative Whether to aggregate estimates according to calendar or relative time
 #' @param att Whether to estimate the ATT or the missing counterfactual
 #'
-#' @return Vector of predicted post-treatment control averages for each treatment group
+#' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
 predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 
@@ -404,8 +414,8 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
         avg2 <- rowSums(t(1-fullmask) *  tauhat * n1) /
             rowSums(t(1-fullmask) *  n1)
         avg <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
-            replace_na(avg2,0) * apply(1-fullmask, 2, max)
-        cbind(avg, tauhat) -> tauhat        
+            replace_na(avg2,0) * apply(1 - fullmask, 2, max)
+        cbind(avg, tauhat) -> tauhat
     }
     
 
@@ -421,14 +431,15 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 #' @export
 print.multisynth <- function(multisynth) {
     ## straight from lm
-    cat("\nCall:\n", paste(deparse(multisynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
+    cat("\nCall:\n", paste(deparse(multisynth$call), 
+        sep="\n", collapse="\n"), "\n\n", sep="")
 
-    ## ## print att estimates
-    ## att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
-    ##     predict(augsynth)
+    # print att estimates
+    att_post <- predict(multisynth, att=T)[,1]
+    att_post <- att_post[length(att_post)]
 
-    ## cat(paste("Average ATT Estimate: ",
-    ##           format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
+    cat(paste("Average ATT Estimate: ",
+              format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
 }
 
 
@@ -439,7 +450,8 @@ print.multisynth <- function(multisynth) {
 #' @param se Whether to plot standard errors
 #' @param jackknife Whether to compute jackknife standard errors, default T
 #' @export
-plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, se=T, jackknife=T) {
+plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, 
+                            se=T, jackknife=T) {
     plot(summary(multisynth, relative, jackknife=jackknife), levels, se)
 }
 
@@ -537,81 +549,24 @@ compute_se <- function(multisynth, relative=NULL) {
 }
 
 
-#' Compute standard errors using the jackknife
-#' @param multisynth fitted multisynth object
-#' @param relative Whether to compute effects according to relative time
-jackknife <- function(multisynth, relative=NULL) {
-    ## get info from the multisynth object
-    if(is.null(relative)) {
-        relative <- multisynth$relative
-    }
-    n_leads <- multisynth$n_leads
-    n <- nrow(multisynth$data$X)
-    outddim <- nrow(predict(multisynth, att=T))
 
-    J <- length(multisynth$grps)
-    ## drop each unit and estimate overall treatment effect   
-    jack_est <- vapply(1:n,
-                       function(i) {
-                           msyn_i <- drop_unit_i_(multisynth, i)
-                           pred <- predict(msyn_i[[1]], relative=relative, att=T)
-                           if(length(msyn_i[[2]]) != 0) {
-                               out <- matrix(NA, nrow=nrow(pred), ncol=(J+1))
-                               out[,-(msyn_i[[2]]+1)] <- pred
-                           } else {
-                               out <- pred
-                           }
-                           out
-                       },
-                       matrix(0, nrow=outddim,ncol=(J+1)))
-    ## return(jack_est)
-    se2 <- apply(jack_est, c(1,2),
-                function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
-
-    return(sqrt(se2))
-
-}
-
-#' Helper function to drop unit i and refit
-drop_unit_i_ <- function(msyn, i) {
-
-    n <- nrow(msyn$data$X)
-    which_t <- (1:n)[is.finite(msyn$data$trt)]    
-    not_miss_j <- which_t %in% setdiff(which_t, i)
-
-    # drop unit i from data
-    drop_i <- list()
-    drop_i$X <- msyn$data$X[-i,]
-    drop_i$y <- msyn$data$y[-i,]
-    drop_i$trt <- msyn$data$trt[-i]
-    drop_i$mask <- msyn$data$mask[not_miss_j,,drop=F]
-
-    # re-fit everything
-    args_list <- list(wide = drop_i, relative = msyn$relative, 
-                      n_leads = msyn$n_leads, n_lags = msyn$n_lags, 
-                      alpha = msyn$alpha, lambda = msyn$lambda,
-                      force = msyn$force, n_factors = msyn$n_factors, 
-                      scm = msyn$scm, time_w = msyn$time_w, 
-                      lambda_t = msyn$lambda_t,
-                      fit_resids = msyn$fit_resids)
-
-    msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
-                      
-    return(list(msyn_i,
-                which(!not_miss_j)))
-}
 
 #' Summary function for multisynth
 #' @param relative Whether to estimate effects for time relative to treatment
-#' @param level What treatment level to report
 #' @param jackknife Whether to use jackknice standard errors, default T
+#' 
+#' @return summary.multisynth object that contains:
+#'         \itemize{
+#'          \item{"att"}{Dataframe with ATT estimates, standard errors for each treated unit}
+#'          \item{"global_l2"}{L2 imbalance for the pooled synthetic control}
+#'          \item{"scaled_global_l2"}{L2 imbalance for the pooled synthetic control, scaled by the imbalance for unitform weights}
+#'          \item{"ind_l2"}{Average L2 imbalance for the individual synthetic controls}
+#'          \item{"scaled_ind_l2"}{Average L2 imbalance for the individual synthetic controls, scaled by the imbalance for unitform weights}
+#'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
+#'         }
 #' @export
-summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=T) {
-    if(is.null(relative)) {
-        relative <- multisynth$relative
-    }
-
-    if(is.null(level)) level <- "Average"
+summary.multisynth <- function(multisynth, jackknife=T) {
+    relative <- T
 
     
     grps <- unique(multisynth$data$trt) %>% sort()
@@ -628,7 +583,7 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
     att <- predict(multisynth, relative, att=T)
     
     if(jackknife) {
-        se <- jackknife(multisynth, relative)
+        se <- jackknife_se_multi(multisynth, relative)
     } else {
         se <- compute_se(multisynth, relative)
     }
@@ -670,11 +625,10 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
 
     summ$ind_l2 <- multisynth$ind_l2
     summ$scaled_ind_l2 <- multisynth$scaled_ind_l2
-    
-    summ$level <- level
+
     summ$n_leads <- multisynth$n_leads
     summ$n_lags <- multisynth$n_lags
-    
+
     class(summ) <- "summary.multisynth"
     return(summ)
 }
@@ -682,11 +636,11 @@ summary.multisynth <- function(multisynth, relative=NULL, level=NULL, jackknife=
 #' Print function for summary function for multisynth
 #' @param level Which treatment level to show summary for, default is average
 #' @export
-print.summary.multisynth <- function(summ) {
+print.summary.multisynth <- function(summ, level = NULL) {
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
-    level <- summ$level
+    if(is.null(level)) level <- "Average"
 
     first_lvl <- summ$att %>% filter(Level != "Average") %>% pull(Level) %>% min()
     
@@ -711,20 +665,20 @@ print.summary.multisynth <- function(summ) {
               "\n\n",
               sep=""))
 
-    cat(paste("Average ATT Estimate (Std. Error)",
+    cat(paste("Average ATT Estimate (Std. Error): ",
               summ$att %>%
-              filter(Level=="Average", is.na(Time)) %>%
+              filter(Level == level, is.na(Time)) %>%
               pull(Estimate) %>%
               round(3) %>% format(nsmall=3),
-              "\t(",
+              "  (",
               summ$att %>%
-              filter(Level=="Average", is.na(Time)) %>%
+              filter(Level == level, is.na(Time)) %>%
               pull(Std.Error) %>%
               round(3) %>% format(nsmall=3),
               ")\n\n", sep=""))
 
     print(att_est, row.names=F)
-    
+
 }
 
 #' Plot function for summary function for multisynth
@@ -770,22 +724,24 @@ plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
     ## add ses
     if(se) {
         if("Average" %in% levels) {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                                                       ymax=Estimate+2*Std.Error),
-                                          alpha=0.2, color=NA,
-                                          data=summ$att %>% filter(Level == "Average"))
+            p <- p + ggplot2::geom_ribbon(
+                ggplot2::aes(ymin=Estimate-2*Std.Error,
+                             ymax=Estimate+2*Std.Error),
+                alpha=0.2, color=NA,
+                data=summ$att %>% filter(Level == "Average"))
             
         } else {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                                                       ymax=Estimate+2*Std.Error),
-                                          alpha=0.2, color=NA)
+            p <- p + ggplot2::geom_ribbon(
+                ggplot2::aes(ymin=Estimate-2*Std.Error,
+                             ymax=Estimate+2*Std.Error),
+                alpha=0.2, color=NA)
         }
     }
-    
+
     p <- p + ggplot2::scale_alpha_manual(values=c(1, 0.5)) +
         ggplot2::scale_color_manual(values=c("#333333", "#818181")) +
         ggplot2::guides(alpha=F, color=F) + 
         ggplot2::theme_bw()
     return(p)
-    
+
 }

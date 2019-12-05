@@ -2,7 +2,7 @@
 % Please edit documentation in R/multisynth_class.R
 \name{predict.multisynth}
 \alias{predict.multisynth}
-\title{Get prediction of average outcome under control}
+\title{Get prediction of average outcome under control or ATT}
 \usage{
 \method{predict}{multisynth}(multisynth, relative = NULL, att = F)
 }
@@ -14,8 +14,8 @@
 \item{att}{Whether to estimate the ATT or the missing counterfactual}
 }
 \value{
-Vector of predicted post-treatment control averages for each treatment group
+Matrix of predicted post-treatment control outcomes for each treated unit
 }
 \description{
-Get prediction of average outcome under control
+Get prediction of average outcome under control or ATT
 }

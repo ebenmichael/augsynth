@@ -4,10 +4,9 @@
 \alias{multisynth_formatted}
 \title{Internal funciton to fit staggered synth with formatted data}
 \usage{
-multisynth_formatted(wide, relative = T, n_leads = NULL,
-  n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
-  n_factors = NULL, scm = T, time_w = F, lambda_t = 0,
-  fit_resids = T, ...)
+multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
+  force, n_factors, scm, time_w, lambda_t, fit_resids, eps_abs = 1e-05,
+  eps_rel = 1e-05, ...)
 }
 \arguments{
 \item{wide}{List containing data elements}
@@ -18,11 +17,11 @@ multisynth_formatted(wide, relative = T, n_leads = NULL,
 
 \item{n_lags}{Number of pre-treatment periods to balance, default is to balance all periods}
 
-\item{alpha}{Fraction of balance for individual balance}
+\item{nu}{Fraction of balance for individual balance}
 
 \item{lambda}{Regularization hyperparameter, default = 0}
 
-\item{force}{Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"}
+\item{force}{c(0,1,2,3) what type of fixed effects to include}
 
 \item{n_factors}{Number of factors for interactive fixed effects, default does CV}
 
@@ -30,14 +29,16 @@ multisynth_formatted(wide, relative = T, n_leads = NULL,
 
 \item{time_w}{Whether to fit time weights}
 
-\item{residuals}{Whether to fit SCM on the residuals or not}
+\item{fit_resids}{Whether to fit SCM on the residuals or not}
+
+\item{eps_abs}{Absolute error tolerance for osqp}
+
+\item{eps_rel}{Relative error tolerance for osqp}
+
+\item{...}{Extra arguments for optimization solver osqp}
 }
 \value{
-augsynth object that contains:
-        \itemize{
-         \item{"weights"}{weights}
-         \item{"data"}{Panel data as matrices}
-        }
+multisynth object
 }
 \description{
 Internal funciton to fit staggered synth with formatted data

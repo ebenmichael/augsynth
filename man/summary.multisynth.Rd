@@ -4,15 +4,23 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(multisynth, relative = NULL, level = NULL,
-  jackknife = T)
+\method{summary}{multisynth}(multisynth, jackknife = T)
 }
 \arguments{
-\item{relative}{Whether to estimate effects for time relative to treatment}
-
-\item{level}{What treatment level to report}
-
 \item{jackknife}{Whether to use jackknice standard errors, default T}
+
+\item{relative}{Whether to estimate effects for time relative to treatment}
+}
+\value{
+summary.multisynth object that contains:
+        \itemize{
+         \item{"att"}{Dataframe with ATT estimates, standard errors for each treated unit}
+         \item{"global_l2"}{L2 imbalance for the pooled synthetic control}
+         \item{"scaled_global_l2"}{L2 imbalance for the pooled synthetic control, scaled by the imbalance for unitform weights}
+         \item{"ind_l2"}{Average L2 imbalance for the individual synthetic controls}
+         \item{"scaled_ind_l2"}{Average L2 imbalance for the individual synthetic controls, scaled by the imbalance for unitform weights}
+        \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
+        }
 }
 \description{
 Summary function for multisynth
