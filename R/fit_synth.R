@@ -10,14 +10,19 @@
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #' }
-fit_synth_formatted <- function(synth_data) {
+fit_synth_formatted <- function(synth_data, V = NULL) {
 
     if(!require("LowRankQP")) {
         stop("In order to use Synth, you must install LowRankQP")
     }
-    ## set weights on predictors to be 0
-    custom.v <- rep(1, dim(synth_data$Z0)[1])
-
+    ## if no  is supplied, set equal to 1
+    if(is.null(V)) {
+        custom.v <- rep(1, dim(synth_data$Z0)[1])
+    } else {
+        custom.v <- V
+    }
+    print(synth_data$Z1)
+    print(custom.v)
     ## fit the weights    
     capture.output(synth_out <- Synth::synth(synth_data,
                                              custom.v=custom.v,
