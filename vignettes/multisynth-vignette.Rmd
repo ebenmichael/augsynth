@@ -1,0 +1,189 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+library(kableExtra)
+```
+
+
+# `augsynth`: Estimating treatment effects with staggered adoption
+
+### The data
+
+To show the features of the `multisynth` function we will use data on the effects of states implementing mandatory collective bargaining agreements for public sector unions [(Paglayan, 2018)](https://onlinelibrary.wiley.com/doi/full/10.1111/ajps.12388)
+
+```{r results="hide", warning=F, message=F}
+library(magrittr)
+library(dplyr)
+library(augsynth)
+```
+
+```{r }
+data <- read.csv("https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/WGWMAV/3UHTLP", sep="\t")
+```
+
+The dataset contains several important variables that we'll use:
+
+- `year`, `State`: The state and year of the measurement
+- `YearCBrequired`: The year that the state adopted mandatory collective bargaining
+- `lnppexpend`: Log per pupil expenditures in constant 2010 $
+
+```{r echo = F}
+data %>% 
+    filter(year == 1960) %>% 
+    select(year, State, YearCBrequired, lnppexpend) %>%
+    head() %>%
+    kable() %>%
+    kable_styling(bootstrap_options =c("hover", "responsive"))
+```
+
+To run `multisynth`, we need to include a treatment status column that indicates which state is treated in a given year, we call this `cbr` below. We also restrict to the years 1959-1997 where we have yearly measurements of expenditures and drop Washington D.C. and Wisconsin from the analysis.
+
+```{r }
+data %>%
+    filter(!State %in% c("DC", "WI"),
+           year >= 1959, year <= 1997) %>%
+    mutate(YearCBrequired = ifelse(is.na(YearCBrequired), 
+                                   Inf, YearCBrequired),
+           cbr = 1 * (year >= YearCBrequired)) -> analysis_df
+```
+
+## Partially pooled SCM
+
+To fit partially pooled synthetic controls, we need to give `multisynth` a formula of the form `outcome ~ treatment`, point it to the unit and time variables, and choose the level of partial pooling `nu`. Setting `nu = 0` fits a separate synthetic control for each treated unit and setting `nu = 1` fits fully pooled synthetic controls. If we don't set `nu`, `multisynth` will choose a heuristic value based on how well separate synthetic controls balance the overall average. We can also set the number of post-treatment time periods (leads) that we want to estimate with the `n_leads` argument (by default `multisynth` uses the number of post-treatment periods for the last treated unit).
+
+```{r }
+# with a choice of nu
+ppool_syn <- multisynth(lnppexpend ~ cbr, State, year, 
+                        nu = 0.5, analysis_df, n_leads = 10)
+# with default nu
+ppool_syn <- multisynth(lnppexpend ~ cbr, State, year, 
+                        analysis_df, n_leads = 10)
+
+print(ppool_syn$nu)
+
+ppool_syn
+```
+
+Using the `summary` function, we'll compute the treatment effects and jackknife standard errors for all treated units as well as the average. (This takes a bit of time so we'll store the output)
+
+```{r}
+ppool_syn_summ <- summary(ppool_syn)
+```
+
+We can then report the level of global and individual balance as well as estimates for the average.
+
+```{r }
+ppool_syn_summ
+```
+
+To look at the effects for any particular treated unit we can use the `level` argument when printing.
+
+```{r }
+print(ppool_syn_summ, level = "CA")
+```
+
+`nopool_syn_summ$att` is a dataframe that contains all of the point estimates and standard errors. `Time = NA` denotes the effect averaged across the post treatment periods.
+
+```{r echo = F}
+ppool_syn_summ$att %>%
+  filter(is.na(Time)) %>%
+  head() %>%
+  kable() %>%
+  kable_styling(bootstrap_options =c("hover", "responsive"))
+```
+
+We can also visually display both the pre-treatment balance and the estimated treatment effects.
+
+```{r ppool_syn_plot, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(ppool_syn_summ)
+```
+
+And again we can hone in on the average effects or the effects for a particular state.
+
+```{r ppool_syn_plot_avg, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(ppool_syn_summ, level = "Average")
+```
+
+```{r ppool_syn_plot_ca, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(ppool_syn_summ, level = "CA")
+```
+
+
+## Combining with outcome modeling
+
+### Weighted event studies
+There is particularly bad pre-treatment fit for a few states, so we can augment the synthetic controls estimates with outcome modeling to adjust for the poor fit. A simple form of augmentation combines the synth estimates with a unit fixed effects model, removing the pre-treatment averages for each state and fitting partially pooled SCM after de-meaning. To do this with `multisynth` we set `fixedeff = T`.
+
+```{r }
+wevent <- multisynth(lnppexpend ~ cbr, State, year, 
+                        analysis_df, n_leads = 10, fixedeff = T)
+
+print(wevent$nu)
+
+wevent
+```
+
+We can again get jackknife standard error estimates to go along with our point estimates, and inspect the results overall and for individual states. We see that we get much better pre-treatment fit by explciitly accounting for pre-treatment averages.
+
+```{r}
+wevent_summ <- summary(wevent)
+```
+
+```{r }
+wevent_summ
+```
+
+```{r }
+print(wevent_summ, level = "CA")
+```
+
+```{r wevent_plot, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(wevent_summ)
+```
+
+```{r wevent_plot_avg, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(wevent_summ, level = "Average")
+```
+
+```{r wevent_plot_ca, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(wevent_summ, level = "CA")
+```
+
+
+### Augmenting with other outcome models
+
+We can also augment the partially pooled SCM estimates by directly fitting a factor model with [`gsynth`](https://cran.r-project.org/web/packages/gsynth/gsynth.pdf). To do this, we can set the `n_factors` argument to be the number of factors we want to estimate. By default, `n_factors = 0`, which combined with `fixedeff = T` gives the weighted event study above. (`n_factors = NULL` chooses the number of factors via cross validation)
+
+```{r }
+scm_gsyn <- multisynth(lnppexpend ~ cbr, State, year,
+                        analysis_df, n_leads = 10, 
+                        fixedeff = T, n_factors = NULL)
+
+# number of factors
+print(ncol(scm_gsyn$params$factor))
+
+scm_gsyn
+```
+
+```{r }
+scm_gsyn_summ <- summary(scm_gsyn)
+
+scm_gsyn_summ
+```
+
+```{r scm_gsyn_plot, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
+plot(scm_gsyn_summ, level="Average")
+```
+
+
+More augmentation methods to come!
