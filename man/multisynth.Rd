@@ -6,7 +6,7 @@
 \usage{
 multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
   nu = NULL, lambda = 0, fixedeff = FALSE, n_factors = 0,
-  scm = T, ...)
+  scm = T, eps_abs = 1e-05, eps_rel = 1e-05, verbose = FALSE, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment}
@@ -31,7 +31,13 @@ multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
 
 \item{scm}{Whether to fit scm weights}
 
-\item{...}{Extra arguments for optimization solver osqp}
+\item{eps_abs}{Absolute error tolerance for osqp}
+
+\item{eps_rel}{Relative error tolerance for osqp}
+
+\item{verbose}{Whether to print logs for osqp}
+
+\item{...}{Extra arguments}
 }
 \value{
 multisynth object that contains:

@@ -14,7 +14,10 @@
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
-#' @param ... Extra arguments for optimization solver osqp
+#' @param eps_abs Absolute error tolerance for osqp
+#' @param eps_rel Relative error tolerance for osqp
+#' @param verbose Whether to print logs for osqp
+#' @param ... Extra arguments
 #'
 #' @return multisynth object that contains:
 #'         \itemize{
@@ -40,7 +43,10 @@ multisynth <- function(form, unit, time, data,
                        nu=NULL, lambda=0,
                        fixedeff = FALSE,
                        n_factors=0,
-                       scm=T, ...) {
+                       scm=T, 
+                       eps_abs = 1e-5,
+                       eps_rel = 1e-5,
+                       verbose = FALSE, ...) {
 
     call_name <- match.call()
 
@@ -76,7 +82,8 @@ multisynth <- function(form, unit, time, data,
                                 force = force, n_factors = n_factors,
                                 scm = scm, time_w = F,
                                 lambda_t = 0,
-                                fit_resids = T, ...)
+                                fit_resids = F, eps_abs = eps_abs,
+                                eps_rel = eps_rel, verbose = verbose, ...)
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
@@ -87,7 +94,10 @@ multisynth <- function(form, unit, time, data,
                             n_leads=n_leads,
                             n_lags=n_lags,
                             relative=T,
-                            nu=0, lambda=1e10)
+                            nu=0, lambda=1e10,
+                            eps_rel = eps_rel, 
+                            eps_abs = eps_abs,
+                            verbose = verbose)
         ## scaled global balance
         ## msynth$scaled_global_l2 <- msynth$global_l2  / sqrt(sum(unif$imbalance[,1]^2))
         msynth$scaled_global_l2 <- msynth$global_l2  / unif$global_l2
@@ -118,7 +128,7 @@ multisynth <- function(form, unit, time, data,
 #' @param fit_resids Whether to fit SCM on the residuals or not
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
-#' @param ... Extra arguments for optimization solver osqp
+#' @param verbose Whether to print logs for osqp
 #'
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
@@ -128,9 +138,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        scm, time_w,
                        lambda_t,
                        fit_resids,
-                       eps_abs = 1e-5,
-                       eps_rel = 1e-5,
-                       ...) {
+                       eps_abs, eps_rel,
+                       verbose, ...) {
 
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
@@ -204,6 +213,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         ctrl_avg <- matrix(colMeans(wide$X[!is.finite(wide$trt), , drop = F]),
                           nrow = nrow(wide$X), ncol = ncol(wide$X), byrow = T)
         bal_mat <- wide$X - ctrl_avg
+        bal_mat <- wide$X
     }
     
 
@@ -219,7 +229,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     n_lags=n_lags,
                                     relative=relative,
                                     nu=0, lambda=lambda,
-                                    ...)
+                                    eps_rel = eps_rel,
+                                    eps_abs = eps_abs,
+                                    verbose = verbose)
             ## select nu by triangle inequality ratio
             glbl <- sqrt(sum(nu_fit$imbalance[,1]^2))
             ind <- sum(apply(nu_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
@@ -234,7 +246,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 n_lags=n_lags,
                                 relative=relative,
                                 nu=nu, lambda=lambda,
-                                ...)
+                                eps_rel = eps_rel,
+                                eps_abs = eps_abs,
+                                verbose = verbose)
     } else {
         msynth <- list(weights = matrix(0, nrow = nrow(wide$X), ncol = J),
                        imbalance=NA,
@@ -268,7 +282,10 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     msynth$time_w <- time_w
     msynth$lambda_t <- lambda_t
     msynth$fit_resids <- fit_resids
-    msynth$extra_pars <- c(list(eps_abs = eps_abs, eps_rel = eps_rel), list(...))
+    msynth$extra_pars <- c(list(eps_abs = eps_abs, 
+                                eps_rel = eps_rel, 
+                                verbose = verbose), 
+                           list(...))
 
     ##format output
     class(msynth) <- "multisynth"
@@ -445,14 +462,13 @@ print.multisynth <- function(multisynth) {
 
 
 #' Plot function for multisynth
-#' @param relative Whether to estimate effects for time relative to treatment
 #' @param levels Treatment levels to plot for, default plots for everything
 #' @param se Whether to plot standard errors
 #' @param jackknife Whether to compute jackknife standard errors, default T
 #' @export
-plot.multisynth <- function(multisynth, relative=NULL, levels=NULL, 
+plot.multisynth <- function(multisynth, levels=NULL, 
                             se=T, jackknife=T) {
-    plot(summary(multisynth, relative, jackknife=jackknife), levels, se)
+    plot(summary(multisynth, jackknife=jackknife), levels, se)
 }
 
 compute_se <- function(multisynth, relative=NULL) {

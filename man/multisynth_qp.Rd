@@ -5,7 +5,8 @@
 \title{Internal function to fit synth with staggered adoption with a QP solver}
 \usage{
 multisynth_qp(X, trt, mask, n_leads = NULL, n_lags = NULL,
-  relative = T, nu = 0, lambda = 0, ...)
+  relative = T, nu = 0, lambda = 0, verbose = FALSE,
+  eps_rel = 1e-05, eps_abs = 1e-05)
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes, or list of such matrices after transformations}

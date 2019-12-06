@@ -5,8 +5,8 @@
 \title{Internal funciton to fit staggered synth with formatted data}
 \usage{
 multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
-  force, n_factors, scm, time_w, lambda_t, fit_resids, eps_abs = 1e-05,
-  eps_rel = 1e-05, ...)
+  force, n_factors, scm, time_w, lambda_t, fit_resids, eps_abs, eps_rel,
+  verbose, ...)
 }
 \arguments{
 \item{wide}{List containing data elements}
@@ -35,7 +35,7 @@ multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
 
 \item{eps_rel}{Relative error tolerance for osqp}
 
-\item{...}{Extra arguments for optimization solver osqp}
+\item{verbose}{Whether to print logs for osqp}
 }
 \value{
 multisynth object

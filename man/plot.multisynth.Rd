@@ -4,12 +4,10 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(multisynth, relative = NULL, levels = NULL,
-  se = T, jackknife = T)
+\method{plot}{multisynth}(multisynth, levels = NULL, se = T,
+  jackknife = T)
 }
 \arguments{
-\item{relative}{Whether to estimate effects for time relative to treatment}
-
 \item{levels}{Treatment levels to plot for, default plots for everything}
 
 \item{se}{Whether to plot standard errors}

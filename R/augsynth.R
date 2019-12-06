@@ -323,6 +323,7 @@ plot.summary.augsynth <- function(summ, se = T) {
 #' @docType package
 #' @name augsynth-package
 #' @importFrom magrittr "%>%"
+#' @importFrom purrr reduce
 #' @import dplyr
 #' @import LowRankQP
 #' @import tidyr
