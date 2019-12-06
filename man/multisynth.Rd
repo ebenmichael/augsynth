@@ -6,7 +6,7 @@
 \usage{
 multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
   nu = NULL, lambda = 0, fixedeff = FALSE, n_factors = 0,
-  scm = T, eps_abs = 1e-05, eps_rel = 1e-05, verbose = FALSE, ...)
+  scm = T, eps_abs = 1e-04, eps_rel = 1e-04, verbose = FALSE, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment}

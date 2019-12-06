@@ -87,7 +87,8 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
 
     ## boolean mask of available data for treatment groups
     mask <- data %>% inner_join(trt_time %>%
-                                filter(is.finite(trt_time))) %>%
+                                filter(is.finite(trt_time)),
+                                by = rlang::as_name(unit)) %>%
         filter(!!time < t_int) %>%
         mutate(trt=1-!!trt) %>%
         select(!!unit, !!time, trt_time, trt) %>%

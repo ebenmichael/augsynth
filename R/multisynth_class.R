@@ -44,8 +44,8 @@ multisynth <- function(form, unit, time, data,
                        fixedeff = FALSE,
                        n_factors=0,
                        scm=T, 
-                       eps_abs = 1e-5,
-                       eps_rel = 1e-5,
+                       eps_abs = 1e-4,
+                       eps_rel = 1e-4,
                        verbose = FALSE, ...) {
 
     call_name <- match.call()
@@ -82,7 +82,7 @@ multisynth <- function(form, unit, time, data,
                                 force = force, n_factors = n_factors,
                                 scm = scm, time_w = F,
                                 lambda_t = 0,
-                                fit_resids = F, eps_abs = eps_abs,
+                                fit_resids = TRUE, eps_abs = eps_abs,
                                 eps_rel = eps_rel, verbose = verbose, ...)
 
     if(scm) {
@@ -608,18 +608,21 @@ summary.multisynth <- function(multisynth, jackknife=T) {
     if(relative) {
         att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                 att))
-        names(att) <- c("Time", "Average", multisynth$data$units[which_t])
+        names(att) <- c("Time", "Average", 
+                        as.character(multisynth$data$units[which_t]))
+
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1) -> att
 
         se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                se))
-        names(se) <- c("Time", "Average", multisynth$data$units[which_t])
+        names(se) <- c("Time", "Average", 
+                       as.character(multisynth$data$units[which_t]))
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1)-> se
-        
+
     } else {
         att <- data.frame(cbind(times, att))
         names(att) <- c("Time", "Average", times[grps[1:J]])        
@@ -630,7 +633,7 @@ summary.multisynth <- function(multisynth, jackknife=T) {
         se %>% gather(Level, Std.Error, -Time) -> se
     }
 
-    summ$att <- inner_join(att, se)
+    summ$att <- inner_join(att, se, by = c("Time", "Level"))
 
 
     summ$relative <- relative
@@ -722,7 +725,7 @@ plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
                                      group=Level,
                                      color=is_avg,
                                      alpha=is_avg)) +
-            ggplot2::geom_line() +
+            ggplot2::geom_line(size=1) +
             ggplot2::geom_point(size=1) + 
             ggrepel::geom_label_repel(ggplot2::aes(label=label),
                                       nudge_x=1, na.rm=T) + 
@@ -730,7 +733,7 @@ plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
 
     if(summ$relative) {
         p <- p + ggplot2::geom_vline(xintercept=0, lty=2) +
-            xlab("Time Relative to Treatment")
+            ggplot2::xlab("Time Relative to Treatment")
     } else {
         p <- p + ggplot2::geom_vline(aes(xintercept=as.numeric(Level)),
                                      lty=2, alpha=0.5,
@@ -744,12 +747,15 @@ plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
                 ggplot2::aes(ymin=Estimate-2*Std.Error,
                              ymax=Estimate+2*Std.Error),
                 alpha=0.2, color=NA,
-                data=summ$att %>% filter(Level == "Average"))
+                data = summ$att %>% 
+                        filter(Level == "Average",
+                               Time >= 0))
             
         } else {
             p <- p + ggplot2::geom_ribbon(
                 ggplot2::aes(ymin=Estimate-2*Std.Error,
                              ymax=Estimate+2*Std.Error),
+                             data = . %>% filter(Time >= 0),
                 alpha=0.2, color=NA)
         }
     }
