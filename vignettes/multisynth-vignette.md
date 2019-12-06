@@ -155,35 +155,6 @@ ppool_syn_summ
 #>                     9 Average -0.021635036 0.05789247
 ```
 
-To look at the effects for any particular treated unit we can use the `level` argument when printing.
-
-
-```r
-print(ppool_syn_summ, level = "CA")
-#> 
-#> Call:
-#> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
-#>     data = analysis_df, n_leads = 10)
-#> 
-#> Global L2 Imbalance (Scaled): 0.592  (0.026)
-#> 
-#> Individual L2 Imbalance (Scaled): 7.306  (0.258)	
-#> 
-#> Average ATT Estimate (Std. Error): -0.187  (0.163)
-#> 
-#>  Time Since Treatment Level    Estimate   Std.Error
-#>                     0    CA -0.02421824 0.101831542
-#>                     1    CA -0.12907169 0.194389433
-#>                     2    CA -0.04250841 0.005700984
-#>                     3    CA -0.04362661 0.046207862
-#>                     4    CA -0.13379304 0.092830551
-#>                     5    CA -0.18439048 0.142258741
-#>                     6    CA -0.32433709 0.238914906
-#>                     7    CA -0.36420025 0.305176301
-#>                     8    CA -0.32250605 0.263482340
-#>                     9    CA -0.29649894 0.254567309
-```
-
 `nopool_syn_summ$att` is a dataframe that contains all of the point estimates and standard errors. `Time = NA` denotes the effect averaged across the post treatment periods.
 
 <table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
@@ -197,40 +168,40 @@ print(ppool_syn_summ, level = "CA")
  </thead>
 <tbody>
   <tr>
-   <td style="text-align:right;"> NA </td>
+   <td style="text-align:right;"> 0 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> 0.0083817 </td>
-   <td style="text-align:right;"> 0.0185505 </td>
+   <td style="text-align:right;"> 0.0153831 </td>
+   <td style="text-align:right;"> 0.0183398 </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> NA </td>
-   <td style="text-align:left;"> AK </td>
-   <td style="text-align:right;"> 0.4495833 </td>
-   <td style="text-align:right;"> 0.0063126 </td>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0061465 </td>
+   <td style="text-align:right;"> 0.0174865 </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> NA </td>
-   <td style="text-align:left;"> CA </td>
-   <td style="text-align:right;"> -0.1865151 </td>
-   <td style="text-align:right;"> 0.1633960 </td>
+   <td style="text-align:right;"> 2 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0302492 </td>
+   <td style="text-align:right;"> 0.0208447 </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> NA </td>
-   <td style="text-align:left;"> CT </td>
-   <td style="text-align:right;"> 0.0858286 </td>
-   <td style="text-align:right;"> 0.0153421 </td>
+   <td style="text-align:right;"> 3 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0253873 </td>
+   <td style="text-align:right;"> 0.0203789 </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> NA </td>
-   <td style="text-align:left;"> DE </td>
-   <td style="text-align:right;"> 0.0529548 </td>
-   <td style="text-align:right;"> 0.0054863 </td>
+   <td style="text-align:right;"> 4 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0226234 </td>
+   <td style="text-align:right;"> 0.0248395 </td>
   </tr>
   <tr>
-   <td style="text-align:right;"> NA </td>
-   <td style="text-align:left;"> FL </td>
-   <td style="text-align:right;"> -0.0340118 </td>
-   <td style="text-align:right;"> 0.0383583 </td>
+   <td style="text-align:right;"> 5 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0161710 </td>
+   <td style="text-align:right;"> 0.0225525 </td>
   </tr>
 </tbody>
 </table>
@@ -244,7 +215,7 @@ plot(ppool_syn_summ)
 
 <img src="figure/ppool_syn_plot-1.png" title="plot of chunk ppool_syn_plot" alt="plot of chunk ppool_syn_plot" style="display: block; margin: auto;" />
 
-And again we can hone in on the average effects or the effects for a particular state.
+And again we can hone in on the average effects.
 
 
 ```r
@@ -252,13 +223,6 @@ plot(ppool_syn_summ, level = "Average")
 ```
 
 <img src="figure/ppool_syn_plot_avg-1.png" title="plot of chunk ppool_syn_plot_avg" alt="plot of chunk ppool_syn_plot_avg" style="display: block; margin: auto;" />
-
-
-```r
-plot(ppool_syn_summ, level = "CA")
-```
-
-<img src="figure/ppool_syn_plot_ca-1.png" title="plot of chunk ppool_syn_plot_ca" alt="plot of chunk ppool_syn_plot_ca" style="display: block; margin: auto;" />
 
 
 ## Combining with outcome modeling
@@ -283,7 +247,7 @@ wevent
 #> Average ATT Estimate: -0.010
 ```
 
-We can again get jackknife standard error estimates to go along with our point estimates, and inspect the results overall and for individual states. We see that we get much better pre-treatment fit by explciitly accounting for pre-treatment averages.
+We can again get jackknife standard error estimates to go along with our point estimates, and inspect the results. We see that we get much better pre-treatment fit by explciitly accounting for pre-treatment averages.
 
 
 ```r
@@ -305,44 +269,18 @@ wevent_summ
 #> Average ATT Estimate (Std. Error): -0.010  (0.019)
 #> 
 #>  Time Since Treatment   Level     Estimate  Std.Error
-#>                     0 Average -0.004207602 0.01853892
-#>                     1 Average -0.008626301 0.01504224
-#>                     2 Average  0.005190630 0.01598220
-#>                     3 Average  0.003057109 0.02090243
-#>                     4 Average -0.011462587 0.02303201
-#>                     5 Average -0.014255201 0.02567189
-#>                     6 Average -0.017846680 0.02729040
-#>                     7 Average -0.001045376 0.03073247
-#>                     8 Average -0.016913989 0.03635174
-#>                     9 Average -0.031740279 0.03352987
+#>                     0 Average -0.004205222 0.01849207
+#>                     1 Average -0.008622952 0.01503891
+#>                     2 Average  0.005280512 0.01585863
+#>                     3 Average  0.003038094 0.02094280
+#>                     4 Average -0.011418987 0.02301238
+#>                     5 Average -0.014193823 0.02568895
+#>                     6 Average -0.017847992 0.02728860
+#>                     7 Average -0.001066548 0.03064605
+#>                     8 Average -0.016908528 0.03634507
+#>                     9 Average -0.031673689 0.03347085
 ```
 
-
-```r
-print(wevent_summ, level = "CA")
-#> 
-#> Call:
-#> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
-#>     data = analysis_df, n_leads = 10, fixedeff = T)
-#> 
-#> Global L2 Imbalance (Scaled): 0.459  (0.020)
-#> 
-#> Individual L2 Imbalance (Scaled): 3.031  (0.107)	
-#> 
-#> Average ATT Estimate (Std. Error): -0.167  (0.060)
-#> 
-#>  Time Since Treatment Level     Estimate  Std.Error
-#>                     0    CA -0.002911185 0.04030874
-#>                     1    CA -0.105742559 0.03031279
-#>                     2    CA -0.043717771 0.01922202
-#>                     3    CA -0.091575887 0.07454688
-#>                     4    CA -0.119009810 0.02173724
-#>                     5    CA -0.141947210 0.04536524
-#>                     6    CA -0.308835658 0.10313276
-#>                     7    CA -0.285059662 0.11120082
-#>                     8    CA -0.304295172 0.12964322
-#>                     9    CA -0.266500523 0.11466658
-```
 
 
 ```r
@@ -358,12 +296,6 @@ plot(wevent_summ, level = "Average")
 
 <img src="figure/wevent_plot_avg-1.png" title="plot of chunk wevent_plot_avg" alt="plot of chunk wevent_plot_avg" style="display: block; margin: auto;" />
 
-
-```r
-plot(wevent_summ, level = "CA")
-```
-
-<img src="figure/wevent_plot_ca-1.png" title="plot of chunk wevent_plot_ca" alt="plot of chunk wevent_plot_ca" style="display: block; margin: auto;" />
 
 
 ### Augmenting with other outcome models
@@ -399,23 +331,23 @@ scm_gsyn_summ
 #> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
 #>     data = analysis_df, n_leads = 10, fixedeff = T, n_factors = NULL)
 #> 
-#> Global L2 Imbalance (Scaled): 0.427  (0.019)
+#> Global L2 Imbalance (Scaled): 0.426  (0.019)
 #> 
 #> Individual L2 Imbalance (Scaled): 2.782  (0.098)	
 #> 
 #> Average ATT Estimate (Std. Error): -0.005  (0.019)
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error
-#>                     0 Average  3.295537e-03 0.01851129
-#>                     1 Average -8.080488e-03 0.01528748
-#>                     2 Average  8.749617e-03 0.01563655
-#>                     3 Average  1.283153e-02 0.02089142
-#>                     4 Average -3.291577e-03 0.02302410
-#>                     5 Average -8.517862e-05 0.02587494
-#>                     6 Average  3.864059e-04 0.02747050
-#>                     7 Average  4.638853e-03 0.03073413
-#>                     8 Average -2.457526e-02 0.03619280
-#>                     9 Average -4.135163e-02 0.03351201
+#>                     0 Average  0.0032628493 0.01853635
+#>                     1 Average -0.0081209213 0.01527109
+#>                     2 Average  0.0087285570 0.01563571
+#>                     3 Average  0.0128470454 0.02088029
+#>                     4 Average -0.0032241542 0.02301556
+#>                     5 Average -0.0000249834 0.02590816
+#>                     6 Average  0.0003876451 0.02747243
+#>                     7 Average  0.0046510799 0.03076487
+#>                     8 Average -0.0246003858 0.03619815
+#>                     9 Average -0.0413576990 0.03355721
 ```
 
 

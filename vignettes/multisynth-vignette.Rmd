@@ -86,17 +86,11 @@ We can then report the level of global and individual balance as well as estimat
 ppool_syn_summ
 ```
 
-To look at the effects for any particular treated unit we can use the `level` argument when printing.
-
-```{r }
-print(ppool_syn_summ, level = "CA")
-```
-
 `nopool_syn_summ$att` is a dataframe that contains all of the point estimates and standard errors. `Time = NA` denotes the effect averaged across the post treatment periods.
 
 ```{r echo = F}
 ppool_syn_summ$att %>%
-  filter(is.na(Time)) %>%
+  filter(Time >= 0) %>%
   head() %>%
   kable() %>%
   kable_styling(bootstrap_options =c("hover", "responsive"))
@@ -108,14 +102,10 @@ We can also visually display both the pre-treatment balance and the estimated tr
 plot(ppool_syn_summ)
 ```
 
-And again we can hone in on the average effects or the effects for a particular state.
+And again we can hone in on the average effects.
 
 ```{r ppool_syn_plot_avg, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
 plot(ppool_syn_summ, level = "Average")
-```
-
-```{r ppool_syn_plot_ca, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
-plot(ppool_syn_summ, level = "CA")
 ```
 
 
@@ -133,7 +123,7 @@ print(wevent$nu)
 wevent
 ```
 
-We can again get jackknife standard error estimates to go along with our point estimates, and inspect the results overall and for individual states. We see that we get much better pre-treatment fit by explciitly accounting for pre-treatment averages.
+We can again get jackknife standard error estimates to go along with our point estimates, and inspect the results. We see that we get much better pre-treatment fit by explciitly accounting for pre-treatment averages.
 
 ```{r}
 wevent_summ <- summary(wevent)
@@ -143,9 +133,6 @@ wevent_summ <- summary(wevent)
 wevent_summ
 ```
 
-```{r }
-print(wevent_summ, level = "CA")
-```
 
 ```{r wevent_plot, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
 plot(wevent_summ)
@@ -155,9 +142,6 @@ plot(wevent_summ)
 plot(wevent_summ, level = "Average")
 ```
 
-```{r wevent_plot_ca, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
-plot(wevent_summ, level = "CA")
-```
 
 
 ### Augmenting with other outcome models
