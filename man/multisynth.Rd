@@ -6,7 +6,7 @@
 \usage{
 multisynth(form, unit, time, data, relative = T, n_leads = NULL,
   n_lags = NULL, alpha = NULL, lambda = 0, force = "two-way",
-  n_factors = NULL)
+  n_factors = NULL, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
