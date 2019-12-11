@@ -43,7 +43,6 @@ multisynth <- function(form, unit, time, data,
     if(is.null(n_leads) || n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
         # n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
         n_leads <- dim(wide$y)[2]
-        print(n_leads)
     }
 
     ## if n_lags is NULL set it to the largets number of pre-treatment periods
