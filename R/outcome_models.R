@@ -12,7 +12,6 @@
 #' @param lambda Regularization hyperparameter, if null then CV
 #' @param poly_order Order of polynomial to fit, default 1
 #' @param type How to fit outcome model(s)
-#' @param ... optional arguments for outcome model
 #'             \itemize{
 #'              \item{sep }{Separate outcome models}
 #'              \item{avg }{Average responses into 1 outcome}
@@ -27,17 +26,22 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
         stop("In order to fit an elastic net outcome model, you must install the glmnet package.")
     }
     
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when using elastic net: ", paste(names(extra_params), collapse = ", "))
+    }
+    
     X <- matrix(poly(matrix(X),degree=poly_order), nrow=dim(X)[1])
 
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
         if(is.null(lambda)) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=alpha, ...)$lambda.min
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
         } else {
             lam <- lambda
         }
         fit <- glmnet::glmnet(x, y, alpha=alpha,
-                              lambda=lam, ...)
+                              lambda=lam)
         
         return(as.matrix(coef(fit)))
     }
@@ -84,9 +88,6 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
 #' @param avg Predict the average post-treatment outcome
-#' @param opts List of options for randomForest
-#' @param ... optional arguments for outcome model
-#'             \itemize{\item{avg }{Fit the average post-period rather than time periods separately}}
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -96,11 +97,16 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
     if(!requireNamespace("randomForest", quietly = TRUE)) {
         stop("In order to fit a random forest outcome model, you must install the randomForest package.")
     }
+    
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when using random forest: ", paste(names(extra_params), collapse = ", "))
+    }
 
     
     ## helper function to fit RF
     outfit <- function(x, y) {
-            fit <- randomForest::randomForest(x, y, ...)
+            fit <- randomForest::randomForest(x, y)
             return(fit)
     }
 
@@ -158,7 +164,6 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 #' @param r.end Max number of factors to consider if CV==1
 #' @param force=c(0,1,2,3) Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
-#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -168,7 +173,11 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
     }
-
+    
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when using gSynth: ", paste(names(extra_params), collapse = ", "))
+    }
     
     ## matrix with start of treatment
     t0 <- dim(X)[2]
@@ -218,7 +227,6 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 #' @param trt Vector of treatment indicator
 #' @param unit_fixed Whether to estimate unit fixed effects
 #' @param time_fixed Whether to estimate time fixed effects
-#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -229,7 +237,11 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
     if(!requireNamespace("MCPanel", quietly = TRUE)) {
         stop("In order to fit matrix completion, you must install the MCPanel package.")
     }
-
+    
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when using MCPanel: ", paste(names(extra_params), collapse = ", "))
+    }
     
     ## create matrix and missingness matrix
 
@@ -279,13 +291,17 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 #' @param trt Vector of treatment indicator
 #' @param poly_order Order of time trend polynomial to fit, default 1
 #' @param weights Weights to use in WLS, default is no weights
-#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
 fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when using CITS: ", paste(names(extra_params), collapse = ", "))
+    }
+    
     ## combine back into a panel structure
     ids <- 1:nrow(X)
     t0 <- dim(X)[2]
@@ -386,7 +402,6 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
-#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -396,6 +411,11 @@ fit_prog_causalimpact <- function(X, y, trt, ...) {
 
     if(!requireNamespace("CausalImpact", quietly = TRUE)) {
         stop("In order to fit bayesian structural time series, you must install the CausalImpact package.")
+    }
+    
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters using Bayesian structural time series with CausalImpact: ", paste(names(extra_params), collapse = ", "))
     }
 
     ## structure data accordingly
@@ -457,7 +477,6 @@ fit_prog_causalimpact <- function(X, y, trt, ...) {
 #' @param patience Number of epochs to wait before early stopping
 #' @param val_split Proportion of control units to use for validation
 #' @param verbose Whether to print training progress
-#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -471,6 +490,11 @@ fit_prog_seq2seq <- function(X, y, trt,
 
     if(!requireNamespace("keras", quietly = TRUE)) {
         stop("In order to fit a neural network, you must install the keras package.")
+    }
+    
+    extra_params = list(...)
+    if (length(extra_params) > 0) {
+        warning("Unused parameters when building sequence to sequence learning with feedforward nets: ", paste(names(extra_params), collapse = ", "))
     }
     
     ## structure data accordingly

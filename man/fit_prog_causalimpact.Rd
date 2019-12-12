@@ -13,8 +13,6 @@ fit_prog_causalimpact(X, y, trt, ...)
 \item{y}{Matrix of post-period outcomes}
 
 \item{trt}{Vector of treatment indicator}
-
-\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

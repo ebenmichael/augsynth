@@ -1,5 +1,5 @@
 ################################################################################
-## Main functions for augmented synthetic controls Method
+## Main functions for single-period treatment augmented synthetic controls Method
 ################################################################################
 
 
@@ -18,8 +18,8 @@
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
-#' @param ... optional arguments for outcome model
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
+#' @param ... optional arguments for outcome model
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -30,23 +30,24 @@
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 #' @export
-augsynth <- function(form, unit, time, t_int, data,
+single_augsynth <- function(form, unit, time, t_int, data,
                      progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
                                 "CITS", "CausalImpact", "seq2seq"),
                      scm=T,
                      fixedeff = FALSE,
-                     ...,
-                     cov_agg=NULL) {
+                     cov_agg=NULL, ...) {
     call_name <- match.call()
 
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
-    
+
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
+
     wide <- format_data(outcome, trt, unit, time, t_int, data)
+
     synth_data <- do.call(format_synth, wide)
 
     
@@ -112,7 +113,6 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         fit_synth_data <- synth_data
         mhat <- matrix(0, n, ttot)
     }
-
     ## fit augsynth
     if(progfunc == "Ridge") {
         if(scm) {

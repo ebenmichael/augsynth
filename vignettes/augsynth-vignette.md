@@ -104,13 +104,13 @@ basque %>%
 
 
 ### Synth
-Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are and when the intervention took place, and specify that we don't want to fit an outcome model
+Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are, optionally provide when intervention took place (the code will automatically determine this if `t_int` is not provided), and specify that we don't want to fit an outcome model
 
 
 ```r
 library(augsynth)
-syn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
-                progfunc="None", scm=T)
+syn <- augsynth(gdpcap ~ treatment, regionno, year, basque,
+                progfunc="None", scm=T, t_int=1975)
 ```
 
 We can then look at the ATT estimates for each post-intervention time period and overall. We'll also see standard errors estimated using leave-out-one estimates of the noise and the quality of the synthetic control fit measured by the L2 distance between Basque and its synthetic control.
@@ -120,8 +120,8 @@ We can then look at the ATT estimates for each post-intervention time period and
 summary(syn)
 #> 
 #> Call:
-#> augsynth(form = gdpcap ~ treatment, unit = regionno, time = year, 
-#>     t_int = 1975, data = basque, progfunc = "None", scm = T)
+#> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
+#>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
 #> Average ATT Estimate (Pooled Std. Error): -0.674  (0.108)
 #> Std. Deviation: NA
@@ -167,7 +167,7 @@ plot(syn)
 In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`:
 
 ```r
-asyn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
+asyn <- augsynth(gdpcap ~ treatment, regionno, year, basque,
                 progfunc="Ridge", scm=T, lambda=8)
 ```
 
@@ -177,8 +177,8 @@ We can look at the summary and plot the results. Now in the summary output we se
 summary(asyn)
 #> 
 #> Call:
-#> augsynth(form = gdpcap ~ treatment, unit = regionno, time = year, 
-#>     t_int = 1975, data = basque, progfunc = "Ridge", scm = T, 
+#> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
+#>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2, 
 #>     lambda = 8)
 #> 
 #> Average ATT Estimate (Pooled Std. Error): -0.680  (0.177)
@@ -226,7 +226,7 @@ There are also several auxiliary covariates. We can include these in the augment
 
 ```r
 covsyn <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="None", scm=T)
 ```
 
@@ -236,9 +236,8 @@ Again we can look at the summary and plot the results.
 summary(covsyn)
 #> 
 #> Call:
-#> augsynth(form = gdpcap ~ treatment | invest + sec.agriculture + 
-#>     sec.energy + gdpcap, unit = regionno, time = year, t_int = 1975, 
-#>     data = basque, progfunc = "None", scm = T)
+#> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
+#>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
 #> Average ATT Estimate (Pooled Std. Error): -0.598  (0.584)
 #> Std. Deviation: NA
@@ -282,7 +281,7 @@ Now we can additionally fit ridge ASCM on the residuals, look at the summary, an
 
 ```r
 covsyn_aug <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="Ridge", scm=T, lambda = 1e-1)
 ```
 
@@ -291,9 +290,9 @@ covsyn_aug <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energ
 summary(covsyn_aug)
 #> 
 #> Call:
-#> augsynth(form = gdpcap ~ treatment | invest + sec.agriculture + 
-#>     sec.energy + gdpcap, unit = regionno, time = year, t_int = 1975, 
-#>     data = basque, progfunc = "Ridge", scm = T, lambda = 0.1)
+#> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
+#>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2, 
+#>     lambda = 0.1)
 #> 
 #> Average ATT Estimate (Pooled Std. Error): -0.539  (0.594)
 #> Std. Deviation: NA
@@ -339,7 +338,7 @@ Finally, we can augment synth with many different outcome models, this is as eas
 
 ```r
 mcpsyn <- augsynth(gdpcap ~ treatment,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="MCP", scm=T)
 ```
 
@@ -349,38 +348,38 @@ For the other outcome models we do not (yet) supply standard error estimates.
 summary(mcpsyn)
 #> 
 #> Call:
-#> augsynth(form = gdpcap ~ treatment, unit = regionno, time = year, 
-#>     t_int = 1975, data = basque, progfunc = "MCP", scm = T)
+#> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
+#>     t_int = t_int, data = data, progfunc = "MCP", scm = ..2)
 #> 
 #> Average ATT Estimate (Pooled Std. Error): -0.614  (NA)
 #> Std. Deviation: NA
 #> 
 #> L2 Imbalance (Scaled): 0.377  (0.052)	Avg Estimated Bias: -0.032
 #> 
-#>  Time   Estimate Std.Error
-#>  1975  0.1010658        NA
-#>  1976 -0.0501578        NA
-#>  1977 -0.2018750        NA
-#>  1978 -0.4866078        NA
-#>  1979 -0.6405479        NA
-#>  1980 -0.7530885        NA
-#>  1981 -0.8379952        NA
-#>  1982 -0.8590414        NA
-#>  1983 -0.8754413        NA
-#>  1984 -0.8560811        NA
-#>  1985 -0.8312636        NA
-#>  1986 -0.8185365        NA
-#>  1987 -0.7935674        NA
-#>  1988 -0.7831366        NA
-#>  1989 -0.7511763        NA
-#>  1990 -0.6750793        NA
-#>  1991 -0.6260993        NA
-#>  1992 -0.6782318        NA
-#>  1993 -0.7299734        NA
-#>  1994 -0.6707021        NA
-#>  1995 -0.5174496        NA
-#>  1996 -0.4354104        NA
-#>  1997 -0.3603028        NA
+#>  Time    Estimate Std.Error
+#>  1975  0.10108009        NA
+#>  1976 -0.05014203        NA
+#>  1977 -0.20185743        NA
+#>  1978 -0.48659799        NA
+#>  1979 -0.64054449        NA
+#>  1980 -0.75309182        NA
+#>  1981 -0.83800892        NA
+#>  1982 -0.85905119        NA
+#>  1983 -0.87544758        NA
+#>  1984 -0.85608496        NA
+#>  1985 -0.83126554        NA
+#>  1986 -0.81854095        NA
+#>  1987 -0.79357362        NA
+#>  1988 -0.78314084        NA
+#>  1989 -0.75117983        NA
+#>  1990 -0.67507896        NA
+#>  1991 -0.62609311        NA
+#>  1992 -0.67822034        NA
+#>  1993 -0.72995631        NA
+#>  1994 -0.67069581        NA
+#>  1995 -0.51743996        NA
+#>  1996 -0.43540996        NA
+#>  1997 -0.36030222        NA
 ```
 
 

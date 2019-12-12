@@ -47,7 +47,6 @@ multisynth <- function(form, unit, time, data,
                        eps_abs = 1e-4,
                        eps_rel = 1e-4,
                        verbose = FALSE, ...) {
-
     call_name <- match.call()
 
     form <- Formula::Formula(form)

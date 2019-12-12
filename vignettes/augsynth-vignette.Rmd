@@ -66,12 +66,12 @@ basque %>%
 
 
 ### Synth
-Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are and when the intervention took place, and specify that we don't want to fit an outcome model
+Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are, optionally provide when intervention took place (the code will automatically determine this if `t_int` is not provided), and specify that we don't want to fit an outcome model
 
 ```{r fit_synth, message=F, warning=F}
 library(augsynth)
-syn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
-                progfunc="None", scm=T)
+syn <- augsynth(gdpcap ~ treatment, regionno, year, basque,
+                progfunc="None", scm=T, t_int=1975)
 ```
 
 We can then look at the ATT estimates for each post-intervention time period and overall. We'll also see standard errors estimated using leave-out-one estimates of the noise and the quality of the synthetic control fit measured by the L2 distance between Basque and its synthetic control.
@@ -93,7 +93,7 @@ plot(syn)
 ### Augmenting synth with an outcome model
 In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`:
 ```{r fit_asynth, message=F, warning=F}
-asyn <- augsynth(gdpcap ~ treatment, regionno, year, 1975, basque,
+asyn <- augsynth(gdpcap ~ treatment, regionno, year, basque,
                 progfunc="Ridge", scm=T, lambda=8)
 ```
 
@@ -116,7 +116,7 @@ plot(asyn)
 There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values and regress out the auxiliary covariates.
 ```{r fit_covsynth, message=F, warning=F}
 covsyn <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="None", scm=T)
 ```
 
@@ -136,7 +136,7 @@ plot(covsyn)
 Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
 ```{r fit_covsynth_aug, message=F, warning=F}
 covsyn_aug <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energy + gdpcap,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="Ridge", scm=T, lambda = 1e-1)
 ```
 
@@ -157,7 +157,7 @@ Finally, we can augment synth with many different outcome models, this is as eas
 
 ```{r fit_mcp, message=F, warning=F}
 mcpsyn <- augsynth(gdpcap ~ treatment,
-                   regionno, year, 1975, basque,
+                   regionno, year, basque,
                    progfunc="MCP", scm=T)
 ```
 

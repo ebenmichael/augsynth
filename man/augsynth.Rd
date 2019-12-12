@@ -4,9 +4,7 @@
 \alias{augsynth}
 \title{Fit Augmented SCM}
 \usage{
-augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None",
-  "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"), scm = T,
-  fixedeff = FALSE, ..., cov_agg = NULL)
+augsynth(form, unit, time, data, t_int = NULL, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}
@@ -15,33 +13,35 @@ augsynth(form, unit, time, t_int, data, progfunc = c("Ridge", "None",
 
 \item{time}{Name of time column}
 
-\item{t_int}{Time of intervention}
-
 \item{data}{Panel data as dataframe}
 
-\item{progfunc}{What function to use to impute control outcomes
-Ridge=Ridge regression (allows for standard errors),
-None=No outcome model,
-EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-MCP=MCPanel, CITS=CITS
-CausalImpact=Bayesian structural time series with CausalImpact
-seq2seq=Sequence to sequence learning with feedforward nets}
+\item{t_int}{Time of intervention (used for single-period treatment only)}
 
-\item{scm}{Whether the SCM weighting function is used}
-
-\item{fixedeff}{Whether to include a unit fixed effect, default F}
-
-\item{...}{optional arguments for outcome model}
-
-\item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
+\item{...}{Optional arguments
+\itemize{
+  \item Single period augsynth 
+    \itemize{
+      \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
+      \item{"scm"}{Whether the SCM weighting function is used}
+      \item{"fixedeff"}{Whether to include a unit fixed effect, default F }
+      \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
+    }
+  \item Multi period (staggered) augsynth
+   \itemize{
+         \item{"relative"}{Whether to compute balance by relative time}
+         \item{"n_leads"}{How long past treatment effects should be estimated for}
+         \item{"n_lags"}{Number of pre-treatment periods to balance, default is to balance all periods}
+         \item{"alpha"}{Fraction of balance for individual balance}
+         \item{"lambda"}{Regularization hyperparameter, default = 0}
+         \item{"force"}{Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"}
+         \item{"n_factors"}{Number of factors for interactive fixed effects, default does CV}
+        }
+}}
 }
 \value{
 augsynth object that contains:
         \itemize{
-         \item{"weights"}{Ridge ASCM weights}
-         \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
-         \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
-         \item{"mhat"}{Outcome model estimate}
+         \item{"weights"}{weights}
          \item{"data"}{Panel data as matrices}
         }
 }

@@ -16,8 +16,6 @@ fit_prog_mcpanel(X, y, trt, unit_fixed = 1, time_fixed = 1, ...)
 \item{unit_fixed}{Whether to estimate unit fixed effects}
 
 \item{time_fixed}{Whether to estimate time fixed effects}
-
-\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{
