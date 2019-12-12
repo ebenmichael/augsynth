@@ -50,23 +50,12 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   trt <- terms(formula(form, rhs=1))[[3]]
   wide <- format_data_stag(outcome, trt, unit_quosure, time_quosure, data=data)
 
-  trt_year = -1
-  multi = F
-  for (u in wide$trt) {
-    if (is.finite(u) && u != trt_year) {
-      if (trt_year == -1) {
-        trt_year = u
-      } else {
-        multi = T
-        break
-      }
-    }
-  }
-
-  if (multi) {
+  trt_year_mask = wide$trt %>% is.finite()
+  if (sum(trt_year_mask) > 1) {
     return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
   } else {
     if (is.null(t_int)) {
+      trt_year = wide$trt[which(trt_year_mask)]
       t_int = data %>% pull(!!time_quosure) %>% unique() %>% sort() %>% `[`(trt_year+1)
     }
     return(single_augsynth(form, !!enquo(unit), !!enquo(time), t_int, data=data, ...))
