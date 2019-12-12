@@ -4,7 +4,7 @@
 \alias{print.summary.multisynth}
 \title{Print function for summary function for multisynth}
 \usage{
-\method{print}{summary.multisynth}(summ)
+\method{print}{summary.multisynth}(summ, level = NULL)
 }
 \arguments{
 \item{level}{Which treatment level to show summary for, default is average}

@@ -1,4 +1,4 @@
-context("Generally testing the workflow")
+context("Generally testing the workflow for augsynth")
 
 
 library(Synth)

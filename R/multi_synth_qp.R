@@ -13,10 +13,10 @@
 #'            only never never treated units (pure controls) will be used as comparison units
 #' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
 #' @param relative Whether to re-index time according to treatment date, default T
-#' @param alpha Hyper-parameter that controls trade-off between overall and individual balance.
-#'              Larger values of alpha place more emphasis on individual balance.
+#' @param nu Hyper-parameter that controls trade-off between overall and individual balance.
+#'              Larger values of nu place more emphasis on individual balance.
 #'              Balance measure is
-#'                alpha ||global|| + (1-alpha) ||individual||
+#'                nu ||global|| + (1-nu) ||individual||
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
 #' 
@@ -27,7 +27,7 @@
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
-                          relative=T, alpha=0, lambda=0, ...) {
+                          relative=T, nu=0, lambda=0, verbose = FALSE, eps_rel=1e-5, eps_abs=1e-5) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
@@ -114,7 +114,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                                   }) %>% reduce(`+`)
                        }) %>% reduce(c)
     
-    dvec <- - (alpha * dvec_avg / n_lags + (1 - alpha) * reduce(dvec,c))
+    dvec <- - (nu * dvec_avg / n_lags + (1 - nu) * reduce(dvec,c))
 
     V1 <- do.call(Matrix::bdiag,
                   lapply(1:J,
@@ -146,12 +146,13 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
            }) %>% do.call(rbind, .) -> V2
 
 
-    Hmat <- alpha * V2 + (1 - alpha) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
+    Hmat <- nu * V2 + (1 - nu) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
 
     ## Optimize
-    settings <- osqp::osqpSettings(verbose = FALSE, ...)
+    settings <- do.call(osqp::osqpSettings, c(list(verbose = verbose, eps_rel = eps_rel, eps_abs = eps_abs)))
+    
     out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
-
+    # return(out)
     ## get weights
     weights <- matrix(out$x, nrow=n0)
 

@@ -4,7 +4,7 @@
 \alias{plot.augsynth}
 \title{Plot function for augsynth}
 \usage{
-\method{plot}{augsynth}(augsynth, se = T, jackknife = T)
+\method{plot}{augsynth}(augsynth, se = T)
 }
 \arguments{
 \item{se}{Whether to plot standard errors}

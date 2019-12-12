@@ -5,7 +5,8 @@
 \title{Internal function to fit synth with staggered adoption with a QP solver}
 \usage{
 multisynth_qp(X, trt, mask, n_leads = NULL, n_lags = NULL,
-  relative = T, alpha = 0, lambda = 0, ...)
+  relative = T, nu = 0, lambda = 0, verbose = FALSE,
+  eps_rel = 1e-05, eps_abs = 1e-05)
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes, or list of such matrices after transformations}
@@ -23,10 +24,10 @@ only never never treated units (pure controls) will be used as comparison units}
 
 \item{relative}{Whether to re-index time according to treatment date, default T}
 
-\item{alpha}{Hyper-parameter that controls trade-off between overall and individual balance.
-Larger values of alpha place more emphasis on individual balance.
+\item{nu}{Hyper-parameter that controls trade-off between overall and individual balance.
+Larger values of nu place more emphasis on individual balance.
 Balance measure is
-  alpha ||global|| + (1-alpha) ||individual||
+  nu ||global|| + (1-nu) ||individual||
 Default: 0}
 
 \item{lambda}{Regularization hyper-parameter. Default, 0}

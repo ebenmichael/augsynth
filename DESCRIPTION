@@ -16,7 +16,8 @@ Imports:
     LiblineaR,
     Formula,
     Matrix,
-    osqp
+    osqp,
+    rlang
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE

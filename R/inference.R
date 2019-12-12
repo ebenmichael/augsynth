@@ -182,3 +182,134 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     out$sigma <- NA
     return(out)
 }
+
+
+#' Estimate standard errors for single ASCM with the jackknife
+#' Do this for ridge-augmented synth
+#' @param ascm Fitted augsynth object
+jackknife_se_single <- function(ascm) {
+    
+    wide_data <- ascm$data
+    synth_data <-format_synth(wide_data$X, wide_data$trt, wide_data$y)
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    ## att on actual sample
+    # aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, 
+    #                                 lambda, ridge, scm)
+    # att <- as.numeric(synth_data$Y1plot -
+    #         synth_data$Y0plot %*% aug_t$weights)
+    # lam <- aug_t$lambda
+
+    # only drop out control units with non-zero weights
+    nnz_weights <- numeric(n)
+    nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+
+    trt_idxs <- (1:n)[as.logical(nnz_weights)]
+    n_jack <- length(trt_idxs)
+
+    # jackknife estimates
+    ests <- vapply(trt_idxs, 
+                   function(i) {
+                       # drop unit i
+                       new_data <- drop_unit_i(wide_data, Z, i)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_internal,
+                                c(list(wide = new_data$wide,
+                                       synth_data = new_data$synth_data,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                       # get ATT estimates
+                       est <- predict(new_ascm, att = T)[(t0 + 1):t_final]
+                       c(est, mean(est))
+                   },
+                   numeric(tpost + 1))
+    # convert to matrix
+    ests <- matrix(ests, nrow = tpost + 1, ncol = length(trt_idxs))
+    ## standard errors
+    se2 <- apply(ests, 1,
+                 function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
+    se <- sqrt(se2)
+
+    out <- list()
+    att <- predict(ascm, att = T)
+    out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    return(out)
+}
+
+
+#' Compute standard errors using the jackknife
+#' @param multisynth fitted multisynth object
+#' @param relative Whether to compute effects according to relative time
+jackknife_se_multi <- function(multisynth, relative=NULL) {
+    ## get info from the multisynth object
+    if(is.null(relative)) {
+        relative <- multisynth$relative
+    }
+    n_leads <- multisynth$n_leads
+    n <- nrow(multisynth$data$X)
+    outddim <- nrow(predict(multisynth, att=T))
+
+    J <- length(multisynth$grps)
+    ## drop each unit and estimate overall treatment effect   
+    jack_est <- vapply(1:n,
+                       function(i) {
+                           msyn_i <- drop_unit_i_multi(multisynth, i)
+                           pred <- predict(msyn_i[[1]], relative=relative, att=T)
+                           if(length(msyn_i[[2]]) != 0) {
+                               out <- matrix(NA, nrow=nrow(pred), ncol=(J+1))
+                               out[,-(msyn_i[[2]]+1)] <- pred
+                           } else {
+                               out <- pred
+                           }
+                           out
+                       },
+                       matrix(0, nrow=outddim,ncol=(J+1)))
+    ## return(jack_est)
+    se2 <- apply(jack_est, c(1,2),
+                function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
+
+    return(sqrt(se2))
+
+}
+
+#' Helper function to drop unit i and refit
+drop_unit_i_multi <- function(msyn, i) {
+
+    n <- nrow(msyn$data$X)
+    which_t <- (1:n)[is.finite(msyn$data$trt)]    
+    not_miss_j <- which_t %in% setdiff(which_t, i)
+
+    # drop unit i from data
+    drop_i <- list()
+    drop_i$X <- msyn$data$X[-i,]
+    drop_i$y <- msyn$data$y[-i,]
+    drop_i$trt <- msyn$data$trt[-i]
+    drop_i$mask <- msyn$data$mask[not_miss_j,,drop=F]
+
+    # re-fit everything
+    args_list <- list(wide = drop_i, relative = msyn$relative, 
+                      n_leads = msyn$n_leads, n_lags = msyn$n_lags, 
+                      nu = msyn$nu, lambda = msyn$lambda,
+                      force = msyn$force, n_factors = msyn$n_factors, 
+                      scm = msyn$scm, time_w = msyn$time_w, 
+                      lambda_t = msyn$lambda_t,
+                      fit_resids = msyn$fit_resids)
+
+    msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
+                      
+    return(list(msyn_i,
+                which(!not_miss_j)))
+}
