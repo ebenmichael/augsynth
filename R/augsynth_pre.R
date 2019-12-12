@@ -50,8 +50,9 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   trt <- terms(formula(form, rhs=1))[[3]]
   wide <- format_data_stag(outcome, trt, unit_quosure, time_quosure, data=data)
 
-  trt_year_mask = wide$trt %>% is.finite()
-  if (sum(trt_year_mask) > 1) {
+  trt_year_mask = wide$trt %>% is.finite() 
+  num_trt_years = sum(trt_year_mask %>% unique())
+  if (num_trt_years > 1) {
     return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
   } else {
     if (is.null(t_int)) {
