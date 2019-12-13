@@ -11,7 +11,7 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                             
 test_that("augsynth and multisynth give the same answer for a single treated unit and no augmentation", {
 
-    syn <- augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
+    syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
                     progfunc="None", scm=T)
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque, nu = 0,
                        scm=T, eps_rel=1e-5, eps_abs=1e-5)
@@ -67,10 +67,10 @@ test_that("Separate synth is the same as fitting separate synths", {
 
 
     basque2  %>% filter(regionno != 16) %>% 
-        augsynth(gdpcap ~ trt, regionno, year, 1975, .,
+        single_augsynth(gdpcap ~ trt, regionno, year, 1975, .,
                     progfunc="None", scm=T) -> scm17
     basque2  %>% filter(regionno != 17) %>% 
-        augsynth(gdpcap ~ trt, regionno, year, 1975, .,
+        single_augsynth(gdpcap ~ trt, regionno, year, 1975, .,
                     progfunc="None", scm=T) -> scm16
     
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,

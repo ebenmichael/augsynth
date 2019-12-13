@@ -17,7 +17,8 @@ Imports:
     Formula,
     Matrix,
     osqp,
-    rlang
+    rlang,
+    purrr
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE
