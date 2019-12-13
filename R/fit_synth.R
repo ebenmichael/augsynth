@@ -15,20 +15,30 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
     if(!require("LowRankQP")) {
         stop("In order to use Synth, you must install LowRankQP")
     }
+
+    t0 <- dim(synth_data$Z0)[1]
     ## if no  is supplied, set equal to 1
     if(is.null(V)) {
-        custom.v <- rep(1, dim(synth_data$Z0)[1])
+        # custom.v <- rep(1, dim(synth_data$Z0)[1])
+        V <- diag(rep(1, t0))
+    } else if(is.vector(V)) {
+        V <- diag(V)
+    } else if(ncol(V) == 1 & nrow(V) == t0) {
+        V <- diag(c(V))
+    } else if(ncol(V) == t0 & nrow(V) == 1) {
+        V <- diag(c(V))
+    } else if(nrow(V) == t0) {
     } else {
-        custom.v <- V
+        stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
     }
-    print(synth_data$Z1)
-    print(custom.v)
     ## fit the weights    
-    capture.output(synth_out <- Synth::synth(synth_data,
-                                             custom.v=custom.v,
-                                             quadopt="LowRankQP"))
-    weights <- synth_out$solution.w
-    loss <- synth_out$loss.w
+    # capture.output(synth_out <- Synth::synth(synth_data,
+    #                                          custom.v=custom.v,
+    #                                          quadopt="LowRankQP"))
+    # weights <- synth_out$solution.w
+    # loss <- synth_out$loss.w
+    
+    weights <- synth_qp(synth_data$X1, t(synth_data$X0), V)
     l2_imbalance <- sqrt(sum((synth_data$Z0 %*% weights - synth_data$Z1)^2))
     
     ## primal objective value scaled by least squares difference for mean
@@ -39,4 +49,23 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
     return(list(weights=weights,
                 l2_imbalance=l2_imbalance,
                 scaled_l2_imbalance=scaled_l2_imbalance))
+}
+
+#' Solve the synth QP directly
+synth_qp <- function(X1, X0, V) {
+    
+    Pmat <- X0 %*% V %*% t(X0)
+    qvec <- - t(X1) %*% V %*% t(X0)
+
+    n0 <- nrow(X0)
+    A <- rbind(rep(1, n0), diag(n0))
+    l <- c(1, numeric(n0))
+    u <- c(1, rep(1, n0))
+    
+    settings = osqp::osqpSettings(verbose = FALSE)
+    sol <- osqp::solve_osqp(P = Pmat, q = qvec,
+                            A = A, l = l, u = u, 
+                            pars = settings)
+
+    return(sol$x)
 }

@@ -89,7 +89,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 
 
     # combine into a matrix for fitting and balancing
-    out <- combine_outcomes(wide_list, combine_method, fixedeff)
+    out <- combine_outcomes(wide_list, combine_method, fixedeff, ...)
     wide_bal <- out$wide_bal
     mhat <- out$mhat
     V <- out$V
@@ -104,8 +104,8 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 
 
     augsynth <- fit_augsynth_internal(wide_bal, synth_data, Z, progfunc, 
-                                      scm, fixedeff, V = NULL, ...)
-    
+                                      scm, fixedeff, V = V, ...)
+
     # potentially add back in fixed effects
     augsynth$mhat <- mhat + augsynth$mhat
 
@@ -119,13 +119,15 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #' @param wide_list List of lists of pre/post treatment data for each outcome
 #' @param combine_method How to combine outcomes
 #' @param fixed_eff Whether to take out unit fixed effects or not
+#' @param k Number of principal directions to keep, default all
 #' 
 #' @return \itemize{
 #'          \item{"X"}{Matrix of combined pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}
 #'          \item{"y"}{Matrix of combined post-treatment outcomes}
 #'         }
-combine_outcomes <- function(wide_list, combine_method, fixedeff) {
+combine_outcomes <- function(wide_list, combine_method, fixedeff, 
+                             k= NULL, ...) {
 
     n_outs <- length(wide_list$X)
     total_pre <- Map(ncol, wide_list$X) %>% Reduce(`+`, .)
@@ -170,8 +172,26 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff) {
         # V matrix scales by inverse variance for outcome and number of periods
         V <- do.call(c, 
             lapply(wide_list$X, 
-                function(x) rep(1 / (sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
-    } else {
+                function(x) rep(1 / (sqrt(ncol(x)) * 
+                        sd(x[wide_list$trt == 0, , drop = F], na.rm=T)), 
+                        ncol(x))))
+    } else if(combine_method == "svd") {
+        wide_bal <- list(X = do.call(cbind, wide_list$X),
+                         y = do.call(cbind, wide_list$y),
+                         trt = wide_list$trt)
+
+        # first get the standard deviations of the outcomes to put on the same scale
+        sds <- do.call(c, 
+            lapply(wide_list$X, 
+                function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
+
+        # do an SVD on centered and scaled outcomes
+        X0 <- wide_bal$X[wide_bal$trt == 0, , drop = FALSE]
+        X0 <- t((t(X0) - colMeans(X0)) / sds)
+        k <- if(is.null(k)) ncol(X0) else k
+        V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
+
+    }else {
         stop(paste("combine_method should be one of ('concat'),", 
             combine_method, " is not a valid combining option"))
     }
@@ -352,7 +372,11 @@ print.summary.augsynth_multiout <- function(summ) {
     ## pool the standard error estimates to summarise it
     se_est <- summ$att$Std.Error
 
-    se_pool <- sqrt(mean(se_est[t_int:t_total]^2))
+    ## get pre-treatment fit by outcome
+    imbal <- summ$att %>% 
+        filter(Time < summ$t_int) %>%
+        group_by(Outcome) %>%
+        summarise(Pre.RMSE = sqrt(mean(Estimate ^ 2)))
 
     att_post <- summ$average_att$Estimate
     se_pool <- summ$average_att$Std.Error
@@ -363,7 +387,7 @@ print.summary.augsynth_multiout <- function(summ) {
             #   format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
               sep=""))
     cat("Average ATT Estimate:\n")
-    print(summ$average_att)
+    print(inner_join(summ$average_att, imbal, by = "Outcome"))
     cat("\n\n")
 }
 
