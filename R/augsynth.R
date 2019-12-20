@@ -186,8 +186,9 @@ print.augsynth <- function(augsynth) {
     cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
     ## print att estimates
-    att_post <- colMeans(augsynth$data$y[augsynth$data$trt == 1,,drop=F]) -
-        predict(augsynth)
+    tint <- ncol(augsynth$data$X)
+    ttotal <- tint + ncol(augsynth$data$y)
+    att_post <- predict(augsynth, att = T)[(tint + 1):ttotal]
 
     cat(paste("Average ATT Estimate: ",
               format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
