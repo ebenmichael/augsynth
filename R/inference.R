@@ -354,7 +354,7 @@ jackknife_se_multiout <- function(ascm) {
                        # get ATT estimates
                        est <- predict(new_ascm, att = T)
                        est <- est[as.numeric(rownames(est)) >= ascm$t_int,, drop = F]
-                       rbind(est, colMeans(est))
+                       rbind(est, colMeans(est, na.rm = T))
                    })
     ests <- simplify2array(ests)
     ## standard errors
@@ -363,7 +363,8 @@ jackknife_se_multiout <- function(ascm) {
     se <- sqrt(se2)
     out <- list()
     att <- predict(ascm, att = T)
-    att_post <- colMeans(att[as.numeric(rownames(att)) >= ascm$t_int,, drop = F])
+    att_post <- colMeans(att[as.numeric(rownames(att)) >= ascm$t_int,, drop = F], 
+                         na.rm = T)
     out$att <- rbind(att, att_post)
     t0 <- sum(as.numeric(rownames(att)) < ascm$t_int)
     out$se <- rbind(matrix(NA, t0, ncol(se)), se)
