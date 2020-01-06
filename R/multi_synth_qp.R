@@ -83,76 +83,20 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     uvec <- const_mats$uvec
 
     ## quadratic balance measures
-    dvec <- lapply(1:J,
-                   function(j) {
-                       dj <- length(x_t[[j]])
-                       ndim <- min(dj, n_lags)
-                       c(Xc[[j]][,(dj-ndim+1):dj, drop=F] %*%
-                         x_t[[j]][(dj-ndim+1):dj]) /
-                           ndim
-                   }
-                   )
 
-    dvec_avg <- lapply(1:J,
-                       function(j)  {
-                           lapply(x_t,
-                                  function(xtk) {
-                                      
-                                      dk <- length(xtk)
-                                      dj <- ncol(Xc[[j]])
-                                      ndim <- min(dk, dj, n_lags)
-                                      ## relative time: inner product from the end
-                                      if(relative) {
-                                          Xc[[j]][,(dj-ndim+1):dj, drop=F] %*%
-                                              xtk[(dk-ndim+1):dk]
-                                           
-                                      } else {
-                                          ## absolute time: inner product from start
-                                          Xc[[j]][,1:ndim] %*%
-                                              xtk[1:ndim]
-                                      }
-                                  }) %>% reduce(`+`)
-                       }) %>% reduce(c)
+    qvec <- make_qvec(Xc, x_t, nu, n_lags)
     
-    dvec <- - (nu * dvec_avg / n_lags + (1 - nu) * reduce(dvec,c))
+    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda)
 
-    V1 <- do.call(Matrix::bdiag,
-                  lapply(1:J,
-                         function(j) {
-                             dj <- length(x_t[[j]])
-                             ndim <- min(dj, n_lags)
-                             Xc[[j]][,(dj-ndim+1):dj, drop=F] / sqrt(ndim)
-                         })
-                  )
-                         
-
-    lapply(1:J,
-           function(k) {
-               lapply(1:J,
-                      function(j) {
-                          dk <- ncol(Xc[[k]])
-                          dj <- ncol(Xc[[j]])
-                          ndim <- min(dk, dj, n_lags)
-                          if(relative) {
-                              ## inner product from end
-                              Xc[[k]][,(dk-ndim+1):dk, drop=F] %*%
-                                  t(Xc[[j]][,(dj-ndim+1):dj, drop=F]) / n_lags
-                          } else {
-                              ## inner product from start
-                              Xc[[k]][,1:ndim] %*%
-                                  t(Xc[[j]][,1:ndim]) / n_lags
-                          }
-                      }) %>% do.call(cbind, .)
-           }) %>% do.call(rbind, .) -> V2
-
-
-    Hmat <- nu * V2 + (1 - nu) * V1 %*% Matrix::t(V1) + lambda * Matrix::Diagonal(nrow(V1))
-
+    
     ## Optimize
-    settings <- do.call(osqp::osqpSettings, c(list(verbose = verbose, eps_rel = eps_rel, eps_abs = eps_abs)))
-    
-    out <- osqp::solve_osqp(Hmat, dvec, Amat, lvec, uvec, pars=settings)
-    # return(out)
+    settings <- do.call(osqp::osqpSettings, 
+                        c(list(verbose = verbose, 
+                               eps_rel = eps_rel, 
+                               eps_abs = eps_abs)))
+
+    out <- osqp::solve_osqp(Pmat, qvec, Amat, lvec, uvec, pars = settings)
+
     ## get weights
     weights <- matrix(out$x, nrow=n0)
 
@@ -246,4 +190,67 @@ make_constraint_mats <- function(trt, grps, n_leads) {
 
 
     return(list(Amat=Amat, lvec=lvec, uvec=uvec))
+}
+
+#' Make the vector in the QP
+make_qvec <- function(Xc, x_t, nu, n_lags) {
+
+    J <- length(x_t)
+
+    qvec <- lapply(1:J,
+                   function(j) {
+                       dj <- length(x_t[[j]])
+                       ndim <- min(dj, n_lags)
+                       c(Xc[[j]][,(dj - ndim+1):dj, drop=F] %*%
+                         x_t[[j]][(dj - ndim+1):dj]) /
+                           ndim
+                   }
+                   )
+
+    qvec_avg <- lapply(1:J,
+                       function(j)  {
+                           lapply(x_t,
+                                  function(xtk) {
+                                    dk <- length(xtk)
+                                    dj <- ncol(Xc[[j]])
+                                    ndim <- min(dk, dj, n_lags)
+                                    Xc[[j]][,(dj - ndim + 1):dj, drop=F] %*%
+                                        xtk[(dk - ndim + 1):dk]
+                                  }) %>% reduce(`+`)
+                       }) %>% reduce(c)
+
+    return(- (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c)))
+}
+
+
+#' Make the matrix in the QP
+make_Pmat <- function(Xc, x_t, nu, n_lags, lambda) {
+
+    J <- length(x_t)
+
+    V1 <- do.call(Matrix::bdiag,
+                  lapply(1:J,
+                         function(j) {
+                             dj <- length(x_t[[j]])
+                             ndim <- min(dj, n_lags)
+                             Xc[[j]][,(dj - ndim + 1):dj, drop = F] / sqrt(ndim)
+                         })
+                  )
+
+    lapply(1:J,
+           function(k) {
+               lapply(1:J,
+                      function(j) {
+                        dk <- ncol(Xc[[k]])
+                        dj <- ncol(Xc[[j]])
+                        ndim <- min(dk, dj, n_lags)
+                        Xc[[k]][, (dk - ndim + 1):dk, drop = F] %*%
+                            t(Xc[[j]][,(dj - ndim + 1):dj, drop = F]) / n_lags
+                      }) %>% do.call(cbind, .)
+           }) %>% do.call(rbind, .) -> V2
+
+    return(nu * V2 + 
+           (1 - nu) * V1 %*% Matrix::t(V1) +
+           lambda * Matrix::Diagonal(nrow(V1)))
+
 }
