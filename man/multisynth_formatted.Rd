@@ -5,8 +5,8 @@
 \title{Internal funciton to fit staggered synth with formatted data}
 \usage{
 multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
-  force, n_factors, scm, time_w, lambda_t, fit_resids, eps_abs, eps_rel,
-  verbose, ...)
+  force, n_factors, scm, time_cohort, time_w, lambda_t, fit_resids,
+  eps_abs, eps_rel, verbose, ...)
 }
 \arguments{
 \item{wide}{List containing data elements}
@@ -26,6 +26,8 @@ multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
 \item{n_factors}{Number of factors for interactive fixed effects, default does CV}
 
 \item{scm}{Whether to fit scm weights}
+
+\item{time_cohort}{Whether to average synthetic controls into time cohorts}
 
 \item{time_w}{Whether to fit time weights}
 

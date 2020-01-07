@@ -14,6 +14,7 @@
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
+#' @param time_cohort Whether to average synthetic controls into time cohorts
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
@@ -43,7 +44,8 @@ multisynth <- function(form, unit, time, data,
                        nu=NULL, lambda=0,
                        fixedeff = FALSE,
                        n_factors=0,
-                       scm=T, 
+                       scm=T,
+                       time_cohort = F,
                        eps_abs = 1e-4,
                        eps_rel = 1e-4,
                        verbose = FALSE, ...) {
@@ -68,7 +70,7 @@ multisynth <- function(form, unit, time, data,
         n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
     }
 
-    ## if n_lags is NULL set it to the largets number of pre-treatment periods
+    ## if n_lags is NULL set it to the largest number of pre-treatment periods
     if(is.null(n_lags)) {
         n_lags <- ncol(wide$X)
     } else if(n_lags > ncol(wide$X)) {
@@ -79,8 +81,8 @@ multisynth <- function(form, unit, time, data,
                                 n_leads = n_leads, n_lags = n_lags,
                                 nu = nu, lambda = lambda,
                                 force = force, n_factors = n_factors,
-                                scm = scm, time_w = F,
-                                lambda_t = 0,
+                                scm = scm, time_cohort = time_cohort,
+                                time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
                                 eps_rel = eps_rel, verbose = verbose, ...)
 
@@ -94,6 +96,7 @@ multisynth <- function(form, unit, time, data,
                             n_lags=n_lags,
                             relative=T,
                             nu=0, lambda=1e10,
+                            time_cohort = time_cohort,
                             eps_rel = eps_rel, 
                             eps_abs = eps_abs,
                             verbose = verbose)
@@ -123,6 +126,7 @@ multisynth <- function(form, unit, time, data,
 #' @param force c(0,1,2,3) what type of fixed effects to include
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
+#' @param time_cohort Whether to average synthetic controls into time cohorts
 #' @param time_w Whether to fit time weights
 #' @param fit_resids Whether to fit SCM on the residuals or not
 #' @param eps_abs Absolute error tolerance for osqp
@@ -134,15 +138,20 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        nu, lambda,
                        force,
                        n_factors,
-                       scm, time_w,
-                       lambda_t,
+                       scm, time_cohort, 
+                       time_w, lambda_t,
                        fit_resids,
                        eps_abs, eps_rel,
                        verbose, ...) {
 
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
-    grps <- wide$trt[is.finite(wide$trt)]
+
+    if(time_cohort) {
+        grps <- unique(wide$trt[is.finite(wide$trt)])
+    } else {
+        grps <- wide$trt[is.finite(wide$trt)]
+    }
     J <- length(grps)
 
     ## fit outcome models
@@ -228,6 +237,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     n_lags=n_lags,
                                     relative=relative,
                                     nu=0, lambda=lambda,
+                                    time_cohort = time_cohort,
                                     eps_rel = eps_rel,
                                     eps_abs = eps_abs,
                                     verbose = verbose)
@@ -245,6 +255,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 n_lags=n_lags,
                                 relative=relative,
                                 nu=nu, lambda=lambda,
+                                time_cohort = time_cohort,
                                 eps_rel = eps_rel,
                                 eps_abs = eps_abs,
                                 verbose = verbose)
@@ -263,6 +274,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     msynth$nu <- nu
     msynth$lambda <- lambda
     msynth$scm <- scm
+    msynth$time_cohort <- time_cohort
 
 
     msynth$grps <- grps
@@ -305,7 +317,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 #' @export
 predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 
-
+    time_cohort <- multisynth$time_cohort
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
@@ -316,15 +328,25 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     ttot <- ncol(fulldat)
     grps <- multisynth$grps
     J <- length(grps)
-    which_t <- (1:n)[is.finite(multisynth$data$trt)]    
 
-    n1 <- sapply(1:J, function(j) 1)
-    fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
+    if(time_cohort) {
+        which_t <- lapply(grps, 
+                          function(tj) (1:n)[multisynth$data$trt == tj])
+        mask <- unique(multisynth$data$mask)
+    } else {
+        which_t <- (1:n)[is.finite(multisynth$data$trt)]
+        mask <- multisynth$data$mask
+    }
+    
+
+    n1 <- sapply(1:J, function(j) length(which_t[[j]]))
+
+    fullmask <- cbind(mask, matrix(0, nrow = J, ncol = (ttot - d)))
     
 
     ## estimate the post-treatment values to get att estimates
     mu1hat <- vapply(1:J,
-                     function(j) colMeans(fulldat[which_t[j],
+                     function(j) colMeans(fulldat[which_t[[j]],
                                                 , drop=FALSE]),
                      numeric(ttot))
 
@@ -334,7 +356,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     if(typeof(multisynth$y0hat) == "list") {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[[j]][which_t[j],
+                            y0hat <- colMeans(multisynth$y0hat[[j]][which_t[[j]],
                                                                   , drop=FALSE])
                             if(!all(multisynth$weights == 0)) {
                                 y0hat + t(multisynth$residuals[[j]]) %*%
@@ -349,7 +371,7 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
     } else {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[which_t[j],
+                            y0hat <- colMeans(multisynth$y0hat[which_t[[j]],
                                                                   , drop=FALSE])
                             if(!all(multisynth$weights == 0)) {
                                 y0hat + t(multisynth$residuals) %*%
@@ -583,14 +605,27 @@ compute_se <- function(multisynth, relative=NULL) {
 summary.multisynth <- function(multisynth, jackknife=T) {
     relative <- T
 
-    
-    grps <- unique(multisynth$data$trt) %>% sort()
-    J <- length(grps)
     n_leads <- multisynth$n_leads
     d <- ncol(multisynth$data$X)
     n <- nrow(multisynth$data$X)
     ttot <- d + ncol(multisynth$data$y)
-    which_t <- (1:n)[is.finite(multisynth$data$trt)]
+
+    trt <- multisynth$data$trt
+    time_cohort <- multisynth$time_cohort
+    if(time_cohort) {
+        grps <- unique(trt[is.finite(trt)])
+        which_t <- lapply(grps, function(tj) (1:n)[trt == tj])
+        # if doing a time cohort, convert the boolean mask
+        mask <- unique(mask)
+    } else {
+        grps <- trt[is.finite(trt)]
+        which_t <- (1:n)[is.finite(trt)]
+    }
+    
+    # grps <- unique(multisynth$data$trt) %>% sort()
+    J <- length(grps)
+    
+    # which_t <- (1:n)[is.finite(multisynth$data$trt)]
     times <- multisynth$data$time
     
     summ <- list()
@@ -600,24 +635,29 @@ summary.multisynth <- function(multisynth, jackknife=T) {
     if(jackknife) {
         se <- jackknife_se_multi(multisynth, relative)
     } else {
-        se <- compute_se(multisynth, relative)
+        # se <- compute_se(multisynth, relative)
+        se <- matrix(NA, nrow(att), ncol(att))
     }
     
 
     if(relative) {
         att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                 att))
-        names(att) <- c("Time", "Average", 
-                        as.character(multisynth$data$units[which_t]))
-
+        if(time_cohort) {
+            col_names <- c("Time", "Average", 
+                            as.character(times[grps + 1]))
+        } else {
+            col_names <- c("Time", "Average", 
+                            as.character(multisynth$data$units[which_t]))
+        }
+        names(att) <- col_names
         att %>% gather(Level, Estimate, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1) -> att
 
         se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
-                               se))
-        names(se) <- c("Time", "Average", 
-                       as.character(multisynth$data$units[which_t]))
+                               se))                            
+        names(se) <- col_names
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1)-> se

@@ -19,6 +19,7 @@
 #'                nu ||global|| + (1-nu) ||individual||
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
+#' @param time_cohort Whether to average synthetic controls into time cohorts
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Matrix of unit weights}
@@ -27,7 +28,8 @@
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
-                          relative=T, nu=0, lambda=0, verbose = FALSE, 
+                          relative=T, nu=0, lambda=0, time_cohort = FALSE,
+                          verbose = FALSE, 
                           eps_rel=1e-4, eps_abs=1e-4) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
@@ -45,24 +47,30 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     }
 
     ## treatment times
-    grps <- trt[is.finite(trt)]
+    if(time_cohort) {
+        grps <- unique(trt[is.finite(trt)])
+        which_t <- lapply(grps, function(tj) (1:n)[trt == tj])
+        # if doing a time cohort, convert the boolean mask
+        mask <- unique(mask)
+    } else {
+        grps <- trt[is.finite(trt)]
+        which_t <- (1:n)[is.finite(trt)]
+    }
+
 
     J <- length(grps)
-
-
-    n_t <- sum(is.finite(trt))
-    which_t <- (1:n)[is.finite(trt)]
+    n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
         ## x_t <- lapply(1:J, function(j) colSums(X[[j]][trt ==grps[j], mask[j,]==1, drop=F]))    
-        x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[j], mask[j,]==1, drop=F]))
+        x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[[j]], mask[j,]==1, drop=F]))
         ## All possible donor units for all treatment groups
         Xc <- lapply(1:nrow(mask),
                  function(j) X[[j]][trt > n_leads + min(grps), mask[j,]==1, drop=F])
     } else {
         ## x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
-        x_t <- lapply(1:J, function(j) colSums(X[which_t[j], mask[j,]==1, drop=F]))        
+        x_t <- lapply(1:J, function(j) colSums(X[which_t[[j]], mask[j,]==1, drop=F]))        
         ## All possible donor units for all treatment groups
         ## Xc <- lapply(1:nrow(mask),
         ##              function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])
@@ -70,14 +78,15 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                  function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])        
     }
     
-    n1 <- sapply(1:J, function(j) 1)
+    
+    # n1 <- sapply(1:J, function(j) 1)
     
     n1tot <- sum(n1)
     
     ## make matrices for QP
     idxs0  <- trt  > n_leads + min(grps)
     n0 <- sum(idxs0)    
-    const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d)
+    const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d, n1)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
     uvec <- const_mats$uvec
@@ -121,8 +130,8 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     avg_imbal <- rowSums(t(t(imbalance)))
 
 
-    global_l2 <- sqrt(sum(avg_imbal^2))
-    ind_l2 <- sum(apply(imbalance, 2, function(x) sqrt(sum(x^2))))
+    global_l2 <- sqrt(sum(avg_imbal^2)) #/ sqrt(length(avg_imbal))
+    ind_l2 <- sum(apply(imbalance, 2, function(x) sqrt(sum(x^2)))) #/ sqrt(prod(dim(imbalance)))
     ## pad weights with zeros for treated units and divide by number of treated units
     weights <- matrix(0, nrow=n, ncol=J)
     weights[idxs0,] <- matrix(out$x[1:total_ctrls], nrow=n0)
@@ -147,16 +156,16 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 #' @param n_lags Number of pre-treatment periods to balance
 #' @param Xc List of outcomes for possible comparison units
 #' @param d Max number of lagged outcomes
+#' @param n1 Vector of number of treated units per cohort
 #' @return 
 #'         \itemize{
 #'          \item{"Amat"}{Linear constraint matrix}
 #'          \item{"lvec"}{Lower bounds for linear constraints}
 #'          \item{"uvec"}{Upper bounds for linear constraints}
 #'         }
-make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d) {
+make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 
     J <- length(grps)
-    n1 <- sapply(1:J, function(j) 1)
     idxs0  <- trt  > n_leads + min(grps)
 
     n0 <- sum(idxs0)

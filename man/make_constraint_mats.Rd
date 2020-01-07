@@ -4,7 +4,7 @@
 \alias{make_constraint_mats}
 \title{Create constraint matrices for multisynth QP}
 \usage{
-make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d)
+make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d, n1)
 }
 \arguments{
 \item{trt}{Vector of treatment levels/times}
@@ -18,6 +18,8 @@ make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d)
 \item{Xc}{List of outcomes for possible comparison units}
 
 \item{d}{Max number of lagged outcomes}
+
+\item{n1}{Vector of number of treated units per cohort}
 }
 \value{
 \itemize{

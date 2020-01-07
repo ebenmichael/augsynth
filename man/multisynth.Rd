@@ -6,7 +6,8 @@
 \usage{
 multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
   nu = NULL, lambda = 0, fixedeff = FALSE, n_factors = 0,
-  scm = T, eps_abs = 1e-04, eps_rel = 1e-04, verbose = FALSE, ...)
+  scm = T, time_cohort = F, eps_abs = 1e-04, eps_rel = 1e-04,
+  verbose = FALSE, ...)
 }
 \arguments{
 \item{form}{outcome ~ treatment}
@@ -30,6 +31,8 @@ multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
 \item{n_factors}{Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0}
 
 \item{scm}{Whether to fit scm weights}
+
+\item{time_cohort}{Whether to average synthetic controls into time cohorts}
 
 \item{eps_abs}{Absolute error tolerance for osqp}
 

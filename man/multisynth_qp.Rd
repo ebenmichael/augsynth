@@ -5,8 +5,8 @@
 \title{Internal function to fit synth with staggered adoption with a QP solver}
 \usage{
 multisynth_qp(X, trt, mask, n_leads = NULL, n_lags = NULL,
-  relative = T, nu = 0, lambda = 0, verbose = FALSE,
-  eps_rel = 1e-04, eps_abs = 1e-04)
+  relative = T, nu = 0, lambda = 0, time_cohort = FALSE,
+  verbose = FALSE, eps_rel = 1e-04, eps_abs = 1e-04)
 }
 \arguments{
 \item{X}{Matrix of pre-final intervention outcomes, or list of such matrices after transformations}
@@ -31,6 +31,8 @@ Balance measure is
 Default: 0}
 
 \item{lambda}{Regularization hyper-parameter. Default, 0}
+
+\item{time_cohort}{Whether to average synthetic controls into time cohorts}
 }
 \value{
 \itemize{

@@ -263,6 +263,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
     outddim <- nrow(predict(multisynth, att=T))
 
     J <- length(multisynth$grps)
+
     ## drop each unit and estimate overall treatment effect   
     jack_est <- vapply(1:n,
                        function(i) {
@@ -289,27 +290,36 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 drop_unit_i_multi <- function(msyn, i) {
 
     n <- nrow(msyn$data$X)
-    which_t <- (1:n)[is.finite(msyn$data$trt)]    
+    time_cohort <- msyn$time_cohort
+    which_t <- (1:n)[is.finite(msyn$data$trt)]
+
     not_miss_j <- which_t %in% setdiff(which_t, i)
 
     # drop unit i from data
     drop_i <- list()
-    drop_i$X <- msyn$data$X[-i,, drop = F]
-    drop_i$y <- msyn$data$y[-i,, drop = F]
+    drop_i$X <- msyn$data$X[-i, , drop = F]
+    drop_i$y <- msyn$data$y[-i, , drop = F]
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
 
     # re-fit everything
-    args_list <- list(wide = drop_i, relative = msyn$relative, 
-                      n_leads = msyn$n_leads, n_lags = msyn$n_lags, 
+    args_list <- list(wide = drop_i, relative = msyn$relative,
+                      n_leads = msyn$n_leads, n_lags = msyn$n_lags,
                       nu = msyn$nu, lambda = msyn$lambda,
-                      force = msyn$force, n_factors = msyn$n_factors, 
-                      scm = msyn$scm, time_w = msyn$time_w, 
+                      force = msyn$force, n_factors = msyn$n_factors,
+                      scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
-                      fit_resids = msyn$fit_resids)
+                      fit_resids = msyn$fit_resids,
+                      time_cohort = msyn$time_cohort)
 
     msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
-                      
+    
+    # check for dropped treated units/time periods
+    if(time_cohort) {
+        dropped <- which(!msyn$grps %in% msyn_i$grps)
+    } else {
+        dropped <- which(!not_miss_j)
+    }
     return(list(msyn_i,
-                which(!not_miss_j)))
+                dropped))
 }
