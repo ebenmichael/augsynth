@@ -225,6 +225,115 @@ plot(ppool_syn_summ, level = "Average")
 <img src="figure/ppool_syn_plot_avg-1.png" title="plot of chunk ppool_syn_plot_avg" alt="plot of chunk ppool_syn_plot_avg" style="display: block; margin: auto;" />
 
 
+We can also collapse treated units with the same treatment time into _time cohorts_, and find one synthetic control per time cohort by setting `time_cohort = TRUE`. When the number of distinct treatment times is much smaller than the number of treated units, this will run significantly faster.
+
+
+```r
+# with default nu
+ppool_syn_time <- multisynth(lnppexpend ~ cbr, State, year,
+                        analysis_df, n_leads = 10, time_cohort = TRUE)
+
+print(ppool_syn_time$nu)
+#> [1] 0.4414164
+
+ppool_syn_time
+#> 
+#> Call:
+#> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
+#>     data = analysis_df, n_leads = 10, time_cohort = TRUE)
+#> 
+#> Average ATT Estimate: 0.008
+```
+
+We can then compute effects for the overall average as well as for each treatment time cohort, rather than individual units.
+
+
+```r
+ppool_syn_time_summ <- summary(ppool_syn_time)
+ppool_syn_time_summ
+#> 
+#> Call:
+#> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
+#>     data = analysis_df, n_leads = 10, time_cohort = TRUE)
+#> 
+#> Global L2 Imbalance (Scaled): 0.592  (0.026)
+#> 
+#> Individual L2 Imbalance (Scaled): 7.306  (0.258)	
+#> 
+#> Average ATT Estimate (Std. Error): 0.008  (0.019)
+#> 
+#>  Time Since Treatment   Level     Estimate  Std.Error
+#>                     0 Average  0.015383146 0.01833977
+#>                     1 Average  0.006146529 0.01748648
+#>                     2 Average  0.030249213 0.02084475
+#>                     3 Average  0.025387275 0.02037887
+#>                     4 Average  0.022623449 0.02483946
+#>                     5 Average  0.016170989 0.02255253
+#>                     6 Average  0.005542375 0.02340480
+#>                     7 Average  0.005257088 0.03670321
+#>                     8 Average -0.021308099 0.04303078
+#>                     9 Average -0.021635036 0.05789247
+```
+
+<table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:right;"> Time </th>
+   <th style="text-align:left;"> Level </th>
+   <th style="text-align:right;"> Estimate </th>
+   <th style="text-align:right;"> Std.Error </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0153831 </td>
+   <td style="text-align:right;"> 0.0183398 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0061465 </td>
+   <td style="text-align:right;"> 0.0174865 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 2 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0302492 </td>
+   <td style="text-align:right;"> 0.0208447 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 3 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0253873 </td>
+   <td style="text-align:right;"> 0.0203789 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 4 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0226234 </td>
+   <td style="text-align:right;"> 0.0248395 </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 5 </td>
+   <td style="text-align:left;"> Average </td>
+   <td style="text-align:right;"> 0.0161710 </td>
+   <td style="text-align:right;"> 0.0225525 </td>
+  </tr>
+</tbody>
+</table>
+
+Again we can plot the effects.
+
+
+```r
+plot(ppool_syn_time_summ)
+```
+
+<img src="figure/ppool_syn_time_plot-1.png" title="plot of chunk ppool_syn_time_plot" alt="plot of chunk ppool_syn_time_plot" style="display: block; margin: auto;" />
+
+
 ## Combining with outcome modeling
 
 ### Weighted event studies
@@ -269,16 +378,16 @@ wevent_summ
 #> Average ATT Estimate (Std. Error): -0.010  (0.019)
 #> 
 #>  Time Since Treatment   Level     Estimate  Std.Error
-#>                     0 Average -0.004205222 0.01849207
-#>                     1 Average -0.008622952 0.01503891
-#>                     2 Average  0.005280512 0.01585863
-#>                     3 Average  0.003038094 0.02094280
-#>                     4 Average -0.011418987 0.02301238
-#>                     5 Average -0.014193823 0.02568895
-#>                     6 Average -0.017847992 0.02728860
-#>                     7 Average -0.001066548 0.03064605
-#>                     8 Average -0.016908528 0.03634507
-#>                     9 Average -0.031673689 0.03347085
+#>                     0 Average -0.004205222 0.01850900
+#>                     1 Average -0.008622952 0.01502728
+#>                     2 Average  0.005280512 0.01587768
+#>                     3 Average  0.003038094 0.02094582
+#>                     4 Average -0.011418987 0.02302643
+#>                     5 Average -0.014193823 0.02568389
+#>                     6 Average -0.017847992 0.02732629
+#>                     7 Average -0.001066548 0.03071748
+#>                     8 Average -0.016908528 0.03635518
+#>                     9 Average -0.031673689 0.03352912
 ```
 
 
@@ -331,23 +440,23 @@ scm_gsyn_summ
 #> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
 #>     data = analysis_df, n_leads = 10, fixedeff = T, n_factors = NULL)
 #> 
-#> Global L2 Imbalance (Scaled): 0.426  (0.019)
+#> Global L2 Imbalance (Scaled): 0.427  (0.019)
 #> 
 #> Individual L2 Imbalance (Scaled): 2.782  (0.098)	
 #> 
 #> Average ATT Estimate (Std. Error): -0.005  (0.019)
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error
-#>                     0 Average  0.0032628493 0.01853635
-#>                     1 Average -0.0081209213 0.01527109
-#>                     2 Average  0.0087285570 0.01563571
-#>                     3 Average  0.0128470454 0.02088029
-#>                     4 Average -0.0032241542 0.02301556
-#>                     5 Average -0.0000249834 0.02590816
-#>                     6 Average  0.0003876451 0.02747243
-#>                     7 Average  0.0046510799 0.03076487
-#>                     8 Average -0.0246003858 0.03619815
-#>                     9 Average -0.0413576990 0.03355721
+#>                     0 Average  3.295537e-03 0.01851264
+#>                     1 Average -8.080488e-03 0.01527101
+#>                     2 Average  8.749617e-03 0.01560119
+#>                     3 Average  1.283153e-02 0.02091638
+#>                     4 Average -3.291577e-03 0.02300468
+#>                     5 Average -8.517862e-05 0.02585108
+#>                     6 Average  3.864059e-04 0.02741990
+#>                     7 Average  4.638853e-03 0.03073944
+#>                     8 Average -2.457526e-02 0.03615866
+#>                     9 Average -4.135163e-02 0.03344285
 ```
 
 
