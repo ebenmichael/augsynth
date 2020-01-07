@@ -4,7 +4,7 @@
 \alias{make_Pmat}
 \title{Make the matrix in the QP}
 \usage{
-make_Pmat(Xc, x_t, nu, n_lags, lambda)
+make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
 }
 \description{
 Make the matrix in the QP

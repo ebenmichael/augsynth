@@ -4,17 +4,20 @@
 \alias{make_constraint_mats}
 \title{Create constraint matrices for multisynth QP}
 \usage{
-make_constraint_mats(trt, grps, n_leads)
+make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d)
 }
 \arguments{
 \item{trt}{Vector of treatment levels/times}
 
 \item{grps}{Treatment times}
 
-\item{n_leads}{Number of time periods after treatment to impute control values.
-For units treated at time T_j, all units treated after T_j + n_leads
-will be used as control values. If larger than the number of periods,
-only never never treated units (pure controls) will be used as comparison units#'}
+\item{n_leads}{Number of time periods after treatment to impute control values.}
+
+\item{n_lags}{Number of pre-treatment periods to balance}
+
+\item{Xc}{List of outcomes for possible comparison units}
+
+\item{d}{Max number of lagged outcomes}
 }
 \value{
 \itemize{

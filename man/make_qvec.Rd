@@ -4,7 +4,7 @@
 \alias{make_qvec}
 \title{Make the vector in the QP}
 \usage{
-make_qvec(Xc, x_t, nu, n_lags)
+make_qvec(Xc, x_t, nu, n_lags, d)
 }
 \description{
 Make the vector in the QP

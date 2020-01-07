@@ -27,7 +27,8 @@
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
-                          relative=T, nu=0, lambda=0, verbose = FALSE, eps_rel=1e-5, eps_abs=1e-5) {
+                          relative=T, nu=0, lambda=0, verbose = FALSE, 
+                          eps_rel=1e-4, eps_abs=1e-4) {
 
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
@@ -37,7 +38,6 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     } else if(n_leads > d) {
         n_leads <- d+1
     }
-
     if(is.null(n_lags)) {
         n_lags <- d
     } else if(n_lags > d) {
@@ -77,18 +77,17 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     ## make matrices for QP
     idxs0  <- trt  > n_leads + min(grps)
     n0 <- sum(idxs0)    
-    const_mats <- make_constraint_mats(trt, grps, n_leads)
+    const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
     uvec <- const_mats$uvec
 
     ## quadratic balance measures
 
-    qvec <- make_qvec(Xc, x_t, nu, n_lags)
+    qvec <- make_qvec(Xc, x_t, nu, n_lags, d)
     
-    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda)
+    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
 
-    
     ## Optimize
     settings <- do.call(osqp::osqpSettings, 
                         c(list(verbose = verbose, 
@@ -96,9 +95,10 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                                eps_abs = eps_abs)))
 
     out <- osqp::solve_osqp(Pmat, qvec, Amat, lvec, uvec, pars = settings)
-
+    # return(out)
     ## get weights
-    weights <- matrix(out$x, nrow=n0)
+    total_ctrls <- n0 * J
+    weights <- matrix(out$x[1:total_ctrls], nrow = n0)
 
     ## compute imbalance
     if(relative) {
@@ -125,7 +125,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     ind_l2 <- sum(apply(imbalance, 2, function(x) sqrt(sum(x^2))))
     ## pad weights with zeros for treated units and divide by number of treated units
     weights <- matrix(0, nrow=n, ncol=J)
-    weights[idxs0,] <- matrix(out$x, nrow=n0)
+    weights[idxs0,] <- matrix(out$x[1:total_ctrls], nrow=n0)
     weights <- t(t(weights) / n1
                  )
 
@@ -144,16 +144,16 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 #' @param trt Vector of treatment levels/times
 #' @param grps Treatment times
 #' @param n_leads Number of time periods after treatment to impute control values.
-#'            For units treated at time T_j, all units treated after T_j + n_leads
-#'            will be used as control values. If larger than the number of periods,
-#'            only never never treated units (pure controls) will be used as comparison units#'
+#' @param n_lags Number of pre-treatment periods to balance
+#' @param Xc List of outcomes for possible comparison units
+#' @param d Max number of lagged outcomes
 #' @return 
 #'         \itemize{
 #'          \item{"Amat"}{Linear constraint matrix}
 #'          \item{"lvec"}{Lower bounds for linear constraints}
 #'          \item{"uvec"}{Upper bounds for linear constraints}
 #'         }
-make_constraint_mats <- function(trt, grps, n_leads) {
+make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d) {
 
     J <- length(grps)
     n1 <- sapply(1:J, function(j) 1)
@@ -179,21 +179,49 @@ make_constraint_mats <- function(trt, grps, n_leads) {
 
     Amat <- Matrix::rbind2(Amat, Matrix::t(A3))
 
-    
+
+    # constraints for transformed weights
+    A_trans1 <- do.call(Matrix::bdiag,
+                       lapply(1:J,
+                        function(j)  {
+                            dj <- ncol(Xc[[j]])
+                            ndim <- min(dj, n_lags)
+                            max_dim <- min(d, n_lags)
+                            mat <- Xc[[j]][, (dj - ndim + 1):dj, drop = F]
+                            n0 <- nrow(mat)
+                            zero_mat <- Matrix::Matrix(0, n0, max_dim - ndim)
+                            Matrix::t(cbind(zero_mat, mat))
+                       }))
+    sum_tj <- nrow(A_trans1) # sum of total number of pre-periods
+    sum_tj <- min(d, n_lags) * J
+    A_trans2 <- - Matrix::Diagonal(sum_tj)
+    A_trans <- Matrix::cbind2(A_trans1, A_trans2)
+
+    # add in zero columns for transformated weights
+    Amat <- Matrix::cbind2(Amat, 
+                           Matrix::Matrix(0,
+                                          nrow = nrow(Amat),
+                                          ncol = sum_tj))
+    Amat <- Matrix::rbind2(Amat, A_trans)
+
     lvec <- c(n1, # sum to n1 constraint
               numeric(nrow(A1)), # lower bound by zero
-              numeric(J)) # zero out weights for impossible donors
+              numeric(J), # zero out weights for impossible donors
+              numeric(sum_tj) # constrain transformed weights
+             ) 
     
     uvec <- c(n1, #sum to n1 constraint
               rep(Inf, nrow(A1)),
-              numeric(J)) # zero out weights for impossible donors
+              numeric(J), # zero out weights for impossible donors
+              numeric(sum_tj) # constrain transformed weights
+              )
 
 
-    return(list(Amat=Amat, lvec=lvec, uvec=uvec))
+    return(list(Amat = Amat, lvec = lvec, uvec = uvec))
 }
 
 #' Make the vector in the QP
-make_qvec <- function(Xc, x_t, nu, n_lags) {
+make_qvec <- function(Xc, x_t, nu, n_lags, d) {
 
     J <- length(x_t)
 
@@ -201,56 +229,54 @@ make_qvec <- function(Xc, x_t, nu, n_lags) {
                    function(j) {
                        dj <- length(x_t[[j]])
                        ndim <- min(dj, n_lags)
-                       c(Xc[[j]][,(dj - ndim+1):dj, drop=F] %*%
-                         x_t[[j]][(dj - ndim+1):dj]) /
-                           ndim
-                   }
-                   )
+                       max_dim <- min(d, n_lags)
+                       vec <- x_t[[j]][(dj - ndim + 1):dj] / ndim
+                       c(numeric(max_dim - ndim), vec)
+                   })
 
-    qvec_avg <- lapply(1:J,
-                       function(j)  {
-                           lapply(x_t,
-                                  function(xtk) {
-                                    dk <- length(xtk)
-                                    dj <- ncol(Xc[[j]])
-                                    ndim <- min(dk, dj, n_lags)
-                                    Xc[[j]][,(dj - ndim + 1):dj, drop=F] %*%
-                                        xtk[(dk - ndim + 1):dk]
-                                  }) %>% reduce(`+`)
-                       }) %>% reduce(c)
+    avg_target_vec <- lapply(x_t,
+                            function(xtk) {
+                                dk <- length(xtk)
+                                ndim <- min(dk, n_lags)
+                                max_dim <- min(d, n_lags)
+                                c(numeric(max_dim - ndim), 
+                                    xtk[(dk - ndim + 1):dk])
+                            }) %>% reduce(`+`)
+    qvec_avg <- rep(avg_target_vec, J)
 
-    return(- (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c)))
+    qvec <- - (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c))
+    total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
+    return(c(numeric(total_ctrls), qvec))
 }
 
 
 #' Make the matrix in the QP
-make_Pmat <- function(Xc, x_t, nu, n_lags, lambda) {
+make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
 
     J <- length(x_t)
 
-    V1 <- do.call(Matrix::bdiag,
-                  lapply(1:J,
-                         function(j) {
-                             dj <- length(x_t[[j]])
-                             ndim <- min(dj, n_lags)
-                             Xc[[j]][,(dj - ndim + 1):dj, drop = F] / sqrt(ndim)
-                         })
-                  )
 
-    lapply(1:J,
-           function(k) {
-               lapply(1:J,
-                      function(j) {
-                        dk <- ncol(Xc[[k]])
-                        dj <- ncol(Xc[[j]])
-                        ndim <- min(dk, dj, n_lags)
-                        Xc[[k]][, (dk - ndim + 1):dk, drop = F] %*%
-                            t(Xc[[j]][,(dj - ndim + 1):dj, drop = F]) / n_lags
-                      }) %>% do.call(cbind, .)
-           }) %>% do.call(rbind, .) -> V2
+    ndims <- vapply(1:J,
+                    function(j) min(length(x_t[[j]]), n_lags),
+                    numeric(1))
+    max_dim <- min(d, n_lags)
+    total_dim <- sum(ndims)
+    total_dim <- max_dim * J
+    V1 <- Matrix::bdiag(lapply(ndims, 
+                        function(ndim) Matrix::Diagonal(max_dim, 1 / ndim)))
 
-    return(nu * V2 + 
-           (1 - nu) * V1 %*% Matrix::t(V1) +
-           lambda * Matrix::Diagonal(nrow(V1)))
+    tile_sparse <- function(d,j) {
+        kronecker(Matrix::Matrix(1, nrow = j, ncol = j), Matrix::Diagonal(d))
+    }
+    V2 <- tile_sparse(d, J) / n_lags
+    Pmat <- nu * V2 + (1 - nu) * V1
+    # combine
+    total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
+    Pmat <- Matrix::bdiag(Matrix::Matrix(0, nrow = total_ctrls,
+                                         ncol = total_ctrls),
+                          Pmat)
+    I0 <- Matrix::bdiag(Matrix::Diagonal(total_ctrls),
+                        Matrix::Matrix(0, nrow = total_dim, ncol = total_dim))
+    return(Pmat + lambda * I0)
 
 }
