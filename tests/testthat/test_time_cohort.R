@@ -31,3 +31,12 @@ test_that("multisynth at the unit level and time cohort level give the same answ
 
 }
 )
+
+
+test_that("multisynth at the time cohort level runs", {
+
+    expect_error(msyn_time <- multisynth(gdpcap ~ trt, regionno, year, basque,
+                            time_cohort = T, scm = T),
+                 NA)
+}
+)

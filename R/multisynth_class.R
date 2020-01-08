@@ -243,7 +243,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     verbose = verbose)
             ## select nu by triangle inequality ratio
             glbl <- sqrt(sum(nu_fit$imbalance[,1]^2))
-            ind <- sum(apply(nu_fit$imbalance[,-1], 2, function(x) sqrt(sum(x^2))))
+            ind <- sum(apply(nu_fit$imbalance[,-1, drop = F], 2, function(x) sqrt(sum(x^2))))
             nu <- glbl / ind
 
         }
@@ -615,8 +615,6 @@ summary.multisynth <- function(multisynth, jackknife=T) {
     if(time_cohort) {
         grps <- unique(trt[is.finite(trt)])
         which_t <- lapply(grps, function(tj) (1:n)[trt == tj])
-        # if doing a time cohort, convert the boolean mask
-        mask <- unique(mask)
     } else {
         grps <- trt[is.finite(trt)]
         which_t <- (1:n)[is.finite(trt)]

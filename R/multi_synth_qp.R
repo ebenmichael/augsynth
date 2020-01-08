@@ -138,7 +138,6 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     weights <- t(t(weights) / n1
                  )
 
-    
     output <- list(weights=weights,
                    imbalance=cbind(avg_imbal, imbalance),
                    global_l2=global_l2,
