@@ -4,8 +4,7 @@
 \alias{fit_prog_gsynth}
 \title{Use gsynth to fit factor model for E[Y(0)|X]}
 \usage{
-fit_prog_gsynth(X, y, trt, r = 0, r.end = 5, force = 3, CV = 1,
-  ...)
+fit_prog_gsynth(X, y, trt, r = 0, r.end = 5, force = 3, CV = 1, ...)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}

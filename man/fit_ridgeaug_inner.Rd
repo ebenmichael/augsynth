@@ -4,8 +4,20 @@
 \alias{fit_ridgeaug_inner}
 \title{Helper function to fit ridge ASCM}
 \usage{
-fit_ridgeaug_inner(X_c, X_1, trt, synth_data, lambda, ridge, scm,
-  lambda_min_ratio, n_lambda, lambda_max, holdout_length, min_1se)
+fit_ridgeaug_inner(
+  X_c,
+  X_1,
+  trt,
+  synth_data,
+  lambda,
+  ridge,
+  scm,
+  lambda_min_ratio,
+  n_lambda,
+  lambda_max,
+  holdout_length,
+  min_1se
+)
 }
 \arguments{
 \item{X_1}{Vector of treated leagged outcomes}

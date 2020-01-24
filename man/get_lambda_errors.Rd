@@ -4,8 +4,15 @@
 \alias{get_lambda_errors}
 \title{Get Lambda Errors}
 \usage{
-get_lambda_errors(lambdas, X_c, X_t, synth_data, trt, holdout_length = 1,
-  scm = T)
+get_lambda_errors(
+  lambdas,
+  X_c,
+  X_t,
+  synth_data,
+  trt,
+  holdout_length = 1,
+  scm = T
+)
 }
 \arguments{
 \item{lambdas}{Vector of lambda values to compute errors for}

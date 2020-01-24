@@ -4,9 +4,20 @@
 \alias{fit_ridgeaug_formatted}
 \title{Ridge augmented weights (possibly with covariates)}
 \usage{
-fit_ridgeaug_formatted(wide_data, synth_data, Z = NULL, lambda = NULL,
-  ridge = T, scm = T, lambda_min_ratio = 1e-08, n_lambda = 20,
-  lambda_max = NULL, holdout_length = 1, min_1se = T, ...)
+fit_ridgeaug_formatted(
+  wide_data,
+  synth_data,
+  Z = NULL,
+  lambda = NULL,
+  ridge = T,
+  scm = T,
+  lambda_min_ratio = 1e-08,
+  n_lambda = 20,
+  lambda_max = NULL,
+  holdout_length = 1,
+  min_1se = T,
+  ...
+)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}

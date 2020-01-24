@@ -4,8 +4,13 @@
 \alias{fit_augsyn}
 \title{Fit outcome model and balance pre-period}
 \usage{
-fit_augsyn(wide_data, synth_data, progfunc = c("EN", "RF", "GSYN", "MCP",
-  "CITS", "CausalImpact", "seq2seq"), scm = T, ...)
+fit_augsyn(
+  wide_data,
+  synth_data,
+  progfunc = c("EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
+  scm = T,
+  ...
+)
 }
 \arguments{
 \item{wide_data}{Output of `format_ipw`}

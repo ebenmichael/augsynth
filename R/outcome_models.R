@@ -36,7 +36,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
         if(is.null(lambda)) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha, grouped=FALSE)$lambda.min
         } else {
             lam <- lambda
         }
@@ -63,7 +63,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     } else {
         ## fit multi response regression
         lam <- glmnet::cv.glmnet(X, y, family="mgaussian",
-                                 alpha=alpha)$lambda.min
+                                 alpha=alpha, grouped=FALSE)$lambda.min
         fit <- glmnet::glmnet(X, y, family="mgaussian",
                               alpha=alpha,
                               lambda=lam)

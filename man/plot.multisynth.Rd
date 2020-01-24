@@ -4,8 +4,7 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(multisynth, levels = NULL, se = T,
-  jackknife = T)
+\method{plot}{multisynth}(multisynth, levels = NULL, se = T, jackknife = T)
 }
 \arguments{
 \item{levels}{Treatment levels to plot for, default plots for everything}

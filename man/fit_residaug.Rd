@@ -4,8 +4,13 @@
 \alias{fit_residaug}
 \title{Fit outcome model and balance residuals}
 \usage{
-fit_residaug(wide_data, synth_data, progfunc = c("GSYN", "MCP", "CITS",
-  "CausalImpact"), weightfunc = c("SC", "ENT", "SVD", "NONE"), ...)
+fit_residaug(
+  wide_data,
+  synth_data,
+  progfunc = c("GSYN", "MCP", "CITS", "CausalImpact"),
+  weightfunc = c("SC", "ENT", "SVD", "NONE"),
+  ...
+)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}

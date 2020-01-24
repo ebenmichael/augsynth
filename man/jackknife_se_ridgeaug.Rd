@@ -5,8 +5,15 @@
 \title{Estimate standard errors with the jackknife
 Do this for ridge-augmented synth}
 \usage{
-jackknife_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL,
-  ridge = T, scm = T, fixedeff = F)
+jackknife_se_ridgeaug(
+  wide_data,
+  synth_data,
+  Z = NULL,
+  lambda = NULL,
+  ridge = T,
+  scm = T,
+  fixedeff = F
+)
 }
 \arguments{
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
