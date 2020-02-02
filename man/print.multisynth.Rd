@@ -6,6 +6,11 @@
 \usage{
 \method{print}{multisynth}(x, ...)
 }
+\arguments{
+\item{x}{multisynth object}
+
+\item{...}{Optional arguments}
+}
 \description{
 Print function for multisynth
 }

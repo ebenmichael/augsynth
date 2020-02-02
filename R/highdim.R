@@ -71,8 +71,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #'                 Comp=softImpute, MCP=MCPanel, CITS=CITS
 #'                 CausalImpact=Bayesian structural time series with CausalImpact
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
-#' @param weightfunc What function to use to fit weights
-#'                   SC=Vanilla Synthetic Controls, ENT=Maximum Entropy
+#' @param scm Whether the SCM weighting function is used
 #' @param ... optional arguments for outcome model
 #' 
 #' @return \itemize{

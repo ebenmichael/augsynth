@@ -7,7 +7,9 @@
 \method{plot}{summary.augsynth}(x, ...)
 }
 \arguments{
-\item{se}{Whether to plot standard error}
+\item{x}{Summary object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for summary function for augsynth

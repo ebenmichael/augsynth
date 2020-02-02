@@ -16,6 +16,12 @@ jackknife_se_ridgeaug(
 )
 }
 \arguments{
+\item{wide_data}{Data formatted from format_data}
+
+\item{synth_data}{Data formatted from foramt_synth}
+
+\item{Z}{Matrix of auxiliary covariates}
+
 \item{lambda}{Ridge hyper-parameter, if NULL use CV}
 
 \item{ridge}{Include ridge or not}

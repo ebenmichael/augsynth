@@ -7,11 +7,9 @@
 \method{plot}{multisynth}(x, ...)
 }
 \arguments{
-\item{levels}{Treatment levels to plot for, default plots for everything}
+\item{x}{Augsynth object to be plotted}
 
-\item{se}{Whether to plot standard errors}
-
-\item{jackknife}{Whether to compute jackknife standard errors, default T}
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for multisynth

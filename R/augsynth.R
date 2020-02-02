@@ -95,7 +95,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' @param Z Matrix of auxiliary covariates
 #' @param progfunc outcome model to use
 #' @param scm Whether to fit SCM
-#' @param fixed_eff Whether to de-mean synth
+#' @param fixedeff Whether to de-mean synth
 #' @param ... Extra args for outcome model
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   scm, fixedeff, ...) {
@@ -153,8 +153,8 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
 }
 
 #' Get prediction of ATT or average outcome under control
-#' @param augsynth augsynth object
-#' @param att Whether to return the ATT or average outcome under control
+#' @param object augsynth object
+#' @param ... Optional arguments
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
@@ -186,6 +186,8 @@ predict.augsynth <- function(object, ...) {
 
 
 #' Print function for augsynth
+#' @param x augsynth object
+#' @param ... Optional arguments
 #' @export
 print.augsynth <- function(x, ...) {
     augsynth <- x
@@ -204,8 +206,8 @@ print.augsynth <- function(x, ...) {
 
 
 #' Plot function for augsynth
-#' @param se Whether to plot standard errors
-#' @param jackknife Whether to use jackknife or weighted SEs
+#' @param x Augsynth object to be plotted
+#' @param ... Optional arguments
 #' @export
 plot.augsynth <- function(x, ...) {
     if ("se" %in% names(list(...))) {
@@ -219,7 +221,8 @@ plot.augsynth <- function(x, ...) {
 
 
 #' Summary function for augsynth
-#' @param jackknife Whether to use jackknife or weighted SEs
+#' @param object augsynth object
+#' @param ... Optional arguments
 #' @export
 summary.augsynth <- function(object, ...) {
     augsynth <- object
@@ -282,6 +285,8 @@ summary.augsynth <- function(object, ...) {
 }
 
 #' Print function for summary function for augsynth
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
 print.summary.augsynth <- function(x, ...) {
     summ <- x
@@ -323,7 +328,8 @@ print.summary.augsynth <- function(x, ...) {
 }
 
 #' Plot function for summary function for augsynth
-#' @param se Whether to plot standard error
+#' @param x Summary object
+#' @param ... Optional arguments
 #' @export
 plot.summary.augsynth <- function(x, ...) {
     summ <- x

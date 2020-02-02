@@ -44,6 +44,12 @@ Default: 0}
 \item{lambda}{Regularization hyper-parameter. Default, 0}
 
 \item{time_cohort}{Whether to average synthetic controls into time cohorts}
+
+\item{verbose}{Whether to print logs for osqp}
+
+\item{eps_rel}{Relative error tolerance for osqp}
+
+\item{eps_abs}{Absolute error tolerance for osqp}
 }
 \value{
 \itemize{

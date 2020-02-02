@@ -132,6 +132,7 @@ multisynth <- function(form, unit, time, data,
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
+#' @param ... Extra arguments
 #'
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
@@ -309,9 +310,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
 
 #' Get prediction of average outcome under control or ATT
-#' @param multisynth Fit multisynth object
-#' @param relative Whether to aggregate estimates according to calendar or relative time
-#' @param att Whether to estimate the ATT or the missing counterfactual
+#' @param object Fit multisynth object
+#' @param ... Optional arguments
 #'
 #' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
@@ -478,6 +478,8 @@ predict.multisynth <- function(object, ...) {
 
 
 #' Print function for multisynth
+#' @param x multisynth object
+#' @param ... Optional arguments
 #' @export
 print.multisynth <- function(x, ...) {
     multisynth <- x
@@ -497,9 +499,8 @@ print.multisynth <- function(x, ...) {
 
 
 #' Plot function for multisynth
-#' @param levels Treatment levels to plot for, default plots for everything
-#' @param se Whether to plot standard errors
-#' @param jackknife Whether to compute jackknife standard errors, default T
+#' @param x Augsynth object to be plotted
+#' @param ... Optional arguments
 #' @export
 plot.multisynth <- function(x, ...) {
     if ("se" %in% names(list(...))) {
@@ -619,8 +620,8 @@ compute_se <- function(multisynth, relative=NULL) {
 
 
 #' Summary function for multisynth
-#' @param relative Whether to estimate effects for time relative to treatment
-#' @param jackknife Whether to use jackknice standard errors, default T
+#' @param object multisynth object
+#' @param ... Optional arguments
 #' 
 #' @return summary.multisynth object that contains:
 #'         \itemize{
@@ -727,7 +728,8 @@ summary.multisynth <- function(object, ...) {
 }
 
 #' Print function for summary function for multisynth
-#' @param level Which treatment level to show summary for, default is average
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
 print.summary.multisynth <- function(x, ...) {
     if ("level" %in% names(list(...))) {
@@ -780,8 +782,8 @@ print.summary.multisynth <- function(x, ...) {
 }
 
 #' Plot function for summary function for multisynth
-#' @param levels Treatment levels to plot for, default plots for everything
-#' @param se Whether to plot standard errors
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
 plot.summary.multisynth <- function(x, ...) {
     if ("se" %in% names(list(...))) {

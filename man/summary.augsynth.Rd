@@ -7,7 +7,9 @@
 \method{summary}{augsynth}(object, ...)
 }
 \arguments{
-\item{jackknife}{Whether to use jackknife or weighted SEs}
+\item{object}{augsynth object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Summary function for augsynth

@@ -20,6 +20,9 @@
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
 #' @param time_cohort Whether to average synthetic controls into time cohorts
+#' @param verbose Whether to print logs for osqp
+#' @param eps_rel Relative error tolerance for osqp
+#' @param eps_abs Absolute error tolerance for osqp
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Matrix of unit weights}

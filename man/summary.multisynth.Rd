@@ -7,9 +7,9 @@
 \method{summary}{multisynth}(object, ...)
 }
 \arguments{
-\item{relative}{Whether to estimate effects for time relative to treatment}
+\item{object}{multisynth object}
 
-\item{jackknife}{Whether to use jackknice standard errors, default T}
+\item{...}{Optional arguments}
 }
 \value{
 summary.multisynth object that contains:

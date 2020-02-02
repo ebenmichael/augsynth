@@ -18,6 +18,8 @@ cv_lambda(
 )
 }
 \arguments{
+\item{X_c}{Matrix of control lagged outcomes}
+
 \item{X_1}{Vector of treated leagged outcomes}
 
 \item{synth_data}{Output of `format_synth`}
@@ -35,8 +37,6 @@ cv_lambda(
 \item{n_lambda}{Number of lambdas to consider between the smallest and largest lambda value}
 
 \item{min_1se}{If TRUE, chooses the maximum lambda within 1 standard error of the lambda}
-
-\item{X_C}{Matrix of control lagged outcomes}
 }
 \value{
 \itemize{

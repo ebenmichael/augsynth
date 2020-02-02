@@ -7,7 +7,9 @@
 \method{print}{summary.multisynth}(x, ...)
 }
 \arguments{
-\item{level}{Which treatment level to show summary for, default is average}
+\item{x}{summary object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for summary function for multisynth

@@ -143,7 +143,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 }
 
 #' Helper function to fit ridge ASCM
-#' @param X_C Matrix of control lagged outcomes
+#' @param X_c Matrix of control lagged outcomes
 #' @param X_1 Vector of treated leagged outcomes
 #' @param trt Vector of treatment indicators
 #' @param synth_data Output of `format_synth`
@@ -247,7 +247,7 @@ choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
 }
 
 #' Choose best lambda with CV
-#' @param X_C Matrix of control lagged outcomes
+#' @param X_c Matrix of control lagged outcomes
 #' @param X_1 Vector of treated leagged outcomes
 #' @param synth_data Output of `format_synth`
 #' @param trt Vector of treatment indicators

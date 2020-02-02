@@ -20,6 +20,8 @@ fit_ridgeaug_inner(
 )
 }
 \arguments{
+\item{X_c}{Matrix of control lagged outcomes}
+
 \item{X_1}{Vector of treated leagged outcomes}
 
 \item{trt}{Vector of treatment indicators}
@@ -41,8 +43,6 @@ fit_ridgeaug_inner(
 \item{holdout_length}{Length of conseuctive holdout period for when tuning lambdas}
 
 \item{min_1se}{If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE}
-
-\item{X_C}{Matrix of control lagged outcomes}
 }
 \value{
 \itemize{

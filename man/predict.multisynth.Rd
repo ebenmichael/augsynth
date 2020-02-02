@@ -7,11 +7,9 @@
 \method{predict}{multisynth}(object, ...)
 }
 \arguments{
-\item{multisynth}{Fit multisynth object}
+\item{object}{Fit multisynth object}
 
-\item{relative}{Whether to aggregate estimates according to calendar or relative time}
-
-\item{att}{Whether to estimate the ATT or the missing counterfactual}
+\item{...}{Optional arguments}
 }
 \value{
 Matrix of predicted post-treatment control outcomes for each treated unit

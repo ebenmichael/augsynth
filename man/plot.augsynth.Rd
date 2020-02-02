@@ -7,9 +7,9 @@
 \method{plot}{augsynth}(x, ...)
 }
 \arguments{
-\item{se}{Whether to plot standard errors}
+\item{x}{Augsynth object to be plotted}
 
-\item{jackknife}{Whether to use jackknife or weighted SEs}
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for augsynth

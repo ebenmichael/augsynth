@@ -33,6 +33,8 @@ fit_prog_seq2seq(
 \item{val_split}{Proportion of control units to use for validation}
 
 \item{verbose}{Whether to print training progress}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

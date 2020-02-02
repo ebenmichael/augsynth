@@ -4,10 +4,12 @@
 
 #' Use leave out one estimates (placebo gaps) to estimate unit-level variance
 #' Do this for ridge-augmented synth
+#' @param wide_data Data formatted from format_data
+#' @param synth_data Data formatted from foramt_synth
+#' @param Z Matrix of auxiliary covariates
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
-#' 
 #' @return att estimates, test statistics, p-values
 loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
@@ -85,7 +87,7 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 
 #' Drop unit i from data
 #' @param wide_data (X, y, trt)
-#' param Z Covariates matrix
+#' @param Z Covariates matrix
 #' @param i Unit to drop
 drop_unit_i <- function(wide_data, Z, i) {
 
@@ -114,6 +116,9 @@ drop_unit_i <- function(wide_data, Z, i) {
 
 #' Estimate standard errors with the jackknife
 #' Do this for ridge-augmented synth
+#' @param wide_data Data formatted from format_data
+#' @param synth_data Data formatted from foramt_synth
+#' @param Z Matrix of auxiliary covariates
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
@@ -287,6 +292,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 }
 
 #' Helper function to drop unit i and refit
+#' @param i Unit to drop
 drop_unit_i_multi <- function(msyn, i) {
 
     n <- nrow(msyn$data$X)

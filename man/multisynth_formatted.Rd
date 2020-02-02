@@ -54,6 +54,8 @@ multisynth_formatted(
 \item{eps_rel}{Relative error tolerance for osqp}
 
 \item{verbose}{Whether to print logs for osqp}
+
+\item{...}{Extra arguments}
 }
 \value{
 multisynth object

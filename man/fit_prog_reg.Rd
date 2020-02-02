@@ -34,6 +34,8 @@ fit_prog_reg(
  \item{sep }{Separate outcome models}
  \item{avg }{Average responses into 1 outcome}
  \item{multi }{Use multi response regression in glmnet}}}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

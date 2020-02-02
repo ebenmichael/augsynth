@@ -23,10 +23,9 @@ Comp=softImpute, MCP=MCPanel, CITS=CITS
 CausalImpact=Bayesian structural time series with CausalImpact
 seq2seq=Sequence to sequence learning with feedforward nets}
 
-\item{...}{optional arguments for outcome model}
+\item{scm}{Whether the SCM weighting function is used}
 
-\item{weightfunc}{What function to use to fit weights
-SC=Vanilla Synthetic Controls, ENT=Maximum Entropy}
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{
