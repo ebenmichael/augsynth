@@ -75,14 +75,13 @@ test_that("Augmenting synth with MCPanel runs", {
         ## should fail because MCPanel isn't installed
         expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
                      "you must install the MCPanel package")
-
-        ## install MCPanel
-        devtools::install_github("susanathey/MCPanel")
+    } else {
+        ## should run because MCPanel is installed
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
+                     NA)    
     }
 
-    ## should run because MCPanel is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
-                 NA)    
+    
 }
 )
 
