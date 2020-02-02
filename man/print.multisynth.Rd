@@ -4,7 +4,7 @@
 \alias{print.multisynth}
 \title{Print function for multisynth}
 \usage{
-\method{print}{multisynth}(multisynth)
+\method{print}{multisynth}(x, ...)
 }
 \description{
 Print function for multisynth

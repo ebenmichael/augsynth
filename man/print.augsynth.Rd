@@ -4,7 +4,7 @@
 \alias{print.augsynth}
 \title{Print function for augsynth}
 \usage{
-\method{print}{augsynth}(augsynth)
+\method{print}{augsynth}(x, ...)
 }
 \description{
 Print function for augsynth

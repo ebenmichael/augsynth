@@ -24,3 +24,5 @@ inst/doc
 *.o
 *.so
 *.dll
+
+test.R

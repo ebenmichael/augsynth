@@ -4,7 +4,7 @@
 \alias{predict.augsynth}
 \title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth}(augsynth, att = F)
+\method{predict}{augsynth}(object, ...)
 }
 \arguments{
 \item{augsynth}{augsynth object}

@@ -4,12 +4,12 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(multisynth, jackknife = T)
+\method{summary}{multisynth}(object, ...)
 }
 \arguments{
-\item{jackknife}{Whether to use jackknice standard errors, default T}
-
 \item{relative}{Whether to estimate effects for time relative to treatment}
+
+\item{jackknife}{Whether to use jackknice standard errors, default T}
 }
 \value{
 summary.multisynth object that contains:

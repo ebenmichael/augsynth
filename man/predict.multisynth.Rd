@@ -4,7 +4,7 @@
 \alias{predict.multisynth}
 \title{Get prediction of average outcome under control or ATT}
 \usage{
-\method{predict}{multisynth}(multisynth, relative = NULL, att = F)
+\method{predict}{multisynth}(object, ...)
 }
 \arguments{
 \item{multisynth}{Fit multisynth object}
