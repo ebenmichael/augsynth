@@ -4,6 +4,8 @@
 
 #' Use a separate regularized regression for each post period
 #' to fit E[Y(0)|X]
+#' @importFrom stats poly
+#' @importFrom stats coef
 #'
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
@@ -289,6 +291,8 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 
 #' Fit a Comparitive interupted time series
 #' to fit E[Y(0)|X]
+#' @importFrom stats lm
+#' @importFrom stats predict
 #'
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes

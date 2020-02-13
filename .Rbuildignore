@@ -1,3 +1,4 @@
 ^Meta$
 ^doc$
 ^\.travis\.yml$
+^pkg.Rproj$

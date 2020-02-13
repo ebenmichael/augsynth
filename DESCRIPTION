@@ -18,7 +18,7 @@ Imports:
     Matrix,
     osqp,
     rlang,
-    purrr
+    purrr,
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE
@@ -35,5 +35,6 @@ Suggests:
     softImpute,
     MCPanel,
     glmnet,
-    randomForest
+    randomForest,
+    kableExtra
 VignetteBuilder: knitr

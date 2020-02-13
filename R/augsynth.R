@@ -4,6 +4,8 @@
 
 
 #' Fit Augmented SCM
+#' @importFrom stats terms
+#' @importFrom stats formula
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column

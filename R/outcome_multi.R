@@ -4,7 +4,7 @@
 
 
 #' Use gsynth to fit factor model with 
-#'
+#' @importFrom utils capture.output
 #' @param X Matrix of outcomes
 #' @param trt Vector of treatment status for each unit
 #' @param r Number of factors to use (or start with if CV==1)
