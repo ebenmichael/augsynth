@@ -36,5 +36,6 @@ Suggests:
     MCPanel,
     glmnet,
     randomForest,
-    kableExtra
+    kableExtra,
+    ggrepel
 VignetteBuilder: knitr

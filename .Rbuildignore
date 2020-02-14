@@ -2,3 +2,5 @@
 ^doc$
 ^\.travis\.yml$
 ^pkg.Rproj$
+figure$
+cache$
