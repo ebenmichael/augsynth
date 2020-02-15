@@ -499,6 +499,7 @@ print.multisynth <- function(x, ...) {
 
 
 #' Plot function for multisynth
+#' @importFrom graphics plot
 #' @param x Augsynth object to be plotted
 #' @param ... Optional arguments
 #' @export
@@ -782,6 +783,8 @@ print.summary.multisynth <- function(x, ...) {
 }
 
 #' Plot function for summary function for multisynth
+#' @importFrom ggplot2 aes
+#' 
 #' @param x summary object
 #' @param ... Optional arguments
 #' @export

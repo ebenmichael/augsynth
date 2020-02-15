@@ -6,6 +6,11 @@
 #' Fit Augmented SCM
 #' @importFrom stats terms
 #' @importFrom stats formula
+#' @importFrom stats update 
+#' @importFrom stats delete.response 
+#' @importFrom stats model.matrix 
+#' @importFrom stats model.frame 
+#' 
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column
@@ -208,6 +213,8 @@ print.augsynth <- function(x, ...) {
 
 
 #' Plot function for augsynth
+#' @importFrom graphics plot
+#' 
 #' @param x Augsynth object to be plotted
 #' @param ... Optional arguments
 #' @export
