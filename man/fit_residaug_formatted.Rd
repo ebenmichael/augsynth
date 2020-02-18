@@ -4,7 +4,8 @@
 \alias{fit_residaug_formatted}
 \title{Fit outcome model and balance residuals}
 \usage{
-fit_residaug_formatted(wide_data, synth_data, fit_progscore, fit_weights, ...)
+fit_residaug_formatted(wide_data, synth_data, fit_progscore, fit_weights,
+  ...)
 }
 \arguments{
 \item{wide_data}{Output of `format_data`}

@@ -4,18 +4,8 @@
 \alias{cv_lambda}
 \title{Choose best lambda with CV}
 \usage{
-cv_lambda(
-  X_c,
-  X_1,
-  synth_data,
-  trt,
-  holdout_length,
-  scm,
-  lambda_max,
-  lambda_min_ratio,
-  n_lambda,
-  min_1se
-)
+cv_lambda(X_c, X_1, synth_data, trt, holdout_length, scm, lambda_max,
+  lambda_min_ratio, n_lambda, min_1se)
 }
 \arguments{
 \item{X_c}{Matrix of control lagged outcomes}

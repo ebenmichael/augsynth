@@ -4,25 +4,9 @@
 \alias{multisynth_formatted}
 \title{Internal funciton to fit staggered synth with formatted data}
 \usage{
-multisynth_formatted(
-  wide,
-  relative = T,
-  n_leads,
-  n_lags,
-  nu,
-  lambda,
-  force,
-  n_factors,
-  scm,
-  time_cohort,
-  time_w,
-  lambda_t,
-  fit_resids,
-  eps_abs,
-  eps_rel,
-  verbose,
-  ...
-)
+multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
+  force, n_factors, scm, time_cohort, time_w, lambda_t, fit_resids,
+  eps_abs, eps_rel, verbose, ...)
 }
 \arguments{
 \item{wide}{List containing data elements}
@@ -46,6 +30,8 @@ multisynth_formatted(
 \item{time_cohort}{Whether to average synthetic controls into time cohorts}
 
 \item{time_w}{Whether to fit time weights}
+
+\item{lambda_t}{Regularization for time regression}
 
 \item{fit_resids}{Whether to fit SCM on the residuals or not}
 

@@ -292,6 +292,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 }
 
 #' Helper function to drop unit i and refit
+#' @param msyn multisynth_object
 #' @param i Unit to drop
 drop_unit_i_multi <- function(msyn, i) {
 

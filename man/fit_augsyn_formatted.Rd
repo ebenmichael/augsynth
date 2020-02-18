@@ -4,7 +4,8 @@
 \alias{fit_augsyn_formatted}
 \title{Fit E[Y(0)|X] and for each post-period and balance pre-period}
 \usage{
-fit_augsyn_formatted(wide_data, synth_data, fit_progscore, fit_weights, ...)
+fit_augsyn_formatted(wide_data, synth_data, fit_progscore, fit_weights,
+  ...)
 }
 \arguments{
 \item{wide_data}{Output of `format_ipw`}

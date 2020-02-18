@@ -128,6 +128,7 @@ multisynth <- function(form, unit, time, data,
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts
 #' @param time_w Whether to fit time weights
+#' @param lambda_t Regularization for time regression
 #' @param fit_resids Whether to fit SCM on the residuals or not
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp

@@ -5,17 +5,8 @@
 \title{Fit a seq2seq model with a feedforward net
 to fit E[Y(0)|X]}
 \usage{
-fit_prog_seq2seq(
-  X,
-  y,
-  trt,
-  layers = list(c(50, "relu"), c(5, "relu")),
-  epochs = 500,
-  patience = 5,
-  val_split = 0.2,
-  verbose = F,
-  ...
-)
+fit_prog_seq2seq(X, y, trt, layers = list(c(50, "relu"), c(5, "relu")),
+  epochs = 500, patience = 5, val_split = 0.2, verbose = F, ...)
 }
 \arguments{
 \item{X}{Matrix of covariates/lagged outcomes}

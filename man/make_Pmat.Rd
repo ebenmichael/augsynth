@@ -6,6 +6,19 @@
 \usage{
 make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
 }
+\arguments{
+\item{Xc}{List of outcomes for possible comparison units}
+
+\item{x_t}{List of outcomes for treated units}
+
+\item{nu}{Hyperparameter between global and individual balance}
+
+\item{n_lags}{Number of lags to balance}
+
+\item{lambda}{Regularization hyperparameter}
+
+\item{d}{Largest number of pre-intervention time periods}
+}
 \description{
 Make the matrix in the QP
 }

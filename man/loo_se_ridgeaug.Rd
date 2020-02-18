@@ -5,14 +5,8 @@
 \title{Use leave out one estimates (placebo gaps) to estimate unit-level variance
 Do this for ridge-augmented synth}
 \usage{
-loo_se_ridgeaug(
-  wide_data,
-  synth_data,
-  Z = NULL,
-  lambda = NULL,
-  ridge = T,
-  scm = T
-)
+loo_se_ridgeaug(wide_data, synth_data, Z = NULL, lambda = NULL,
+  ridge = T, scm = T)
 }
 \arguments{
 \item{wide_data}{Data formatted from format_data}
