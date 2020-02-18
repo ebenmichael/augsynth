@@ -7,8 +7,9 @@
 drop_unit_i(wide_data, Z, i)
 }
 \arguments{
-\item{wide_data}{(X, y, trt)
-param Z Covariates matrix}
+\item{wide_data}{(X, y, trt)}
+
+\item{Z}{Covariates matrix}
 
 \item{i}{Unit to drop}
 }

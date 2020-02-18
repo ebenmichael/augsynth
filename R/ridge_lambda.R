@@ -3,6 +3,7 @@
 ################################################################################
 
 #' Get Lambda Errors
+#' @importFrom stats sd
 #'
 #' @param lambdas Vector of lambda values to compute errors for
 #' @param X_c Matrix of control group pre-treatment outcomes

@@ -148,7 +148,7 @@ collect_data <- function(X, trt, n_leads) {
     return(list(pre_mats = pre_mats, post_vecs = post_vecs))
 }
 
-#' Q matrix for QP
+
 get_Qmat <- function(pre_mats) {
 
     #### matrix in QP
@@ -174,7 +174,7 @@ get_Qmat_pool <- function(pre_mats) {
     return(Qmat)
 }
 
-#' p vector for QP
+
 get_pvec <- function(pre_mats, post_vecs) {
     # vector in QP
     lapply(1:length(pre_mats), function(j) {
@@ -200,7 +200,7 @@ get_pvec_pool <- function(pre_mats, post_vecs) {
     return(-2 * pvec)
 }
 
-#' Create the QP constraints
+
 make_constraints <- function(J, grps, lowlim, uplim) {
 
     tmax <- max(grps)

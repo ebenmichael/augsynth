@@ -18,9 +18,11 @@ fit_prog_gsynth(X, y, trt, r = 0, r.end = 5, force = 3, CV = 1,
 
 \item{r.end}{Max number of factors to consider if CV==1}
 
+\item{force}{Fixed effects (0=none, 1=unit, 2=time, 3=two-way)}
+
 \item{CV}{Whether to do CV (0=no CV, 1=yes CV)}
 
-\item{force=c(0, 1, 2, 3)}{Fixed effects (0=none, 1=unit, 2=time, 3=two-way)}
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

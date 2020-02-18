@@ -4,6 +4,8 @@
 
 #' Use a separate regularized regression for each post period
 #' to fit E[Y(0)|X]
+#' @importFrom stats poly
+#' @importFrom stats coef
 #'
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
@@ -16,6 +18,7 @@
 #'              \item{sep }{Separate outcome models}
 #'              \item{avg }{Average responses into 1 outcome}
 #'              \item{multi }{Use multi response regression in glmnet}}
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -36,7 +39,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     ## helper function to fit regression with CV
     outfit <- function(x, y) {
         if(is.null(lambda)) {
-            lam <- glmnet::cv.glmnet(x, y, alpha=alpha)$lambda.min
+            lam <- glmnet::cv.glmnet(x, y, alpha=alpha, grouped=FALSE)$lambda.min
         } else {
             lam <- lambda
         }
@@ -63,7 +66,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     } else {
         ## fit multi response regression
         lam <- glmnet::cv.glmnet(X, y, family="mgaussian",
-                                 alpha=alpha)$lambda.min
+                                 alpha=alpha, grouped=FALSE)$lambda.min
         fit <- glmnet::glmnet(X, y, family="mgaussian",
                               alpha=alpha,
                               lambda=lam)
@@ -88,6 +91,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
 #' @param avg Predict the average post-treatment outcome
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -162,8 +166,9 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 #' @param trt Vector of treatment indicator
 #' @param r Number of factors to use (or start with if CV==1)
 #' @param r.end Max number of factors to consider if CV==1
-#' @param force=c(0,1,2,3) Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
+#' @param force Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -227,6 +232,7 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 #' @param trt Vector of treatment indicator
 #' @param unit_fixed Whether to estimate unit fixed effects
 #' @param time_fixed Whether to estimate time fixed effects
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -285,12 +291,15 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 
 #' Fit a Comparitive interupted time series
 #' to fit E[Y(0)|X]
+#' @importFrom stats lm
+#' @importFrom stats predict
 #'
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
 #' @param poly_order Order of time trend polynomial to fit, default 1
 #' @param weights Weights to use in WLS, default is no weights
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -402,6 +411,7 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 #' @param X Matrix of covariates/lagged outcomes
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
@@ -477,6 +487,7 @@ fit_prog_causalimpact <- function(X, y, trt, ...) {
 #' @param patience Number of epochs to wait before early stopping
 #' @param val_split Proportion of control units to use for validation
 #' @param verbose Whether to print training progress
+#' @param ... optional arguments for outcome model
 #'
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}

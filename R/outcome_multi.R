@@ -4,12 +4,12 @@
 
 
 #' Use gsynth to fit factor model with 
-#'
+#' @importFrom utils capture.output
 #' @param X Matrix of outcomes
 #' @param trt Vector of treatment status for each unit
 #' @param r Number of factors to use (or start with if CV==1)
 #' @param r.end Max number of factors to consider if CV==1
-#' @param force=c(0,1,2,3) Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
+#' @param force Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
 #'
 #' @return \itemize{

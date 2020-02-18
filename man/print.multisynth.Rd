@@ -4,7 +4,12 @@
 \alias{print.multisynth}
 \title{Print function for multisynth}
 \usage{
-\method{print}{multisynth}(multisynth)
+\method{print}{multisynth}(x, ...)
+}
+\arguments{
+\item{x}{multisynth object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for multisynth

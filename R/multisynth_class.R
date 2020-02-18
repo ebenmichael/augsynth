@@ -128,10 +128,12 @@ multisynth <- function(form, unit, time, data,
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts
 #' @param time_w Whether to fit time weights
+#' @param lambda_t Regularization for time regression
 #' @param fit_resids Whether to fit SCM on the residuals or not
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
+#' @param ... Extra arguments
 #'
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
@@ -309,14 +311,25 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
 
 #' Get prediction of average outcome under control or ATT
-#' @param multisynth Fit multisynth object
-#' @param relative Whether to aggregate estimates according to calendar or relative time
-#' @param att Whether to estimate the ATT or the missing counterfactual
+#' @param object Fit multisynth object
+#' @param ... Optional arguments
 #'
 #' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
-predict.multisynth <- function(multisynth, relative=NULL, att=F) {
-
+predict.multisynth <- function(object, ...) {
+    if ("relative" %in% names(list(...))) {
+        relative <- list(...)$relative
+    } else {
+        relative <- NULL
+    }
+    if ("att" %in% names(list(...))) {
+        att <- list(...)$att
+    } else {
+        att <- F
+    }
+    multisynth <- object
+    
+    
     time_cohort <- multisynth$time_cohort
     if(is.null(relative)) {
         relative <- multisynth$relative
@@ -466,8 +479,12 @@ predict.multisynth <- function(multisynth, relative=NULL, att=F) {
 
 
 #' Print function for multisynth
+#' @param x multisynth object
+#' @param ... Optional arguments
 #' @export
-print.multisynth <- function(multisynth) {
+print.multisynth <- function(x, ...) {
+    multisynth <- x
+    
     ## straight from lm
     cat("\nCall:\n", paste(deparse(multisynth$call), 
         sep="\n", collapse="\n"), "\n\n", sep="")
@@ -483,12 +500,28 @@ print.multisynth <- function(multisynth) {
 
 
 #' Plot function for multisynth
-#' @param levels Treatment levels to plot for, default plots for everything
-#' @param se Whether to plot standard errors
-#' @param jackknife Whether to compute jackknife standard errors, default T
+#' @importFrom graphics plot
+#' @param x Augsynth object to be plotted
+#' @param ... Optional arguments
 #' @export
-plot.multisynth <- function(multisynth, levels=NULL, 
-                            se=T, jackknife=T) {
+plot.multisynth <- function(x, ...) {
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    if ("levels" %in% names(list(...))) {
+        levels <- list(...)$levels
+    } else {
+        levels <- NULL
+    }
+    if ("jackknife" %in% names(list(...))) {
+        jackknife <- list(...)$jackknife
+    } else {
+        jackknife <- T
+    }
+    multisynth <- x
+    
     plot(summary(multisynth, jackknife=jackknife), levels, se)
 }
 
@@ -589,8 +622,8 @@ compute_se <- function(multisynth, relative=NULL) {
 
 
 #' Summary function for multisynth
-#' @param relative Whether to estimate effects for time relative to treatment
-#' @param jackknife Whether to use jackknice standard errors, default T
+#' @param object multisynth object
+#' @param ... Optional arguments
 #' 
 #' @return summary.multisynth object that contains:
 #'         \itemize{
@@ -602,7 +635,14 @@ compute_se <- function(multisynth, relative=NULL) {
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
 #'         }
 #' @export
-summary.multisynth <- function(multisynth, jackknife=T) {
+summary.multisynth <- function(object, ...) {
+    if ("jackknife" %in% names(list(...))) {
+        jackknife <- list(...)$jackknife
+    } else {
+        jackknife <- T
+    }
+    multisynth <- object
+    
     relative <- T
 
     n_leads <- multisynth$n_leads
@@ -690,13 +730,19 @@ summary.multisynth <- function(multisynth, jackknife=T) {
 }
 
 #' Print function for summary function for multisynth
-#' @param level Which treatment level to show summary for, default is average
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
-print.summary.multisynth <- function(summ, level = NULL) {
+print.summary.multisynth <- function(x, ...) {
+    if ("level" %in% names(list(...))) {
+        level <- list(...)$level
+    } else {
+        level <- "Average"
+    }
+    summ <- x
+    
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
-
-    if(is.null(level)) level <- "Average"
 
     first_lvl <- summ$att %>% filter(Level != "Average") %>% pull(Level) %>% min()
     
@@ -738,11 +784,24 @@ print.summary.multisynth <- function(summ, level = NULL) {
 }
 
 #' Plot function for summary function for multisynth
-#' @param levels Treatment levels to plot for, default plots for everything
-#' @param se Whether to plot standard errors
+#' @importFrom ggplot2 aes
+#' 
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
-plot.summary.multisynth <- function(summ, levels=NULL, se=T) {
-
+plot.summary.multisynth <- function(x, ...) {
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    if ("levels" %in% names(list(...))) {
+        levels <- list(...)$levels
+    } else {
+        levels <- NULL
+    }
+    summ <- x
+    
     ## get the last time period for each level
     summ$att %>%
         filter(!is.na(Estimate),

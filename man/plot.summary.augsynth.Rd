@@ -4,10 +4,12 @@
 \alias{plot.summary.augsynth}
 \title{Plot function for summary function for augsynth}
 \usage{
-\method{plot}{summary.augsynth}(summ, se = T)
+\method{plot}{summary.augsynth}(x, ...)
 }
 \arguments{
-\item{se}{Whether to plot standard error}
+\item{x}{Summary object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for summary function for augsynth

@@ -4,12 +4,12 @@
 \alias{predict.augsynth}
 \title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth}(augsynth, att = F)
+\method{predict}{augsynth}(object, ...)
 }
 \arguments{
-\item{augsynth}{augsynth object}
+\item{object}{augsynth object}
 
-\item{att}{Whether to return the ATT or average outcome under control}
+\item{...}{Optional arguments}
 }
 \value{
 Vector of predicted post-treatment control averages

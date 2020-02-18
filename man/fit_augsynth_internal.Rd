@@ -17,9 +17,9 @@ fit_augsynth_internal(wide, synth_data, Z, progfunc, scm, fixedeff, ...)
 
 \item{scm}{Whether to fit SCM}
 
-\item{...}{Extra args for outcome model}
+\item{fixedeff}{Whether to de-mean synth}
 
-\item{fixed_eff}{Whether to de-mean synth}
+\item{...}{Extra args for outcome model}
 }
 \description{
 Internal function to fit augmented SCM

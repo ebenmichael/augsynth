@@ -15,6 +15,8 @@ fit_prog_rf(X, y, trt, avg = FALSE, ...)
 \item{trt}{Vector of treatment indicator}
 
 \item{avg}{Predict the average post-treatment outcome}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{

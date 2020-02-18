@@ -4,14 +4,12 @@
 \alias{predict.multisynth}
 \title{Get prediction of average outcome under control or ATT}
 \usage{
-\method{predict}{multisynth}(multisynth, relative = NULL, att = F)
+\method{predict}{multisynth}(object, ...)
 }
 \arguments{
-\item{multisynth}{Fit multisynth object}
+\item{object}{Fit multisynth object}
 
-\item{relative}{Whether to aggregate estimates according to calendar or relative time}
-
-\item{att}{Whether to estimate the ATT or the missing counterfactual}
+\item{...}{Optional arguments}
 }
 \value{
 Matrix of predicted post-treatment control outcomes for each treated unit

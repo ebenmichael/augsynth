@@ -31,6 +31,8 @@ multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
 
 \item{time_w}{Whether to fit time weights}
 
+\item{lambda_t}{Regularization for time regression}
+
 \item{fit_resids}{Whether to fit SCM on the residuals or not}
 
 \item{eps_abs}{Absolute error tolerance for osqp}
@@ -38,6 +40,8 @@ multisynth_formatted(wide, relative = T, n_leads, n_lags, nu, lambda,
 \item{eps_rel}{Relative error tolerance for osqp}
 
 \item{verbose}{Whether to print logs for osqp}
+
+\item{...}{Extra arguments}
 }
 \value{
 multisynth object

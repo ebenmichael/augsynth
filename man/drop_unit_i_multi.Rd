@@ -6,6 +6,11 @@
 \usage{
 drop_unit_i_multi(msyn, i)
 }
+\arguments{
+\item{msyn}{multisynth_object}
+
+\item{i}{Unit to drop}
+}
 \description{
 Helper function to drop unit i and refit
 }

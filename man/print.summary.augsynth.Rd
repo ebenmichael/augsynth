@@ -4,7 +4,12 @@
 \alias{print.summary.augsynth}
 \title{Print function for summary function for augsynth}
 \usage{
-\method{print}{summary.augsynth}(summ)
+\method{print}{summary.augsynth}(x, ...)
+}
+\arguments{
+\item{x}{summary object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for summary function for augsynth

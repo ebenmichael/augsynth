@@ -4,7 +4,12 @@
 \alias{print.augsynth}
 \title{Print function for augsynth}
 \usage{
-\method{print}{augsynth}(augsynth)
+\method{print}{augsynth}(x, ...)
+}
+\arguments{
+\item{x}{augsynth object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for augsynth

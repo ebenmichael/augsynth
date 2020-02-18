@@ -20,6 +20,9 @@
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
 #' @param time_cohort Whether to average synthetic controls into time cohorts
+#' @param verbose Whether to print logs for osqp
+#' @param eps_rel Relative error tolerance for osqp
+#' @param eps_abs Absolute error tolerance for osqp
 #' 
 #' @return \itemize{
 #'          \item{"weights"}{Matrix of unit weights}
@@ -229,6 +232,11 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 }
 
 #' Make the vector in the QP
+#' @param Xc List of outcomes for possible comparison units
+#' @param x_t List of outcomes for treated units
+#' @param nu Hyperparameter between global and individual balance
+#' @param n_lags Number of lags to balance
+#' @param d Largest number of pre-intervention time periods
 make_qvec <- function(Xc, x_t, nu, n_lags, d) {
 
     J <- length(x_t)
@@ -259,6 +267,12 @@ make_qvec <- function(Xc, x_t, nu, n_lags, d) {
 
 
 #' Make the matrix in the QP
+#' @param Xc List of outcomes for possible comparison units
+#' @param x_t List of outcomes for treated units
+#' @param nu Hyperparameter between global and individual balance
+#' @param n_lags Number of lags to balance
+#' @param lambda Regularization hyperparameter
+#' @param d Largest number of pre-intervention time periods
 make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
 
     J <- length(x_t)

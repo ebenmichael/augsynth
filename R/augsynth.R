@@ -4,6 +4,13 @@
 
 
 #' Fit Augmented SCM
+#' @importFrom stats terms
+#' @importFrom stats formula
+#' @importFrom stats update 
+#' @importFrom stats delete.response 
+#' @importFrom stats model.matrix 
+#' @importFrom stats model.frame 
+#' 
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column
@@ -95,7 +102,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' @param Z Matrix of auxiliary covariates
 #' @param progfunc outcome model to use
 #' @param scm Whether to fit SCM
-#' @param fixed_eff Whether to de-mean synth
+#' @param fixedeff Whether to de-mean synth
 #' @param ... Extra args for outcome model
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   scm, fixedeff, ...) {
@@ -153,13 +160,19 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
 }
 
 #' Get prediction of ATT or average outcome under control
-#' @param augsynth augsynth object
-#' @param att Whether to return the ATT or average outcome under control
+#' @param object augsynth object
+#' @param ... Optional arguments
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
-predict.augsynth <- function(augsynth, att = F) {
-
+predict.augsynth <- function(object, ...) {
+    if ("att" %in% names(list(...))) {
+        att <- list(...)$att
+    } else {
+        att <- F
+    }
+    augsynth <- object
+    
     X <- augsynth$data$X
     y <- augsynth$data$y
     comb <- cbind(X, y)
@@ -180,8 +193,12 @@ predict.augsynth <- function(augsynth, att = F) {
 
 
 #' Print function for augsynth
+#' @param x augsynth object
+#' @param ... Optional arguments
 #' @export
-print.augsynth <- function(augsynth) {
+print.augsynth <- function(x, ...) {
+    augsynth <- x
+    
     ## straight from lm
     cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
@@ -196,19 +213,35 @@ print.augsynth <- function(augsynth) {
 
 
 #' Plot function for augsynth
-#' @param se Whether to plot standard errors
-#' @param jackknife Whether to use jackknife or weighted SEs
+#' @importFrom graphics plot
+#' 
+#' @param x Augsynth object to be plotted
+#' @param ... Optional arguments
 #' @export
-plot.augsynth <- function(augsynth, se = T) {
+plot.augsynth <- function(x, ...) {
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    augsynth <- x
     plot(summary(augsynth, se), se = se)
 }
 
 
 #' Summary function for augsynth
-#' @param jackknife Whether to use jackknife or weighted SEs
+#' @param object augsynth object
+#' @param ... Optional arguments
 #' @export
-summary.augsynth <- function(augsynth, se = T) {
-
+summary.augsynth <- function(object, ...) {
+    augsynth <- object
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    
+    
     summ <- list()
 
     t0 <- ncol(augsynth$data$X)
@@ -261,8 +294,12 @@ summary.augsynth <- function(augsynth, se = T) {
 }
 
 #' Print function for summary function for augsynth
+#' @param x summary object
+#' @param ... Optional arguments
 #' @export
-print.summary.augsynth <- function(summ) {
+print.summary.augsynth <- function(x, ...) {
+    summ <- x
+    
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
@@ -300,10 +337,17 @@ print.summary.augsynth <- function(summ) {
 }
 
 #' Plot function for summary function for augsynth
-#' @param se Whether to plot standard error
+#' @param x Summary object
+#' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(summ, se = T) {
-
+plot.summary.augsynth <- function(x, ...) {
+    summ <- x
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    
     p <- summ$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
     if(se) {

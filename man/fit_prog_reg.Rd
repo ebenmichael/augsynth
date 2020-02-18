@@ -26,6 +26,8 @@ fit_prog_reg(X, y, trt, alpha = 1, lambda = NULL, poly_order = 1,
  \item{sep }{Separate outcome models}
  \item{avg }{Average responses into 1 outcome}
  \item{multi }{Use multi response regression in glmnet}}}
+
+\item{...}{optional arguments for outcome model}
 }
 \value{
 \itemize{
