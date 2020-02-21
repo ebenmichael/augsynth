@@ -13,8 +13,8 @@
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
-#' @param ... optional arguments for outcome model
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
+#' @param ... optional arguments for outcome model
 #'
 #' @return augsynth object that contains:
 #'         \itemize{
@@ -32,7 +32,6 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
                                               "seq2seq"),
                                     scm=T,
                                     fixedeff = FALSE,
-                                    combine_method = c("concat"),
                                     cov_agg=NULL,
                                     ...) {
     call_name <- match.call()
@@ -60,6 +59,10 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
         Z <- NULL
     }
 
+    # combine method is just concatenation
+    # TODO: Include other options
+    combine_method <- "concat"
+
     # fit augmented SCM
     augsynth <- fit_augsynth_multiout_internal(wide_list, combine_method, Z,
                                                progfunc, scm,
@@ -77,12 +80,12 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
 
 
 #' Internal function to fit augmented SCM with multiple outcomes
-#' @param wide Data formatted from format_data
-#' @param synth_data Data formatted from foramt_synth
+#' @param wide_list List of matrices for each outcome formatted from format_data
+#' @param combine_method How to combine outcomes
 #' @param Z Matrix of auxiliary covariates
 #' @param progfunc outcome model to use
 #' @param scm Whether to fit SCM
-#' @param fixed_eff Whether to de-mean synth
+#' @param fixedeff Whether to de-mean synth
 #' @param ... Extra args for outcome model
 fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
                                            progfunc, scm, fixedeff, ...) {
@@ -118,15 +121,16 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #' Helper function to combine multiple outcomes into a single balance matrix
 #' @param wide_list List of lists of pre/post treatment data for each outcome
 #' @param combine_method How to combine outcomes
-#' @param fixed_eff Whether to take out unit fixed effects or not
+#' @param fixedeff Whether to take out unit fixed effects or not
 #' @param k Number of principal directions to keep, default all
+#' @param ... Extra argumemnts for combination
 #' 
 #' @return \itemize{
 #'          \item{"X"}{Matrix of combined pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}
 #'          \item{"y"}{Matrix of combined post-treatment outcomes}
 #'         }
-combine_outcomes <- function(wide_list, combine_method, fixedeff, 
+combine_outcomes <- function(wide_list, combine_method, fixedeff,
                              k= NULL, ...) {
 
     n_outs <- length(wide_list$X)
@@ -201,34 +205,21 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
 }
 
 #' Get prediction of ATT or average outcome under control
-#' @param augsynth augsynth_multiout object
-#' @param att Whether to return the ATT or average outcome under control
+#' @param object augsynth_multiout object
+#' @param ... Optional arguments, including \itemize{\item{"att"}{Whether to return the ATT or average outcome under control}}
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
-predict.augsynth_multiout <- function(augsynth, att = F) {
-    
+predict.augsynth_multiout <- function(object, ...) {
+    if ("att" %in% names(list(...))) {
+        att <- list(...)$att
+    } else {
+        att <- F
+    }
 
-    # X <- augsynth$data$X
-    # y <- augsynth$data$y
-    # Y0 <- t(augsynth$data$synth_data$Y0plot)
-    # Y1 <- augsynth$data$synth_data$Y1plot
-
-    # trt <- augsynth$data$trt
-    # mhat <- augsynth$mhat
-    
-    # m1 <- colMeans(mhat[trt==1,,drop=F])
-
-    # resid <- (Y0 - mhat[trt==0,drop=F])
-    # y0 <- m1 + t(resid) %*% augsynth$weights
-    # if(att) {
-    #     pred <- Y1 - c(y0)
-    # } else {
-    #     pred <- y0
-    # }
     # call augsynth predict
     pred <- NextMethod()
-    
+
     if(att) {
         pred_names <- names(pred)
     } else {
@@ -238,24 +229,24 @@ predict.augsynth_multiout <- function(augsynth, att = F) {
     names(pred) <- pred_names
 
     # separate out by outcome
-    n_outs <- length(augsynth$outcomes)
+    n_outs <- length(object$outcomes)
     pred_reshape <- matrix(NA, ncol = n_outs, 
-                               nrow = length(augsynth$data$time))
-    rownames(pred_reshape) <- augsynth$data$time
-    colnames(pred_reshape) <- augsynth$outcomes
+                               nrow = length(object$data$time))
+    rownames(pred_reshape) <- object$data$time
+    colnames(pred_reshape) <- object$outcomes
     # get outcome names for predictions
     pre_outs <- do.call(c, 
                         sapply(1:n_outs, 
                                function(j) {
-                                   rep(augsynth$outcomes[j],
-                                       ncol(augsynth$data_list$X[[j]]))
+                                   rep(object$outcomes[j],
+                                       ncol(object$data_list$X[[j]]))
                                }, simplify = FALSE))
 
     post_outs <- do.call(c,
                          sapply(1:n_outs, 
                                 function(j) {
-                                    rep(augsynth$outcomes[j],
-                                        ncol(augsynth$data_list$y[[j]]))
+                                    rep(object$outcomes[j],
+                                        ncol(object$data_list$y[[j]]))
                                }, simplify = FALSE))
     pred_reshape[cbind(names(pred), c(pre_outs, post_outs))] <- pred
 
@@ -264,15 +255,17 @@ predict.augsynth_multiout <- function(augsynth, att = F) {
 
 
 #' Print function for augsynth
+#' @param x augsynth_multiout object
+#' @param ... Optional arguments
 #' @export
-print.augsynth_multiout <- function(augsynth) {
+print.augsynth_multiout <- function(x, ...) {
     ## straight from lm
-    cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
+    cat("\nCall:\n", paste(deparse(x$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
     ## print att estimates
-    att <- predict(augsynth, att = T)
+    att <- predict(x, att = T)
     att_post <- data.frame(
-        colMeans(att[as.numeric(rownames(att)) >= augsynth$t_int,, drop = F]))
+        colMeans(att[as.numeric(rownames(att)) >= x$t_int,, drop = F]))
     names(att_post) <- c("")
     cat("Average ATT Estimate:\n")
     print(att_post)
@@ -280,71 +273,76 @@ print.augsynth_multiout <- function(augsynth) {
 }
 
 #' Summary function for augsynth
-#' @param se Whether to compute standard errors, default TRUE
+#' @param object augsynth_multiout object
+#' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' @export
-summary.augsynth_multiout <- function(augsynth, se = T) {
-
+summary.augsynth_multiout <- function(object, ...) {
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
     summ <- list()
 
     if(se) {
-        att_se <- jackknife_se_multiout(augsynth)
+        att_se <- jackknife_se_multiout(object)
         t_final <- nrow(att_se$att)
 
         att_df <- data.frame(att_se$att[1:(t_final - 1),, drop=F])
-        names(att_df) <- augsynth$outcomes
-        att_df$Time <- augsynth$data$time
+        names(att_df) <- object$outcomes
+        att_df$Time <- object$data$time
         att_df <- att_df %>% gather(Outcome, Estimate, -Time)
 
         se_df <- data.frame(att_se$se[1:(t_final - 1),, drop=F])
-        names(se_df) <- augsynth$outcomes
-        se_df$Time <- augsynth$data$time
+        names(se_df) <- object$outcomes
+        se_df$Time <- object$data$time
         se_df <- se_df %>% gather(Outcome, Std.Error, -Time)
 
         att <- inner_join(att_df, se_df, by = c("Time", "Outcome"))
 
 
         att_avg <- data.frame(att_se$att[t_final,, drop = F])
-        names(att_avg) <- augsynth$outcomes
+        names(att_avg) <- object$outcomes
         att_avg <- gather(att_avg, Outcome, Estimate)
         att_avg_se <- data.frame(att_se$se[t_final,, drop = F])
-        names(att_avg_se) <- augsynth$outcomes
+        names(att_avg_se) <- object$outcomes
         att_avg_se <- gather(att_avg_se, Outcome, Std.Error)
         average_att <- inner_join(att_avg, att_avg_se, by="Outcome")
 
     } else {
-        att_est <- predict(augsynth, att = T)
+        att_est <- predict(object, att = T)
         att_df <- data.frame(att_est)
-        names(att_df) <- augsynth$outcomes
-        att_df$Time <- augsynth$data$time
+        names(att_df) <- object$outcomes
+        att_df$Time <- object$data$time
         att <- att_df %>% gather(Outcome, Estimate, -Time)
         att$Std.Error <- NA
         att_avg <- colMeans(
-            att[as.numeric(rownames(att)) >= augsynth$t_int,, drop = F])
-        names(att_avg) <- augsynth$outcomes
+            att[as.numeric(rownames(att)) >= object$t_int,, drop = F])
+        names(att_avg) <- object$outcomes
         average_att <- gather(att_avg, Outcome, Estimate)
         average_att$Std.Error <- NA
     }
 
     summ$att <- att
     summ$average_att <- average_att
-    summ$t_int <- augsynth$t_int
-    summ$call <- augsynth$call
-    summ$l2_imbalance <- augsynth$l2_imbalance
-    summ$scaled_l2_imbalance <- augsynth$scaled_l2_imbalance
+    summ$t_int <- object$t_int
+    summ$call <- object$call
+    summ$l2_imbalance <- object$l2_imbalance
+    summ$scaled_l2_imbalance <- object$scaled_l2_imbalance
     ## get estimated bias
 
-    if(augsynth$progfunc == "Ridge") {
-        mhat <- augsynth$ridge_mhat
-        w <- augsynth$synw
+    if(object$progfunc == "Ridge") {
+        mhat <- object$ridge_mhat
+        w <- object$synw
     } else {
-        mhat <- augsynth$mhat
-        w <- augsynth$weights
+        mhat <- object$mhat
+        w <- object$weights
     }
-    trt <- augsynth$data$trt
+    trt <- object$data$trt
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
     summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
-    if(augsynth$progfunc == "None" | (!augsynth$scm)) {
+    if(object$progfunc == "None" | (!object$scm)) {
         summ$bias_est <- NA
     }
     
@@ -354,50 +352,44 @@ summary.augsynth_multiout <- function(augsynth, se = T) {
 
 
 #' Print function for summary function for augsynth
+#' @param x summary.augsynth_multiout object
+#' @param ... Optional arguments
 #' @export
-print.summary.augsynth_multiout <- function(summ) {
+print.summary.augsynth_multiout <- function(x, ...) {
     ## straight from lm
-    cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
-
-    t_final <- nrow(summ$att)
-
-    ## distinction between pre and post treatment
-    att_est <- summ$att$Estimate
-    t_total <- length(att_est)
-    t_int <- summ$att %>% filter(Time <= summ$t_int) %>% nrow()
+    cat("\nCall:\n", paste(deparse(x$call), sep="\n", collapse="\n"), "\n\n", sep="")
     
-    att_pre <- att_est[1:(t_int-1)]
-    att_post <- att_est[t_int:t_total]
-
-    ## pool the standard error estimates to summarise it
-    se_est <- summ$att$Std.Error
-
+    att_est <- x$att$Estimate
     ## get pre-treatment fit by outcome
-    imbal <- summ$att %>% 
-        filter(Time < summ$t_int) %>%
+    imbal <- x$att %>% 
+        filter(Time < x$t_int) %>%
         group_by(Outcome) %>%
         summarise(Pre.RMSE = sqrt(mean(Estimate ^ 2)))
 
-    att_post <- summ$average_att$Estimate
-    se_pool <- summ$average_att$Std.Error
     cat(paste("Overall L2 Imbalance (Scaled):",
-              format(round(summ$l2_imbalance,3), nsmall=3), "  (",
-              format(round(summ$scaled_l2_imbalance,3), nsmall=3), ")\n\n",
+              format(round(x$l2_imbalance,3), nsmall=3), "  (",
+              format(round(x$scaled_l2_imbalance,3), nsmall=3), ")\n\n",
             #   "Avg Estimated Bias: ",
             #   format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
               sep=""))
     cat("Average ATT Estimate:\n")
-    print(inner_join(summ$average_att, imbal, by = "Outcome"))
+    print(inner_join(x$average_att, imbal, by = "Outcome"))
     cat("\n\n")
 }
 
 
 #' Plot function for summary function for augsynth
-#' @param se Whether to plot standard error
+#' @param x summary.augsynth_multiout object
+#' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
+#' 
 #' @export
-plot.summary.augsynth_multiout <- function(summ, se = T) {
-
-    p <- summ$att %>%
+plot.summary.augsynth_multiout <- function(x, ...) {
+    if ("se" %in% names(list(...))) {
+        se <- list(...)$se
+    } else {
+        se <- T
+    }
+    p <- x$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
     if(se) {
         p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
@@ -405,7 +397,7 @@ plot.summary.augsynth_multiout <- function(summ, se = T) {
                     alpha=0.2)
     }
     p + ggplot2::geom_line() +
-        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
+        ggplot2::geom_vline(xintercept=x$t_int, lty=2) +
         ggplot2::geom_hline(yintercept=0, lty=2) +
         ggplot2::facet_wrap(~ Outcome, scales = "free_y") +
         ggplot2::theme_bw()

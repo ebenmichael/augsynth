@@ -7,8 +7,9 @@
 drop_unit_i_multiout(wide_list, Z, i)
 }
 \arguments{
-\item{wide_list}{(X, y, trt)
-param Z Covariates matrix}
+\item{wide_list}{(X, y, trt)}
+
+\item{Z}{Covariates matrix}
 
 \item{i}{Unit to drop}
 }

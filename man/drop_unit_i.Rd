@@ -4,7 +4,7 @@
 \alias{drop_unit_i}
 \title{Drop unit i from data}
 \usage{
-drop_unit_i(wide_data, synth_data, Z, i)
+drop_unit_i(wide_data, Z, i)
 }
 \arguments{
 \item{wide_data}{(X, y, trt)}

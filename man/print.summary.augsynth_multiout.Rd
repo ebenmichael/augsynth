@@ -4,7 +4,12 @@
 \alias{print.summary.augsynth_multiout}
 \title{Print function for summary function for augsynth}
 \usage{
-\method{print}{summary.augsynth_multiout}(summ)
+\method{print}{summary.augsynth_multiout}(x, ...)
+}
+\arguments{
+\item{x}{summary.augsynth_multiout object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for summary function for augsynth

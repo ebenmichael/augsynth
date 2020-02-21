@@ -4,12 +4,6 @@
 
 
 #' Fit Augmented SCM
-#' @importFrom stats terms
-#' @importFrom stats formula
-#' @importFrom stats update 
-#' @importFrom stats delete.response 
-#' @importFrom stats model.matrix 
-#' @importFrom stats model.frame 
 #' 
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
@@ -78,32 +72,6 @@ single_augsynth <- function(form, unit, time, t_int, data,
     return(augsynth)
 }
 
-#' Helper function to extract covariate matrix from data
-extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
-
-    ## if no aggregation functions, use the mean (omitting NAs)
-    if(is.null(cov_agg)) {
-        cov_agg <- c(function(x) mean(x, na.rm=T))
-    }
-
-    cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
-                        ~. - 1) ## ensure that there is no intercept
-
-    ## pull out relevant covariates and aggregate
-    pre_data <- data %>% 
-        filter(!! (time) < t_int)
-
-    model.matrix(cov_form,
-                    model.frame(cov_form, pre_data,
-                                na.action=NULL) ) %>%
-        data.frame() %>%
-        mutate(unit=pull(pre_data, !!unit)) %>%
-        group_by(unit) %>%
-        summarise_all(cov_agg) %>%
-        select(-unit) %>%
-        as.matrix() -> Z
-    return(Z)
-}
 
 #' Internal function to fit augmented SCM
 #' @param wide Data formatted from format_data
@@ -111,7 +79,7 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
 #' @param Z Matrix of auxiliary covariates
 #' @param progfunc outcome model to use
 #' @param scm Whether to fit SCM
-#' @param fixed_eff Whether to de-mean synth
+#' @param fixedeff Whether to de-mean synth
 #' @param V V matrix for Synth, default NULL
 #' @param ... Extra args for outcome model
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
@@ -386,4 +354,11 @@ plot.summary.augsynth <- function(x, ...) {
 #' @import dplyr
 #' @import LowRankQP
 #' @import tidyr
+#' @importFrom stats terms
+#' @importFrom stats formula
+#' @importFrom stats update 
+#' @importFrom stats delete.response 
+#' @importFrom stats model.matrix 
+#' @importFrom stats model.frame 
+#' @importFrom stats na.omit
 NULL

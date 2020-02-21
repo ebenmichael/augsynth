@@ -89,7 +89,7 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 #' @param wide_data (X, y, trt)
 #' @param Z Covariates matrix
 #' @param i Unit to drop
-drop_unit_i <- function(wide_data, synth_data, Z, i) {
+drop_unit_i <- function(wide_data, Z, i) {
 
         new_wide_data <- list()
         new_wide_data$trt <- wide_data$trt[-i]
@@ -107,13 +107,13 @@ drop_unit_i <- function(wide_data, synth_data, Z, i) {
         new_synth_data$X0 <- t(X0)
         new_synth_data$Z1 <- x1
         new_synth_data$X1 <- x1
-        new_synth_data$Y1plot <- synth_data$Y1plot
-        # get the control unit index
-        yplot <- matrix(0, nrow = nrow(wide_data$X), 
-                        ncol = ncol(wide_data$X) + ncol(wide_data$y))
-        yplot[wide_data$trt == 0,] <- t(synth_data$Y0plot)
-        yplot[wide_data$trt == 1,] <- synth_data$Y1plot
-        new_synth_data$Y0plot <- t(yplot[-i,][new_wide_data$trt == 0,, drop = F])
+        # new_synth_data$Y1plot <- synth_data$Y1plot
+        # # get the control unit index
+        # yplot <- matrix(0, nrow = nrow(wide_data$X), 
+        #                 ncol = ncol(wide_data$X) + ncol(wide_data$y))
+        # yplot[wide_data$trt == 0,] <- t(synth_data$Y0plot)
+        # yplot[wide_data$trt == 1,] <- synth_data$Y1plot
+        # new_synth_data$Y0plot <- t(yplot[-i,][new_wide_data$trt == 0,, drop = F])
         new_Z <- if(!is.null(Z)) Z[-i, , drop = F] else NULL
 
         return(list(wide_data = new_wide_data,
@@ -121,7 +121,6 @@ drop_unit_i <- function(wide_data, synth_data, Z, i) {
                     Z = new_Z)) 
 }
 
-<<<<<<< bc05884b8505f0bc5a341ba290bcc56bd378a1c2
 #' Estimate standard errors with the jackknife
 #' Do this for ridge-augmented synth
 #' @param wide_data Data formatted from format_data
@@ -157,12 +156,11 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 
     trt_idxs <- (1:n)[as.logical(nnz_weights)]
     n_jack <- length(trt_idxs)
-=======
->>>>>>> Working on multiple outcomes, still some work to do
+}
 
 #' Drop unit i from data
 #' @param wide_list (X, y, trt)
-#' param Z Covariates matrix
+#' @param Z Covariates matrix
 #' @param i Unit to drop
 drop_unit_i_multiout <- function(wide_list, Z, i) {
 
@@ -173,7 +171,7 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
         new_Z <- if(!is.null(Z)) Z[-i, , drop = F] else NULL
 
         return(list(wide_list = new_wide_data,
-                    Z = new_Z)) 
+                    Z = new_Z))
 }
 
 
@@ -212,7 +210,7 @@ jackknife_se_single <- function(ascm) {
     ests <- vapply(trt_idxs, 
                    function(i) {
                        # drop unit i
-                       new_data <- drop_unit_i(wide_data, synth_data, Z, i)
+                       new_data <- drop_unit_i(wide_data, Z, i)
                        # refit
                        new_ascm <- do.call(fit_augsynth_internal,
                                 c(list(wide = new_data$wide,
@@ -318,10 +316,13 @@ drop_unit_i_multi <- function(msyn, i) {
     }
     return(list(msyn_i,
                 dropped))
+}
+
+
 #' Estimate standard errors for multi outcome ascm with jackknife
 #' @param ascm Fitted augsynth object
 jackknife_se_multiout <- function(ascm) {
-    
+
     wide_data <- ascm$data
     wide_list <- ascm$data_list
     n <- nrow(wide_data$X)
@@ -358,7 +359,7 @@ jackknife_se_multiout <- function(ascm) {
                    })
     ests <- simplify2array(ests)
     ## standard errors
-    se2 <- apply(ests, c(1,2),
+    se2 <- apply(ests, c(1, 2),
                  function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
     se <- sqrt(se2)
     out <- list()

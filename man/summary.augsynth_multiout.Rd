@@ -4,10 +4,12 @@
 \alias{summary.augsynth_multiout}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth_multiout}(augsynth, se = T)
+\method{summary}{augsynth_multiout}(object, ...)
 }
 \arguments{
-\item{se}{Whether to compute standard errors, default TRUE}
+\item{object}{augsynth_multiout object}
+
+\item{...}{Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}}
 }
 \description{
 Summary function for augsynth

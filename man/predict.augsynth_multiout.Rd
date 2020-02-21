@@ -4,12 +4,12 @@
 \alias{predict.augsynth_multiout}
 \title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth_multiout}(augsynth, att = F)
+\method{predict}{augsynth_multiout}(object, ...)
 }
 \arguments{
-\item{augsynth}{augsynth_multiout object}
+\item{object}{augsynth_multiout object}
 
-\item{att}{Whether to return the ATT or average outcome under control}
+\item{...}{Optional arguments, including \itemize{\item{"att"}{Whether to return the ATT or average outcome under control}}}
 }
 \value{
 Vector of predicted post-treatment control averages

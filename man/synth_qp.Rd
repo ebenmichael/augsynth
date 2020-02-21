@@ -6,6 +6,13 @@
 \usage{
 synth_qp(X1, X0, V)
 }
+\arguments{
+\item{X1}{Target vector}
+
+\item{X0}{Matrix of control outcomes}
+
+\item{V}{Scaling matrix}
+}
 \description{
 Solve the synth QP directly
 }

@@ -11,9 +11,11 @@ combine_outcomes(wide_list, combine_method, fixedeff, k = NULL, ...)
 
 \item{combine_method}{How to combine outcomes}
 
+\item{fixedeff}{Whether to take out unit fixed effects or not}
+
 \item{k}{Number of principal directions to keep, default all}
 
-\item{fixed_eff}{Whether to take out unit fixed effects or not}
+\item{...}{Extra argumemnts for combination}
 }
 \value{
 \itemize{

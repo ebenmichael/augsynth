@@ -18,13 +18,9 @@ fit_augsynth_internal(wide, synth_data, Z, progfunc, scm, fixedeff,
 
 \item{scm}{Whether to fit SCM}
 
-<<<<<<< e0c10727454c99539f69fcecab29c50d683a22c4
 \item{fixedeff}{Whether to de-mean synth}
-=======
-\item{V}{V matrix for Synth, default NULL}
 
-\item{...}{Extra args for outcome model}
->>>>>>> More synth for multiple outcomes
+\item{V}{V matrix for Synth, default NULL}
 
 \item{...}{Extra args for outcome model}
 }

@@ -8,19 +8,19 @@ fit_augsynth_multiout_internal(wide_list, combine_method, Z, progfunc, scm,
   fixedeff, ...)
 }
 \arguments{
+\item{wide_list}{List of matrices for each outcome formatted from format_data}
+
+\item{combine_method}{How to combine outcomes}
+
 \item{Z}{Matrix of auxiliary covariates}
 
 \item{progfunc}{outcome model to use}
 
 \item{scm}{Whether to fit SCM}
 
+\item{fixedeff}{Whether to de-mean synth}
+
 \item{...}{Extra args for outcome model}
-
-\item{wide}{Data formatted from format_data}
-
-\item{synth_data}{Data formatted from foramt_synth}
-
-\item{fixed_eff}{Whether to de-mean synth}
 }
 \description{
 Internal function to fit augmented SCM with multiple outcomes

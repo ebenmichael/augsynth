@@ -45,7 +45,7 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
 
 
 #' Format "long" panel data into "wide" program evaluation matrices
-#' @param outcome Vectors of names of outcome columns
+#' @param outcomes Vectors of names of outcome columns
 #' @param trt Name of treatment column
 #' @param unit Name of unit column
 #' @param time Name of time column
@@ -225,4 +225,37 @@ demean_data <- function(wide_data, synth_data) {
     return(list(wide = new_wide_data,
                 synth_data = new_synth_data,
                 mhat = mhat))
+}
+
+#' Helper function to extract covariate matrix from data
+#' @param form Formula as outcome ~ treatment | covariates
+#' @param unit Name of unit column
+#' @param time Name of time column
+#' @param t_int Time of intervention
+#' @param data Panel data as dataframe
+#' @param cov_agg Covariate aggregation function
+extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
+
+    ## if no aggregation functions, use the mean (omitting NAs)
+    if(is.null(cov_agg)) {
+        cov_agg <- c(function(x) mean(x, na.rm=T))
+    }
+
+    cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
+                        ~. - 1) ## ensure that there is no intercept
+
+    ## pull out relevant covariates and aggregate
+    pre_data <- data %>% 
+        filter(!! (time) < t_int)
+
+    model.matrix(cov_form,
+                    model.frame(cov_form, pre_data,
+                                na.action=NULL) ) %>%
+        data.frame() %>%
+        mutate(unit=pull(pre_data, !!unit)) %>%
+        group_by(unit) %>%
+        summarise_all(cov_agg) %>%
+        select(-unit) %>%
+        as.matrix() -> Z
+    return(Z)
 }

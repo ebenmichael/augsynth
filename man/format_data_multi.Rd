@@ -7,6 +7,8 @@
 format_data_multi(outcomes, trt, unit, time, t_int, data)
 }
 \arguments{
+\item{outcomes}{Vectors of names of outcome columns}
+
 \item{trt}{Name of treatment column}
 
 \item{unit}{Name of unit column}
@@ -16,8 +18,6 @@ format_data_multi(outcomes, trt, unit, time, t_int, data)
 \item{t_int}{Time of intervention}
 
 \item{data}{Panel data as dataframe}
-
-\item{outcome}{Vectors of names of outcome columns}
 }
 \value{
 \itemize{

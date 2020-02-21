@@ -4,7 +4,12 @@
 \alias{print.augsynth_multiout}
 \title{Print function for augsynth}
 \usage{
-\method{print}{augsynth_multiout}(augsynth)
+\method{print}{augsynth_multiout}(x, ...)
+}
+\arguments{
+\item{x}{augsynth_multiout object}
+
+\item{...}{Optional arguments}
 }
 \description{
 Print function for augsynth
