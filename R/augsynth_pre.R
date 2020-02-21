@@ -11,7 +11,7 @@
 #' @param t_int Time of intervention (used for single-period treatment only)
 #' @param ... Optional arguments
 #' \itemize{
-#'   \item Single period augsynth 
+#'   \item Single period augsynth with/without multiple outcomes
 #'     \itemize{
 #'       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
 #'       \item{"scm"}{Whether the SCM weighting function is used}
@@ -40,25 +40,42 @@
 augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
 
   call_name <- match.call()
-  
+
   form <- Formula::Formula(form)
   unit_quosure <- enquo(unit)
   time_quosure <- enquo(time)
   
+
   ## format data
   outcome <- terms(formula(form, rhs=1))[[2]]
   trt <- terms(formula(form, rhs=1))[[3]]
-  wide <- format_data_stag(outcome, trt, unit_quosure, time_quosure, data=data)
 
-  trt_year_mask = wide$trt %>% is.finite() 
-  num_trt_years = sum(trt_year_mask %>% unique())
-  if (num_trt_years > 1) {
+  # check for multiple outcomes
+  multi_outcome <- length(outcome) != 1
+
+  ## get first treatment times
+  trt_time <- data %>%
+      group_by(!!unit_quosure) %>%
+      summarise(trt_time = (!!time_quosure)[(!!trt) == 1][1]) %>%
+      mutate(trt_time = replace_na(trt_time, Inf))
+
+  num_trt_years <- sum(is.finite(trt_time$trt_time))
+
+  if(multi_outcome & num_trt_years > 1) {
+    stop("augsynth is not currently implemented for more than one outcome and more than one treated unit")
+  } else if(num_trt_years > 1) {
     return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
   } else {
     if (is.null(t_int)) {
-      trt_year = wide$trt[which(trt_year_mask)]
-      t_int = data %>% pull(!!time_quosure) %>% unique() %>% sort() %>% `[`(trt_year+1)
+      t_int <- trt_time %>% filter(is.finite(trt_time)) %>%
+        summarise(t_int = max(trt_time)) %>% pull(t_int)
     }
-    return(single_augsynth(form, !!enquo(unit), !!enquo(time), t_int, data=data, ...))
+    if(!multi_outcome) {
+      return(single_augsynth(form, !!enquo(unit), !!enquo(time), t_int,
+                             data = data, ...))
+    } else {
+      return(augsynth_multiout(form, !!enquo(unit), !!enquo(time), t_int,
+                               data = data, ...))
+    }
   }
 }

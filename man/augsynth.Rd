@@ -19,7 +19,7 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
 
 \item{...}{Optional arguments
 \itemize{
-  \item Single period augsynth 
+  \item Single period augsynth with/without multiple outcomes
     \itemize{
       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
       \item{"scm"}{Whether the SCM weighting function is used}

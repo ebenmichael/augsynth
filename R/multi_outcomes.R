@@ -26,14 +26,14 @@
 #'         }
 #' @export
 augsynth_multiout <- function(form, unit, time, t_int, data,
-                                   progfunc=c("Ridge", "None", "EN", "RF", 
-                                              "GSYN", "MCP",
-                                              "CITS", "CausalImpact", 
-                                              "seq2seq"),
-                                    scm=T,
-                                    fixedeff = FALSE,
-                                    cov_agg=NULL,
-                                    ...) {
+                              progfunc=c("Ridge", "None", "EN", "RF",
+                                          "GSYN", "MCP",
+                                          "CITS", "CausalImpact",
+                                          "seq2seq"),
+                              scm=T,
+                              fixedeff = FALSE,
+                              cov_agg=NULL,
+                              ...) {
     call_name <- match.call()
 
     form <- Formula::Formula(form)
