@@ -107,6 +107,13 @@ drop_unit_i <- function(wide_data, Z, i) {
         new_synth_data$X0 <- t(X0)
         new_synth_data$Z1 <- x1
         new_synth_data$X1 <- x1
+        # new_synth_data$Y1plot <- synth_data$Y1plot
+        # # get the control unit index
+        # yplot <- matrix(0, nrow = nrow(wide_data$X), 
+        #                 ncol = ncol(wide_data$X) + ncol(wide_data$y))
+        # yplot[wide_data$trt == 0,] <- t(synth_data$Y0plot)
+        # yplot[wide_data$trt == 1,] <- synth_data$Y1plot
+        # new_synth_data$Y0plot <- t(yplot[-i,][new_wide_data$trt == 0,, drop = F])
         new_Z <- if(!is.null(Z)) Z[-i, , drop = F] else NULL
 
         return(list(wide_data = new_wide_data,
@@ -149,43 +156,22 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 
     trt_idxs <- (1:n)[as.logical(nnz_weights)]
     n_jack <- length(trt_idxs)
+}
 
-    # jackknife estimates
-    ests <- vapply(trt_idxs, 
-                   function(i) {
-                       new_data <- drop_unit_i(wide_data, Z, i)
-                       if(fixedeff) {
-                           demeaned <- demean_data(new_data$wide, 
-                                                   new_data$synth_data)
-                            new_data$wide_data <- demeaned$wide
-                            new_data$synth_data <- demeaned$synth_data
-                            mhat <- demeaned$mhat[, (t0 + 1):t_final, drop = F]
-                       } else {
-                           mhat <- matrix(0, n - 1, tpost)
-                       }
-                       
-                       new_y <- new_data$wide_data$y
-                       new_trt <- new_data$wide_data$trt
-                       aug <- do.call(fit_ridgeaug_formatted,
-                                c(new_data,
-                                list(lambda = lam, ridge = ridge, scm = scm)))
-                       c(colMeans(mhat[new_trt == 1,, drop = FALSE]) +
-                         t(new_y[new_trt == 0,, drop = F]) %*% aug$weights)
-                   },
-                   numeric(tpost))
-    # convert to matrix
-    ests <- matrix(ests, nrow = tpost, ncol = length(trt_idxs))
-    ## standard errors
-    se2 <- apply(ests, 1,
-                 function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
-    se <- sqrt(se2)
+#' Drop unit i from data
+#' @param wide_list (X, y, trt)
+#' @param Z Covariates matrix
+#' @param i Unit to drop
+drop_unit_i_multiout <- function(wide_list, Z, i) {
 
-    out <- list()
-    out$att <- att
+        new_wide_data <- list()
+        new_wide_data$trt <- wide_list$trt[-i]
+        new_wide_data$X <- lapply(wide_list$X, function(x) x[-i,, drop = F])
+        new_wide_data$y <- lapply(wide_list$y, function(x) x[-i,, drop = F])
+        new_Z <- if(!is.null(Z)) Z[-i, , drop = F] else NULL
 
-    out$se <- c(rep(NA, t0), se)
-    out$sigma <- NA
-    return(out)
+        return(list(wide_list = new_wide_data,
+                    Z = new_Z))
 }
 
 
@@ -195,7 +181,8 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 jackknife_se_single <- function(ascm) {
     
     wide_data <- ascm$data
-    synth_data <-format_synth(wide_data$X, wide_data$trt, wide_data$y)
+    # synth_data <- format_synth(wide_data$X, wide_data$trt, wide_data$y)
+    synth_data <- ascm$data$synth_data
     n <- nrow(wide_data$X)
     n_c <- dim(synth_data$Z0)[2]
     Z <- wide_data$Z
@@ -329,4 +316,59 @@ drop_unit_i_multi <- function(msyn, i) {
     }
     return(list(msyn_i,
                 dropped))
+}
+
+
+#' Estimate standard errors for multi outcome ascm with jackknife
+#' @param ascm Fitted augsynth object
+jackknife_se_multiout <- function(ascm) {
+
+    wide_data <- ascm$data
+    wide_list <- ascm$data_list
+    n <- nrow(wide_data$X)
+    Z <- wide_data$Z
+
+
+    # only drop out control units with non-zero weights
+    nnz_weights <- numeric(n)
+    nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+
+    trt_idxs <- (1:n)[as.logical(nnz_weights)]
+
+    # jackknife estimates
+    ests <- lapply(trt_idxs, 
+                   function(i) {
+                       # drop unit i
+                       new_data <- drop_unit_i_multiout(wide_list, Z, i)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_multiout_internal,
+                                c(list(wide = new_data$wide,
+                                       combine_method = ascm$combine_method,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                        new_ascm$outcomes <- ascm$outcomes
+                        new_ascm$data_list <- ascm$data_list
+                        new_ascm$data$time <- ascm$data$time
+                       # get ATT estimates
+                       est <- predict(new_ascm, att = T)
+                       est <- est[as.numeric(rownames(est)) >= ascm$t_int,, drop = F]
+                       rbind(est, colMeans(est, na.rm = T))
+                   })
+    ests <- simplify2array(ests)
+    ## standard errors
+    se2 <- apply(ests, c(1, 2),
+                 function(x) (n - 1) / n * sum((x - mean(x, na.rm = T)) ^ 2))
+    se <- sqrt(se2)
+    out <- list()
+    att <- predict(ascm, att = T)
+    att_post <- colMeans(att[as.numeric(rownames(att)) >= ascm$t_int,, drop = F], 
+                         na.rm = T)
+    out$att <- rbind(att, att_post)
+    t0 <- sum(as.numeric(rownames(att)) < ascm$t_int)
+    out$se <- rbind(matrix(NA, t0, ncol(se)), se)
+    out$sigma <- NA
+    return(out)
 }

@@ -4,12 +4,6 @@
 
 
 #' Fit Augmented SCM
-#' @importFrom stats terms
-#' @importFrom stats formula
-#' @importFrom stats update 
-#' @importFrom stats delete.response 
-#' @importFrom stats model.matrix 
-#' @importFrom stats model.frame 
 #' 
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
@@ -61,25 +55,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
 
     ## add covariates
     if(length(form)[2] == 2) {
-
-        ## if no aggregation functions, use the mean (omitting NAs)
-        cov_agg <- c(function(x) mean(x, na.rm=T))
-
-        cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
-                           ~. - 1) ## ensure that there is no intercept
-
-        ## pull out relevant covariates and aggregate
-        pre_data <- data %>% 
-            filter(!! (time) < t_int)
-        model.matrix(cov_form,
-                     model.frame(cov_form, pre_data,
-                                 na.action=NULL) ) %>%
-            data.frame() %>%
-            mutate(unit=pull(pre_data, !!unit)) %>%
-            group_by(unit) %>%
-            summarise_all(cov_agg) %>%
-            select(-unit) %>%
-            as.matrix() -> Z
+        Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)
     } else {
         Z <- NULL
     }
@@ -96,6 +72,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     return(augsynth)
 }
 
+
 #' Internal function to fit augmented SCM
 #' @param wide Data formatted from format_data
 #' @param synth_data Data formatted from foramt_synth
@@ -103,9 +80,10 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' @param progfunc outcome model to use
 #' @param scm Whether to fit SCM
 #' @param fixedeff Whether to de-mean synth
+#' @param V V matrix for Synth, default NULL
 #' @param ... Extra args for outcome model
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
-                                  scm, fixedeff, ...) {
+                                  scm, fixedeff, V = NULL, ...) {
 
     n <- nrow(wide$X)
     t0 <- ncol(wide$X)
@@ -127,19 +105,19 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
             augsynth <- do.call(fit_ridgeaug_formatted,
                                 list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data, 
-                                   Z = Z, ...))
+                                   Z = Z, V = V, ...))
         } else {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
                                    synth_data = fit_synth_data,
-                                   Z = Z, ridge = T, scm = F, ...))
+                                   Z = Z, ridge = T, scm = F, V = V, ...))
         }
     } else if(progfunc == "None") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
                                synth_data = fit_synth_data,
-                               Z = Z, ridge = F, scm = T)))
+                               Z = Z, ridge = F, scm = T, V = V)))
     } else {
         ## Other outcome models
         augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
@@ -150,10 +128,14 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$Z <- Z
+    augsynth$data$synth_data <- synth_data
     augsynth$progfunc <- progfunc
     augsynth$scm <- scm
     augsynth$fixedeff <- fixedeff
     augsynth$extra_args <- list(...)
+    if(progfunc == "Ridge") {
+        augsynth$extra_args$lambda <- augsynth$lambda
+    }
     ##format output
     class(augsynth) <- "augsynth"
     return(augsynth)
@@ -372,4 +354,11 @@ plot.summary.augsynth <- function(x, ...) {
 #' @import dplyr
 #' @import LowRankQP
 #' @import tidyr
+#' @importFrom stats terms
+#' @importFrom stats formula
+#' @importFrom stats update 
+#' @importFrom stats delete.response 
+#' @importFrom stats model.matrix 
+#' @importFrom stats model.frame 
+#' @importFrom stats na.omit
 NULL

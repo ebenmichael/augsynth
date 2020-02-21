@@ -44,6 +44,36 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
 }
 
 
+#' Format "long" panel data into "wide" program evaluation matrices
+#' @param outcomes Vectors of names of outcome columns
+#' @param trt Name of treatment column
+#' @param unit Name of unit column
+#' @param time Name of time column
+#' @param t_int Time of intervention
+#' @param data Panel data as dataframe
+#'
+#' @return \itemize{
+#'          \item{"X"}{List of matrices of pre-treatment outcomes}
+#'          \item{"trt"}{Vector of treatment assignments}
+#'          \item{"y"}{List of matrices of post-treatment outcomes}
+#'         }
+format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
+
+
+    lapply(outcomes, 
+        function(outcome) format_data(outcome, trt, unit, 
+                                     time, t_int, data)
+          ) -> formats
+
+    # X <- simplify2array(lapply(formats, function(x) x$X))
+    # y <- simplify2array(lapply(formats, function(x) x$y))
+    X <- lapply(formats, function(x) t(na.omit(t(x$X))))
+    y <- lapply(formats, function(x) t(na.omit(t(x$y))))
+    trt <- formats[[1]]$trt
+    return(list(X = X, trt = trt, y = y))
+}
+
+
 
 
 #' Format "long" panel data into "wide" program evaluation matrices with staggered adoption
@@ -195,4 +225,37 @@ demean_data <- function(wide_data, synth_data) {
     return(list(wide = new_wide_data,
                 synth_data = new_synth_data,
                 mhat = mhat))
+}
+
+#' Helper function to extract covariate matrix from data
+#' @param form Formula as outcome ~ treatment | covariates
+#' @param unit Name of unit column
+#' @param time Name of time column
+#' @param t_int Time of intervention
+#' @param data Panel data as dataframe
+#' @param cov_agg Covariate aggregation function
+extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
+
+    ## if no aggregation functions, use the mean (omitting NAs)
+    if(is.null(cov_agg)) {
+        cov_agg <- c(function(x) mean(x, na.rm=T))
+    }
+
+    cov_form <- update(formula(delete.response(terms(form, rhs=2, data=data))),
+                        ~. - 1) ## ensure that there is no intercept
+
+    ## pull out relevant covariates and aggregate
+    pre_data <- data %>% 
+        filter(!! (time) < t_int)
+
+    model.matrix(cov_form,
+                    model.frame(cov_form, pre_data,
+                                na.action=NULL) ) %>%
+        data.frame() %>%
+        mutate(unit=pull(pre_data, !!unit)) %>%
+        group_by(unit) %>%
+        summarise_all(cov_agg) %>%
+        select(-unit) %>%
+        as.matrix() -> Z
+    return(Z)
 }

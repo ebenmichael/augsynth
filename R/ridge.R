@@ -15,6 +15,7 @@
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
+#' @param V V matrix for synth, default NULL
 #' @param ... optional arguments for outcome model
 #' 
 #' @return \itemize{
@@ -33,7 +34,8 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    Z=NULL, lambda=NULL, ridge=T, scm=T,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
-                                   holdout_length = 1, min_1se = T, ...) {
+                                   holdout_length = 1, min_1se = T,
+                                   V = NULL, ...) {
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters in using ridge augmented weights: ", paste(names(extra_params), collapse = ", "))
@@ -54,7 +56,28 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     y_cent <- apply(y, 2, function(x) x - mean(x[trt==0]))
     y_c <- y_cent[trt==0,,drop=FALSE]
 
+    t0 <- ncol(X_c)
+
+    if(is.null(V)) {
+        # custom.v <- rep(1, dim(synth_data$Z0)[1])
+        V <- diag(rep(1, t0))
+    } else if(is.vector(V)) {
+        V <- diag(V)
+    } else if(ncol(V) == 1 & nrow(V) == t0) {
+        V <- diag(c(V))
+    } else if(ncol(V) == t0 & nrow(V) == 1) {
+        V <- diag(c(V))
+    } else if(nrow(V) == t0) {
+    } else {
+        stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
+    }
+
+    # apply V matrix transformation
+    X_c <- X_c %*% V
+    X_1 <- X_1 %*% V
+
     new_synth_data <- synth_data
+
 
     ## if there are auxiliary covariates, use them
     if(!is.null(Z)) {
@@ -82,6 +105,11 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         new_synth_data$X1 <- t(res_t)
         new_synth_data$Z0 <- t(res_c)
         new_synth_data$X0 <- t(res_c)
+    } else {
+        new_synth_data$Z1 <- t(X_1)
+        new_synth_data$X1 <- t(X_1)
+        new_synth_data$Z0 <- t(X_c)
+        new_synth_data$X0 <- t(X_c)
     }
     out <- fit_ridgeaug_inner(X_c, X_1, trt, new_synth_data,
                                lambda, ridge, scm,
@@ -191,9 +219,8 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
             lambdas <- cv_out$lambdas
         }
         # get ridge weights
-        ridge_w <- t(t(X_1) - t(X_c) %*% syn) %*% 
-                    solve(t(X_c) %*% X_c + lambda * diag(ncol(X_c))) %*%
-                    t(X_c)
+        ridge_w <- t(t(X_1) - t(X_c) %*% syn) %*%
+                    solve(t(X_c) %*% X_c  + lambda * diag(ncol(X_c))) %*% t(X_c)
     } else {
         ridge_w <- matrix(0, ncol = sum(trt == 0), nrow=1)
     }

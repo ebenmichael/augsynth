@@ -17,16 +17,16 @@ test_that("augsynth and multisynth give the same answer for a single treated uni
                        scm=T, eps_rel=1e-5, eps_abs=1e-5)
     
     # weights are the same-ish
-    expect_equal(c(syn$weights), c(msyn$weights[-16]), tolerance=3e-2)
+    expect_equal(c(syn$weights), c(msyn$weights[-16]), tolerance=3e-4)
 
     # estimates are the same-ish
     pred_msyn <- predict(msyn, att=F)[,1]
     pred_msyn <- pred_msyn[-length(pred_msyn)]
-    expect_equal(c(predict(syn, att=F)), pred_msyn, tolerance=5e-3)
+    expect_equal(c(predict(syn, att=F)), pred_msyn, tolerance=5e-5)
 
 
     ## level of balance is same-ish expected
-    expect_equal(syn$l2_imbalance, msyn$ind_l2, tolerance=1e-3)
+    expect_equal(syn$l2_imbalance, msyn$ind_l2, tolerance=1e-5)
 
 }
 )
@@ -87,4 +87,3 @@ test_that("Separate synth is the same as fitting separate synths", {
     expect_equal(c(predict(scm16, att=F)), pred_msyn[, 2], tolerance=5e-3)
 }
 )
-

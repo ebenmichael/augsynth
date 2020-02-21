@@ -4,7 +4,8 @@
 \alias{fit_augsynth_internal}
 \title{Internal function to fit augmented SCM}
 \usage{
-fit_augsynth_internal(wide, synth_data, Z, progfunc, scm, fixedeff, ...)
+fit_augsynth_internal(wide, synth_data, Z, progfunc, scm, fixedeff,
+  V = NULL, ...)
 }
 \arguments{
 \item{wide}{Data formatted from format_data}
@@ -18,6 +19,8 @@ fit_augsynth_internal(wide, synth_data, Z, progfunc, scm, fixedeff, ...)
 \item{scm}{Whether to fit SCM}
 
 \item{fixedeff}{Whether to de-mean synth}
+
+\item{V}{V matrix for Synth, default NULL}
 
 \item{...}{Extra args for outcome model}
 }

@@ -4,10 +4,12 @@
 \alias{fit_synth_formatted}
 \title{Fit synthetic controls on outcomes after formatting data}
 \usage{
-fit_synth_formatted(synth_data)
+fit_synth_formatted(synth_data, V = NULL)
 }
 \arguments{
 \item{synth_data}{Panel data in format of Synth::dataprep}
+
+\item{V}{Matrix to scale the obejctive by}
 }
 \value{
 \itemize{
