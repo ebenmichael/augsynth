@@ -1,3 +1,4 @@
+^data-raw$
 ^Meta$
 ^doc$
 ^\.travis\.yml$
