@@ -4,9 +4,19 @@
 \alias{augsynth_multiout}
 \title{Fit Augmented SCM with multiple outcomes}
 \usage{
-augsynth_multiout(form, unit, time, t_int, data, progfunc = c("Ridge",
-  "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
-  scm = T, fixedeff = FALSE, cov_agg = NULL, ...)
+augsynth_multiout(
+  form,
+  unit,
+  time,
+  t_int,
+  data,
+  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact",
+    "seq2seq"),
+  scm = T,
+  fixedeff = FALSE,
+  cov_agg = NULL,
+  ...
+)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}

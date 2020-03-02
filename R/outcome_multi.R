@@ -11,7 +11,7 @@
 #' @param r.end Max number of factors to consider if CV==1
 #' @param force Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -62,7 +62,7 @@ fit_gsynth_multi <- function(X, trt, r=0, r.end=5, force=3, CV=1) {
 #' @param trt Vector of treatment status for each unit
 #' @param mask Matrix of treatment statuses
 #' @param force Fixed effects: 1="unit", 2="time", 3="two-way"
-#' 
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}

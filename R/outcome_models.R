@@ -19,7 +19,7 @@
 #'              \item{avg }{Average responses into 1 outcome}
 #'              \item{multi }{Use multi response regression in glmnet}}
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -92,7 +92,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @param trt Vector of treatment indicator
 #' @param avg Predict the average post-treatment outcome
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -169,7 +169,7 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 #' @param force Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -250,7 +250,7 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 #' @param unit_fixed Whether to estimate unit fixed effects
 #' @param time_fixed Whether to estimate time fixed effects
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -317,7 +317,7 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 #' @param poly_order Order of time trend polynomial to fit, default 1
 #' @param weights Weights to use in WLS, default is no weights
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -429,7 +429,7 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
@@ -505,7 +505,7 @@ fit_prog_causalimpact <- function(X, y, trt, ...) {
 #' @param val_split Proportion of control units to use for validation
 #' @param verbose Whether to print training progress
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}

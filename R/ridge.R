@@ -17,7 +17,7 @@
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
 #' @param V V matrix for synth, default NULL
 #' @param ... optional arguments for outcome model
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -183,7 +183,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"lambda"}{Value of the ridge hyperparameter}
@@ -239,6 +239,7 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
 
 #' Choose max lambda as largest eigenvalue of control X
 #' @param X_c matrix of control lagged outcomes
+#' @noRd
 #' @return max lambda
 get_lambda_max <- function(X_c) {
     svd(X_c)$d[1] ^ 2
@@ -247,7 +248,7 @@ get_lambda_max <- function(X_c) {
 #' @param lambda_min_ratio Ratio of the smallest to largest lambda when tuning lambda values
 #' @param n_lambda Number of lambdas to consider between the smallest and largest lambda value
 #' @param lambda_max Initial (largest) lambda, if NULL sets it to be (1+norm(X_1-X_c))^2
-#' 
+#' @noRd
 #' @return List of lambdas
 create_lambda_list <- function(lambda_max, lambda_min_ratio, n_lambda) {
     scaler <- (lambda_min_ratio) ^ (1/n_lambda)
@@ -260,7 +261,7 @@ create_lambda_list <- function(lambda_max, lambda_min_ratio, n_lambda) {
 #' @param lambda_errors The MSE associated with each lambda term in lambdas.
 #' @param lambda_errors_se The SE of the MSE associated with each lambda
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
-#' 
+#' @noRd
 #' @return optimal lambda
 choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
     # lambda with smallest error
@@ -284,7 +285,7 @@ choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
 #' @param lambda_min_ratio Ratio of the smallest to largest lambda when tuning lambda values
 #' @param n_lambda Number of lambdas to consider between the smallest and largest lambda value
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda 
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"lambda"}{Value of the ridge hyperparameter}
 #'          \item{"lambdas"}{List of lambda values evaluated to tune ridge regression}

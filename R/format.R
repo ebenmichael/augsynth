@@ -9,7 +9,7 @@
 #' @param time Name of time column
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
-#'
+#' @noRd
 #' @return \itemize{
 #'          \item{"X"}{Matrix of pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}
@@ -51,7 +51,7 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
 #' @param time Name of time column
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
-#'
+#' @noRd
 #' @return \itemize{
 #'          \item{"X"}{List of matrices of pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}
@@ -82,7 +82,7 @@ format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
-#'
+#' @noRd
 #' @return \itemize{
 #'          \item{"X"}{Matrix of pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}
@@ -168,7 +168,7 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
 #' @param X Matrix of pre-treatment outcomes
 #' @param trt Vector of treatment assignments
 #' @param y Matrix of post-treatment outcomes
-#'
+#' @noRd
 #' @return List with data formatted as Synth::dataprep
 format_synth <- function(X, trt, y) {
 
@@ -198,6 +198,7 @@ format_synth <- function(X, trt, y) {
 #' Remove unit means 
 #' @param wide_data X, y, trt
 #' @param synth_data List with data formatted as Synth::dataprep
+#' @noRd
 demean_data <- function(wide_data, synth_data) {
 
     # pre treatment means
@@ -234,6 +235,7 @@ demean_data <- function(wide_data, synth_data) {
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
 #' @param cov_agg Covariate aggregation function
+#' @noRd
 extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
 
     ## if no aggregation functions, use the mean (omitting NAs)

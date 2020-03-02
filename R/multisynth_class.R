@@ -19,7 +19,7 @@
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
 #' @param ... Extra arguments
-#'
+#' 
 #' @return multisynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
@@ -134,7 +134,7 @@ multisynth <- function(form, unit, time, data,
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
 #' @param ... Extra arguments
-#'
+#' @noRd
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        nu, lambda,

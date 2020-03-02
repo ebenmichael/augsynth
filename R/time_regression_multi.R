@@ -10,7 +10,7 @@
 #' @param lowlim Lower bound for coefs
 #' @param uplim upper bound for coefs
 #' @param ... Extra optimization hyperparameters
-#' 
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{List of predicted outcome under control}
 #'           \item{residuals }{List of residuals}
@@ -55,7 +55,7 @@ fit_time_reg <- function(X, trt, n_leads, reg_param, lowlim = 0, uplim = 1, ...)
 #' @param lowlim Lower bound for coefs
 #' @param uplim upper bound for coefs
 #' @param ... Extra optimization hyperparameters
-#' 
+#' @noRd
 #' @return reg_weights Fitted regression weights
 fit_time_reg_qp_ <- function(X, trt, n_leads, lowlim, uplim, reg_param, ...) {
 
@@ -105,6 +105,7 @@ fit_time_reg_qp_ <- function(X, trt, n_leads, lowlim, uplim, reg_param, ...) {
 #' @param X Matrix of outcomes
 #' @param trt Vector of treatment status for each unit
 #' @param n_leads How long past treatment effects should be estimated for
+#' @noRd
 collect_data <- function(X, trt, n_leads) {
 
     grps <- trt[is.finite(trt)]

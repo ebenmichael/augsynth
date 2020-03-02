@@ -82,6 +82,9 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' @param fixedeff Whether to de-mean synth
 #' @param V V matrix for Synth, default NULL
 #' @param ... Extra args for outcome model
+#' 
+#' @noRd
+#' 
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   scm, fixedeff, V = NULL, ...) {
 
