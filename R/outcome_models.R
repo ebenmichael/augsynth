@@ -174,11 +174,27 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
 fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
+    
+    df_x = data.frame(X, check.names=FALSE)
+    df_x$unit = rownames(df_x)
+    df_x$trt = rep(0, nrow(df_x))
+    df_x <- df_x %>% select(unit, trt, everything())
+    long_df_x = gather(df_x, time, obs, -c(unit,trt))
+    
+    
+    df_y = data.frame(y, check.names=FALSE)
+    df_y$unit = rownames(df_y)
+    df_y$trt = trt
+    df_y <- df_y %>% select(unit, trt, everything())
+    long_df_y = gather(df_y, time, obs, -c(unit,trt))
+    long_df = rbind(long_df_x, long_df_y)
 
+    print(gsynth::gsynth(data = long_df, Y = "obs", D = "trt", index = c("unit", "time"), force = force, CV = CV))
+    
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
     }
-    
+    # print(gather(data.frame(X)))
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters when using gSynth: ", paste(names(extra_params), collapse = ", "))
@@ -203,6 +219,7 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
                                                r=r, r.end=r.end,
                                                force=force, CV=CV,
                                                tol=0.001))
+    
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
     y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] -
