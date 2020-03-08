@@ -207,7 +207,7 @@ plot.augsynth <- function(x, ...) {
         se <- T
     }
     augsynth <- x
-    plot(summary(augsynth, se), se = se)
+    plot(summary(augsynth, ...), se = se)
 }
 
 
@@ -222,6 +222,11 @@ summary.augsynth <- function(object, ...) {
     } else {
         se <- T
     }
+    if ("se_type" %in% names(list(...))) {
+        se_type <- list(...)$se_type
+    } else {
+        se_type <- "jackknife"
+    }
     
     
     summ <- list()
@@ -230,7 +235,16 @@ summary.augsynth <- function(object, ...) {
     t_final <- t0 + ncol(augsynth$data$y)
 
     if(se) {
-        att_se <- jackknife_se_single(augsynth)
+        if(se_type == "jackknife") {
+            att_se <- jackknife_se_single(augsynth)
+        } else if(se_type == "placebo") {
+            att_se <- placebo_se_single(augsynth)
+        } else if(se_type == "semipar_bs") {
+            att_se <- residual_bs_se_single(augsynth, ...)
+        } else {
+            stop("se_type is wrong")
+        }
+
         att <- data.frame(Time = augsynth$data$time,
                           Estimate = att_se$att[1:t_final],
                           Std.Error = att_se$se[1:t_final])

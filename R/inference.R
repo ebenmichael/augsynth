@@ -2,6 +2,265 @@
 ## Code for inference
 ################################################################################
 
+#' Estimate standard errors for single ASCM with the jackknife
+#' Do this for ridge-augmented synth
+#' @param ascm Fitted augsynth object
+placebo_se_single <- function(ascm) {
+
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    # only drop out control units with non-zero weights
+    # nnz_weights <- numeric(n)
+    # nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+
+    # trt_idxs <- (1:n)[as.logical(nnz_weights)]
+
+    # LOO placebo estimates
+    errs <- vapply((1:n)[wide_data$trt != 1],
+                   function(i) {
+                       # drop unit i
+                       new_data <- placebo_unit_i(wide_data, Z, i)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_internal,
+                                c(list(wide = new_data$wide,
+                                       synth_data = new_data$synth_data,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                       # get ATT estimates, truth is zero
+                       est <- predict(new_ascm, att = T)[(t0 + 1):t_final]
+                       c(est, mean(est))
+                    #    est <- predict(new_ascm, att = F)[(t0 + 1):t_final]
+                    #    est <- c(est, mean(est))
+                    #    y0 <- c(wide_data$y[i, ], mean(wide_data$y[i, ]))
+                    #    est - y0
+                   },
+                   numeric(tpost + 1))
+    # return(errs)
+    # convert to matrix
+    errs <- matrix(errs, nrow = tpost + 1, ncol = (n - 1))
+    ## standard errors
+    se2 <- apply(errs, 1, 
+                function(x) {
+                    sum(ascm$weights ^ 2 * x ^ 2) / sum(ascm$weights) ^ 2
+                })
+    # se2 <- apply(errs, 1, 
+    #             function(x) {
+    #                 sum(x ^ 2) * sum(ascm$weights ^ 2)
+    #             })
+    # se2 <- apply(errs, 1, 
+    #             function(x) {
+    #                 mean(x ^ 2)
+    #             })
+    # sig2 <- apply(errs ^ 2, 2, mean) ## estimate of variance
+
+    # se2 <- (#1 / sum(wide_data$trt==1) + ## contribution from treated unit
+    #        sum(ascm$weights ^ 2)) * ## contribution from weights
+    #     sig2
+    se <- sqrt(se2)
+
+
+    out <- list()
+    att <- predict(ascm, att = T)
+    out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    return(out)
+}
+
+
+#' Use unit i as the treated unit
+#' @param wide_data (X, y, trt)
+#' @param Z Covariates matrix
+#' @param i Unit to consider treated
+placebo_unit_i <- function(wide_data, Z, i) {
+
+        new_wide_data <- list()
+        trt <- numeric(length(wide_data$trt))
+        trt[i] <- 1
+        new_wide_data$trt <- trt[wide_data$trt != 1]
+        new_wide_data$X <- wide_data$X[wide_data$trt != 1, , drop = F]
+        new_wide_data$y <- wide_data$y[wide_data$trt != 1, , drop = F]
+
+        X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+        x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+                     ncol = 1)
+
+        new_synth_data <- list()
+        new_synth_data$Z0 <- t(X0)
+        new_synth_data$X0 <- t(X0)
+        new_synth_data$Z1 <- x1
+        new_synth_data$X1 <- x1
+        new_Z <- if(!is.null(Z)) Z[wide_data$trt != 1, , drop = F] else NULL
+
+        return(list(wide_data = new_wide_data,
+                    synth_data = new_synth_data,
+                    Z = new_Z))
+}
+
+
+#' Estimate standard errors for single ASCM with residual bootstrap
+#' Do this for ridge-augmented synth
+#' @param ascm Fitted augsynth object
+residual_bs_se_single <- function(ascm, b=1000, ...) {
+
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    # only drop out control units with non-zero weights
+    nnz_weights <- numeric(n)
+    nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+
+    # trt_idxs <- (1:n)[as.logical(nnz_weights)]
+    # n_jack <- length(trt_idxs)
+
+    # LOO fitted values and residuals
+    ests <- vapply((1:n)[wide_data$trt != 1],
+                   function(i) {
+                       # drop unit i
+                       new_data <- placebo_unit_i(wide_data, Z, i)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_internal,
+                                c(list(wide = new_data$wide,
+                                       synth_data = new_data$synth_data,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                       # get ATT estimates, truth is zero
+                       est <- predict(new_ascm, att = F)[(t0 + 1):t_final]
+                       est
+                   },
+                   numeric(tpost))
+    # get residuals
+    errs <- t(wide_data$y[wide_data$trt == 0, , drop = FALSE]) - ests
+
+
+    bs_ests <- vapply(1:b, 
+                      function(x) {
+                        # resample residuals
+                        smpl <- sample(1:ncol(errs), ncol(errs), 
+                                        replace = TRUE)
+                        new_y <- ests + errs[, smpl]
+                        # get estimate
+                        new_y %*% ascm$weights
+                      },
+                      numeric(tpost))
+    # add in means
+    bs_ests <- rbind(bs_ests, colMeans(bs_ests))
+    ## standard errors
+    se2 <- apply(bs_ests, 1, var)
+    se <- sqrt(se2)
+
+
+    out <- list()
+    att <- predict(ascm, att = T)
+    out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    return(out)
+}
+
+
+# #' Estimate standard errors for single ASCM with Cattaneo, Feng, Titiunik
+# #' Do this for ridge-augmented synth
+# #' @param ascm Fitted augsynth object
+# cft_se_single <- function(ascm, b=1000, ...) {
+
+#     wide_data <- ascm$data
+#     synth_data <- ascm$data$synth_data
+#     n <- nrow(wide_data$X)
+#     n_c <- dim(synth_data$Z0)[2]
+#     Z <- wide_data$Z
+
+#     t0 <- dim(synth_data$Z0)[1]
+#     tpost <- ncol(wide_data$y)
+#     t_final <- dim(synth_data$Y0plot)[1]
+
+#     # compute pre-treatment residuals and sufficient stats
+#     X0 <- ascm$data$X[ascm$data$trt == 0, ]
+#     res <- predict(ascm, att=T)[1:t0]
+#     gram_mat <- X0 %*% t(X0) / ncol(X0)
+#     corr_vec <- t(X0) * res
+#     corr_mat <- corr_vec - rowMeans(corr_vec)
+    
+
+#     # montecarlo to get quantiles
+#     mc_bounds <- vapply(1:b, 
+#                       function(x) {
+#                         # sample noise
+#                         noise_b <- rnorm(length(t0))
+#                         # compute sup and inf over noise
+#                         supinf <- compute_cft_bounds(ascm, gram_mat, corr_vec, noise)
+#                         rbind(supinf$inf, supinf$sup)
+#                       },
+#                       matrix(NA, ncol = tpost, nrow = 2))
+#     return(mc_bounds)
+#     # add in means
+#     bs_ests <- rbind(bs_ests, colMeans(bs_ests))
+#     ## standard errors
+#     se2 <- apply(bs_ests, 1, var)
+#     se <- sqrt(se2)
+
+
+#     out <- list()
+#     att <- predict(ascm, att = T)
+#     out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+#     out$se <- c(rep(NA, t0), se)
+#     out$sigma <- NA
+#     return(out)
+# }
+
+# #' Compute sup and inf of errors for prediction quantiles
+# compute_cft_bounds <- function(ascm, gram_mat, corr_vec, noise) {
+
+#     t0 <- ncol(ascm$data$X)
+#     n0 <- sum(ascm$data$trt == 0)
+#     # montecarlo vector in constraint set
+#     mc_vec <- colMeans(corr_vec * noise)
+
+#     # make constraint set
+#     if(ascm$progfunc == "None") {
+#         # if just SCM, threshold weights
+#         # FROM CFT_2020_JASA replication materia;s
+#         eta <- sqrt(mean(res ^ 2) * log(n0) / t0) / min(apply(X0, 1, sd))
+#         new_w <- ascm$weights
+#         new_w[ascm$weights < eta] <- 0
+
+#         # quadratic constraint for the errors
+#         quad_con <- optiSolve::quadcon(Q=gram_mat, a = -2 * mc_vec, 
+#                                    val= n0 ^ (1/3) / t0 ^ (7 / 6))
+#         # linear constraint for the simplex constraint
+#         lin_con <- optiSolve::lincon(A = matrix(1, nrow = n0), val = sum(new_w))
+#     }
+
+#     # optimize for lower and upper bounds
+
+# }
+
 #' Use leave out one estimates (placebo gaps) to estimate unit-level variance
 #' Do this for ridge-augmented synth
 #' @param wide_data Data formatted from format_data
