@@ -184,6 +184,89 @@ residual_bs_se_single <- function(ascm, b=1000, ...) {
 }
 
 
+time_jackknife_plus <- function(ascm) {
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    errs <- matrix(0, n_c, t_final - t0)
+
+    jack_ests <- lapply(1:t0, 
+        function(tdrop) {
+            # drop unit i
+            new_data <- drop_time_t(wide_data, Z, tdrop)
+            # refit
+            new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_data$wide,
+                            synth_data = new_data$synth_data,
+                            Z = new_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+            # get ATT estimates and held out error for time t
+            # t0 is prediction for held out time
+            est <- predict(new_ascm, att = T)[(t0 +1):t_final]
+            est <- c(est, mean(est))
+            err <- c(colMeans(wide_data$X[wide_data$trt == 1, 
+                                         tdrop, 
+                                         drop = F]) - 
+                    predict(new_ascm, att = F)[t0])
+            list(err, rbind(est + abs(err), est - abs(err)))
+        })
+    # get errors and jackknife distribution
+    held_out_errs <- vapply(jack_ests, `[[`, numeric(1), 1)
+    jack_dist <- vapply(jack_ests, `[[`, 
+                        matrix(0, nrow = 2, ncol = tpost + 1), 2)
+
+    out <- list()
+    att <- predict(ascm, att = T)
+    # use leave one out ATT estimates
+    out$att <- c(held_out_errs, 
+                 att[(t0 + 1):t_final], 
+                 mean(att[(t0 + 1):t_final]))
+    se <- apply(jack_dist[1,,], 1, sd)
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, 0.025))
+    out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 0.975))
+
+    return(out)
+}
+
+#' Drop unit i from data
+#' @param wide_data (X, y, trt)
+#' @param Z Covariates matrix
+#' @param t_drop Time to drop
+drop_time_t <- function(wide_data, Z, t_drop) {
+
+        new_wide_data <- list()
+        new_wide_data$trt <- wide_data$trt
+        new_wide_data$X <- wide_data$X[, -t_drop, drop = F]
+        new_wide_data$y <- cbind(wide_data$X[, t_drop, drop = F], 
+                                 wide_data$y)
+
+        X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+        x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+                     ncol=1)
+        y0 <- new_wide_data$y[new_wide_data$trt == 0,, drop = F]
+        y1 <- colMeans(new_wide_data$y[new_wide_data$trt == 1,, drop = F])
+
+        new_synth_data <- list()
+        new_synth_data$Z0 <- t(X0)
+        new_synth_data$X0 <- t(X0)
+        new_synth_data$Z1 <- x1
+        new_synth_data$X1 <- x1
+
+        return(list(wide_data = new_wide_data,
+                    synth_data = new_synth_data,
+                    Z = Z)) 
+}
 # #' Estimate standard errors for single ASCM with Cattaneo, Feng, Titiunik
 # #' Do this for ridge-augmented synth
 # #' @param ascm Fitted augsynth object
@@ -251,8 +334,13 @@ residual_bs_se_single <- function(ascm, b=1000, ...) {
 #         new_w[ascm$weights < eta] <- 0
 
 #         # quadratic constraint for the errors
-#         quad_con <- optiSolve::quadcon(Q=gram_mat, a = -2 * mc_vec, 
-#                                    val= n0 ^ (1/3) / t0 ^ (7 / 6))
+#         Qmat <- gram_mat
+#         avec <- -2 * mc_vec - 2 * c(t(new_w) %*% gram_mat)
+#         dscal <- 2 * sum(mc_vec * new_w) + new_w %*% gram_mat %*% w
+#         quad_con <- optiSolve::quadcon(Q = Qmat,
+#                                        a = avec,
+#                                        d = dscal,
+#                                        val= 1 / t0 ^ (7 / 6))
 #         # linear constraint for the simplex constraint
 #         lin_con <- optiSolve::lincon(A = matrix(1, nrow = n0), val = sum(new_w))
 #     }

@@ -241,6 +241,8 @@ summary.augsynth <- function(object, ...) {
             att_se <- placebo_se_single(augsynth)
         } else if(se_type == "semipar_bs") {
             att_se <- residual_bs_se_single(augsynth, ...)
+        } else if(se_type == "jackknife+") {
+            att_se <- time_jackknife_plus(augsynth)
         } else {
             stop("se_type is wrong")
         }
@@ -250,6 +252,10 @@ summary.augsynth <- function(object, ...) {
                           Std.Error = att_se$se[1:t_final])
         att_avg <- att_se$att[t_final + 1]
         att_avg_se <- att_se$se[t_final + 1]
+        if(se_type == "jackknife+") {
+            att$lower_bound <- att_se$lb[1:t_final]
+            att$upper_bound <- att_se$ub[1:t_final]
+        }
 
     } else {
         t0 <- ncol(augsynth$data$X)
@@ -264,6 +270,10 @@ summary.augsynth <- function(object, ...) {
 
     summ$att <- att
     summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
+    if(se_type == "jackknife+") {
+        summ$average_att$lower_bound <- att_se$lb[t_final + 1]
+        summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+    }
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
@@ -284,7 +294,7 @@ summary.augsynth <- function(object, ...) {
     if(augsynth$progfunc == "None" | (!augsynth$scm)) {
         summ$bias_est <- NA
     }
-    
+    summ$se_type <- se_type
     class(summ) <- "summary.augsynth"
     return(summ)
 }
@@ -347,9 +357,16 @@ plot.summary.augsynth <- function(x, ...) {
     p <- summ$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
     if(se) {
-        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+        if(all(is.na(summ$att$lower_bound))) {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
                     alpha=0.2)
+        } else {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
+                        ymax=upper_bound),
+                    alpha=0.2)
+        }
+
     }
     p + ggplot2::geom_line() +
         ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
