@@ -183,8 +183,9 @@ residual_bs_se_single <- function(ascm, b=1000, ...) {
     return(out)
 }
 
-
-time_jackknife_plus <- function(ascm) {
+#' Jackknife+ algorithm over time
+#' @param alpha Confidence level
+time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
     n <- nrow(wide_data$X)
@@ -213,16 +214,16 @@ time_jackknife_plus <- function(ascm) {
             # t0 is prediction for held out time
             est <- predict(new_ascm, att = T)[(t0 +1):t_final]
             est <- c(est, mean(est))
-            err <- c(colMeans(wide_data$X[wide_data$trt == 1, 
-                                         tdrop, 
-                                         drop = F]) - 
+            err <- c(colMeans(wide_data$X[wide_data$trt == 1,
+                                         tdrop,
+                                         drop = F]) -
                     predict(new_ascm, att = F)[t0])
-            list(err, rbind(est + abs(err), est - abs(err)))
+            list(err, rbind(est + abs(err), est - abs(err), est + err, est))
         })
     # get errors and jackknife distribution
     held_out_errs <- vapply(jack_ests, `[[`, numeric(1), 1)
-    jack_dist <- vapply(jack_ests, `[[`, 
-                        matrix(0, nrow = 2, ncol = tpost + 1), 2)
+    jack_dist <- vapply(jack_ests, `[[`,
+                        matrix(0, nrow = 4, ncol = tpost + 1), 2)
 
     out <- list()
     att <- predict(ascm, att = T)
@@ -230,14 +231,83 @@ time_jackknife_plus <- function(ascm) {
     out$att <- c(held_out_errs, 
                  att[(t0 + 1):t_final], 
                  mean(att[(t0 + 1):t_final]))
-    se <- apply(jack_dist[1,,], 1, sd)
+    se <- apply(jack_dist[3,,], 1, sd)
     out$se <- c(rep(NA, t0), se)
     out$sigma <- NA
-    out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, 0.025))
-    out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 0.975))
+    if(conservative) {
+        qerr <- quantile(abs(held_out_errs), 0.95)
+        out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
+        out$ub <- c(rep(NA, t0), apply(jack_dist[4,,], 1, max) + qerr)
+    } else {
+        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 2))
+        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 2))
+    }
+
 
     return(out)
 }
+
+#' Chernozhukov conformal t method
+#' @param K Number of hold out periods
+#' @param alpha Confidence level
+chernozhukov_t <- function(ascm, K = 3, alpha = 0.05, ...) {
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+    
+    grps <- split(1:t0, sort(1:t0 %% K))
+
+    holdouts <- lapply(grps, 
+        function(tdrops) {
+            # drop unit i
+            new_data <- drop_time_t(wide_data, Z, tdrops)
+            # refit
+            new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_data$wide,
+                            synth_data = new_data$synth_data,
+                            Z = new_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+            # get ATT estimates and held out error for time t
+            newt0 <- t0 - length(tdrops)
+            est <- predict(new_ascm, att = T)[(newt0 + length(tdrops) + 1):t_final]
+            est <- c(est, mean(est))
+            err <- c(colMeans(wide_data$X[wide_data$trt == 1,
+                                         tdrops,
+                                         drop = F]) -
+                    predict(new_ascm, att = F)[(newt0 + 1):(newt0 + length(tdrops))])
+            list(err, est - mean(err))
+        })
+
+    # get errors and jackknife distribution
+    centered_atts <- vapply(holdouts, `[[`,
+                            numeric(tpost + 1), 2)
+    mean_holdout <- rowMeans(centered_atts)
+    out <- list()
+    att <- predict(ascm, att = T)
+    # use centered ATT estimates
+    out$att <- c(att[1:t0], mean_holdout)
+
+    se <- sqrt(rowSums((centered_atts - mean_holdout) ^ 2) / (K - 1))
+    se <- se / sqrt(K) *
+        sqrt(1 + K * pmin(floor(t0 / K), c(rep(1, tpost), tpost)) / tpost)
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    out$lb <- c(rep(NA, t0), mean_holdout - qt(1 - alpha / 2, K - 1) * se)
+    out$ub <- c(rep(NA, t0), mean_holdout + qt(1 - alpha / 2, K - 1) * se)
+
+    return(out)
+}
+
 
 #' Drop unit i from data
 #' @param wide_data (X, y, trt)
@@ -267,6 +337,101 @@ drop_time_t <- function(wide_data, Z, t_drop) {
                     synth_data = new_synth_data,
                     Z = Z)) 
 }
+
+#' Estimate standard errors for single ASCM with residual bootstrap
+#' Do this for ridge-augmented synth
+#' @param ascm Fitted augsynth object
+bs_se_single <- function(ascm, b=1000, alpha = 0.025, ...) {
+
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
+    n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
+
+    t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
+    t_final <- dim(synth_data$Y0plot)[1]
+
+
+    bs_ests <- vapply(1:b,
+                      function(x) {
+                        # resample control units
+                        new_data <- resample_controls(wide_data, Z)
+                       # refit
+                       new_ascm <- do.call(fit_augsynth_internal,
+                                c(list(wide = new_data$wide,
+                                       synth_data = new_data$synth_data,
+                                       Z = new_data$Z,
+                                       progfunc = ascm$progfunc,
+                                       scm = ascm$scm,
+                                       fixedeff = ascm$fixedeff),
+                                  ascm$extra_args))
+                       # get ATT estimates, truth is zero
+                       est <- predict(new_ascm, att = T)[(t0 + 1):t_final]
+                       c(est, mean(est))
+                      },
+                      numeric(tpost + 1))
+
+    out <- list()
+    att <- predict(ascm, att = T)
+
+    se <- apply(bs_ests, 1, sd)
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    out$lb <- c(rep(NA, t0), apply(bs_ests, 1, quantile, alpha ))
+    out$ub <- c(rep(NA, t0), apply(bs_ests, 1, quantile, 1 - alpha))
+
+
+    out$att <- c(att, mean(att[(t0 + 1):t_final]))
+
+    out$se <- c(rep(NA, t0), se)
+    out$sigma <- NA
+    return(out)
+}
+
+#' Drop unit i from data
+#' @param wide_data (X, y, trt)
+#' @param Z Covariates matrix
+resample_controls <- function(wide_data, Z) {
+
+        new_wide_data <- list()
+        new_wide_data$trt <- wide_data$trt
+        new_wide_data$X <- wide_data$X
+        new_wide_data$y <- wide_data$y
+
+        # sample controls
+        n0 <- sum(wide_data$trt == 0)
+        smpl <- sample(1:n0, n0, replace = T)
+        X0 <- wide_data$X[wide_data$trt == 0,, drop = F]
+        y0 <- wide_data$y[wide_data$trt == 0,, drop = F]
+        new_wide_data$X[wide_data$trt == 0,] <- X0[smpl,]
+
+        new_wide_data$y[wide_data$trt == 0, ] <-y0[smpl,] 
+
+        X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+        x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+                     ncol=1)
+        y0 <- new_wide_data$y[new_wide_data$trt == 0,, drop = F]
+        y1 <- colMeans(new_wide_data$y[new_wide_data$trt == 1,, drop = F])
+
+        new_synth_data <- list()
+        new_synth_data$Z0 <- t(X0)
+        new_synth_data$X0 <- t(X0)
+        new_synth_data$Z1 <- x1
+        new_synth_data$X1 <- x1
+        new_Z <- Z
+        if(!is.null(Z)) {
+            Z0 <- Z[trt == 0, , drop = F]
+            new_Z[new_wide_data$trt == 0, , drop = F] <- Z0[smpl,, drop = F]
+        }
+
+        return(list(wide_data = new_wide_data,
+                    synth_data = new_synth_data,
+                    Z = new_Z))
+}
+
+
 # #' Estimate standard errors for single ASCM with Cattaneo, Feng, Titiunik
 # #' Do this for ridge-augmented synth
 # #' @param ascm Fitted augsynth object
@@ -468,42 +633,6 @@ drop_unit_i <- function(wide_data, Z, i) {
                     Z = new_Z)) 
 }
 
-#' Estimate standard errors with the jackknife
-#' Do this for ridge-augmented synth
-#' @param wide_data Data formatted from format_data
-#' @param synth_data Data formatted from foramt_synth
-#' @param Z Matrix of auxiliary covariates
-#' @param lambda Ridge hyper-parameter, if NULL use CV
-#' @param ridge Include ridge or not
-#' @param scm Include SCM or not
-#' @param fixedeff Take out fixed effects or not
-#' @return att estimates, test statistics, p-values
-jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
-                            lambda=NULL,
-                            ridge = T, scm = T, fixedeff = F) {
-    
-    n <- nrow(wide_data$X)
-    n_c <- dim(synth_data$Z0)[2]
-
-    t0 <- dim(synth_data$Z0)[1]
-    tpost <- ncol(wide_data$y)
-    t_final <- dim(synth_data$Y0plot)[1]
-    errs <- matrix(0, n_c, t_final - t0)
-
-    ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, 
-                                    lambda, ridge, scm)
-    att <- as.numeric(synth_data$Y1plot -
-            synth_data$Y0plot %*% aug_t$weights)
-    lam <- aug_t$lambda
-
-    # only drop out control units with non-zero weights
-    nnz_weights <- numeric(n)
-    nnz_weights[wide_data$trt == 0] <- round(aug_t$weights, 3) != 0
-
-    trt_idxs <- (1:n)[as.logical(nnz_weights)]
-    n_jack <- length(trt_idxs)
-}
 
 #' Drop unit i from data
 #' @param wide_list (X, y, trt)
