@@ -5,7 +5,7 @@
 #' Estimate standard errors for single ASCM with the jackknife
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
-placebo_se_single <- function(ascm) {
+placebo_se_single <- function(ascm, homoskedastic = FALSE, include_treated = FALSE, ...) {
 
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
@@ -17,12 +17,6 @@ placebo_se_single <- function(ascm) {
     tpost <- ncol(wide_data$y)
     t_final <- dim(synth_data$Y0plot)[1]
     errs <- matrix(0, n_c, t_final - t0)
-
-    # only drop out control units with non-zero weights
-    # nnz_weights <- numeric(n)
-    # nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
-
-    # trt_idxs <- (1:n)[as.logical(nnz_weights)]
 
     # LOO placebo estimates
     errs <- vapply((1:n)[wide_data$trt != 1],
@@ -47,27 +41,24 @@ placebo_se_single <- function(ascm) {
                     #    est - y0
                    },
                    numeric(tpost + 1))
-    # return(errs)
+
     # convert to matrix
     errs <- matrix(errs, nrow = tpost + 1, ncol = (n - 1))
     ## standard errors
-    se2 <- apply(errs, 1, 
+    if(homoskedastic) {
+        se2 <- apply(errs, 1,
                 function(x) {
-                    sum(ascm$weights ^ 2 * x ^ 2) / sum(ascm$weights) ^ 2
+                    trt_factor <- if(include_treated) 1 / sum(wide_data$trt == 1) else 0
+                    sum(x ^ 2) * (trt_factor + sum(ascm$weights ^ 2))
                 })
-    # se2 <- apply(errs, 1, 
-    #             function(x) {
-    #                 sum(x ^ 2) * sum(ascm$weights ^ 2)
-    #             })
-    # se2 <- apply(errs, 1, 
-    #             function(x) {
-    #                 mean(x ^ 2)
-    #             })
+    } else {
+        se2 <- apply(errs, 1, 
+                    function(x) {
+                        sum(ascm$weights ^ 2 * x ^ 2) / sum(ascm$weights) ^ 2
+                    })
+    }
     # sig2 <- apply(errs ^ 2, 2, mean) ## estimate of variance
 
-    # se2 <- (#1 / sum(wide_data$trt==1) + ## contribution from treated unit
-    #        sum(ascm$weights ^ 2)) * ## contribution from weights
-    #     sig2
     se <- sqrt(se2)
 
 
@@ -212,7 +203,7 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
                         ascm$extra_args))
             # get ATT estimates and held out error for time t
             # t0 is prediction for held out time
-            est <- predict(new_ascm, att = T)[(t0 +1):t_final]
+            est <- predict(new_ascm, att = F)[(t0 +1):t_final]
             est <- c(est, mean(est))
             err <- c(colMeans(wide_data$X[wide_data$trt == 1,
                                          tdrop,
@@ -235,13 +226,20 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     out$se <- c(rep(NA, t0), se)
     out$sigma <- NA
     if(conservative) {
-        qerr <- quantile(abs(held_out_errs), 0.95)
+        qerr <- quantile(abs(held_out_errs), 1 - alpha / 2)
         out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
         out$ub <- c(rep(NA, t0), apply(jack_dist[4,,], 1, max) + qerr)
     } else {
-        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 2))
-        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 2))
+        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 4))
+        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 4))
     }
+    # shift back to ATT scale
+    y1 <- predict(ascm, att = F) + att
+    y1 <-  c(y1, mean(y1[(t0 + 1):t_final]))
+    shifted_lb <- y1 - out$ub
+    shifted_ub <- y1 - out$lb
+    out$lb <- shifted_lb
+    out$ub <- shifted_ub
 
 
     return(out)

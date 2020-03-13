@@ -238,7 +238,7 @@ summary.augsynth <- function(object, ...) {
         if(se_type == "jackknife") {
             att_se <- jackknife_se_single(augsynth)
         } else if(se_type == "placebo") {
-            att_se <- placebo_se_single(augsynth)
+            att_se <- placebo_se_single(augsynth, ...)
         } else if(se_type == "semipar_bs") {
             att_se <- residual_bs_se_single(augsynth, ...)
         } else if(se_type == "jackknife+") {
