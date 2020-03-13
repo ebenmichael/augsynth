@@ -5,7 +5,8 @@
 #' Estimate standard errors for single ASCM with the jackknife
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
-placebo_se_single <- function(ascm, homoskedastic = FALSE, include_treated = FALSE, ...) {
+placebo_se_single <- function(ascm, homoskedastic = FALSE, 
+                              include_treated = FALSE, unweighted = FALSE, ...) {
 
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
@@ -51,10 +52,15 @@ placebo_se_single <- function(ascm, homoskedastic = FALSE, include_treated = FAL
                     trt_factor <- if(include_treated) 1 / sum(wide_data$trt == 1) else 0
                     sum(x ^ 2) * (trt_factor + sum(ascm$weights ^ 2))
                 })
-    } else {
+    } else if(!unweighted) {
         se2 <- apply(errs, 1, 
                     function(x) {
                         sum(ascm$weights ^ 2 * x ^ 2) / sum(ascm$weights) ^ 2
+                    })
+    } else {
+        se2 <- apply(errs, 1, 
+                    function(x) {
+                        mean(x ^ 2)
                     })
     }
     # sig2 <- apply(errs ^ 2, 2, mean) ## estimate of variance
