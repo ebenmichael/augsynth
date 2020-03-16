@@ -60,7 +60,7 @@ placebo_se_single <- function(ascm, homoskedastic = FALSE,
     } else {
         se2 <- apply(errs, 1, 
                     function(x) {
-                        mean(x ^ 2)
+                        mean(x ^ 2) / length(x)
                     })
     }
     # sig2 <- apply(errs ^ 2, 2, mean) ## estimate of variance
