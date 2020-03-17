@@ -60,7 +60,7 @@ placebo_se_single <- function(ascm, homoskedastic = FALSE,
     } else {
         se2 <- apply(errs, 1, 
                     function(x) {
-                        mean(x ^ 2) / length(x)
+                        mean(x ^ 2) / length(x) 
                     })
     }
     # sig2 <- apply(errs ^ 2, 2, mean) ## estimate of variance
@@ -345,7 +345,8 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #' Estimate standard errors for single ASCM with residual bootstrap
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
-bs_se_single <- function(ascm, b=1000, alpha = 0.025, ...) {
+#' @param refit Whether to refit the weights
+bs_se_single <- function(ascm, b=1000, alpha = 0.025, refit = TRUE, ...) {
 
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
@@ -361,16 +362,27 @@ bs_se_single <- function(ascm, b=1000, alpha = 0.025, ...) {
     bs_ests <- vapply(1:b,
                       function(x) {
                         # resample control units
-                        new_data <- resample_controls(wide_data, Z)
-                       # refit
-                       new_ascm <- do.call(fit_augsynth_internal,
-                                c(list(wide = new_data$wide,
-                                       synth_data = new_data$synth_data,
-                                       Z = new_data$Z,
-                                       progfunc = ascm$progfunc,
-                                       scm = ascm$scm,
-                                       fixedeff = ascm$fixedeff),
-                                  ascm$extra_args))
+                        n0 <- sum(wide_data$trt == 0)
+                        smpl <- sample(1:n0, n0, replace = T)
+                        new_data <- resample_controls(smpl, wide_data, Z)
+                        # refit
+                        if(refit) {
+                            new_ascm <- do.call(fit_augsynth_internal,
+                                    c(list(wide = new_data$wide,
+                                        synth_data = new_data$synth_data,
+                                        Z = new_data$Z,
+                                        progfunc = ascm$progfunc,
+                                        scm = ascm$scm,
+                                        fixedeff = ascm$fixedeff),
+                                    ascm$extra_args))
+                        } else {
+                            new_ascm <- ascm
+                            new_ascm$weights <- ascm$weights[smpl]
+                            new_ascm$weights <- new_ascm$weights / sum(new_ascm$weights)
+                            new_ascm$data <- new_data$wide
+                            new_ascm$data$synth_data <- new_data$synth_data
+                            new_ascm$Z <- new_data$Z
+                        }
                        # get ATT estimates, truth is zero
                        est <- predict(new_ascm, att = T)[(t0 + 1):t_final]
                        c(est, mean(est))
@@ -397,7 +409,7 @@ bs_se_single <- function(ascm, b=1000, alpha = 0.025, ...) {
 #' Drop unit i from data
 #' @param wide_data (X, y, trt)
 #' @param Z Covariates matrix
-resample_controls <- function(wide_data, Z) {
+resample_controls <- function(smpl, wide_data, Z) {
 
         new_wide_data <- list()
         new_wide_data$trt <- wide_data$trt
@@ -405,8 +417,6 @@ resample_controls <- function(wide_data, Z) {
         new_wide_data$y <- wide_data$y
 
         # sample controls
-        n0 <- sum(wide_data$trt == 0)
-        smpl <- sample(1:n0, n0, replace = T)
         X0 <- wide_data$X[wide_data$trt == 0,, drop = F]
         y0 <- wide_data$y[wide_data$trt == 0,, drop = F]
         new_wide_data$X[wide_data$trt == 0,] <- X0[smpl,]
