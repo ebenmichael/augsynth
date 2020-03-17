@@ -165,6 +165,7 @@ residual_bs_se_single <- function(ascm, b=1000, ...) {
                       },
                       numeric(tpost))
     # add in means
+    bs_ests <- as.matrix(bs_ests, ncol = tpost)
     bs_ests <- rbind(bs_ests, colMeans(bs_ests))
     ## standard errors
     se2 <- apply(bs_ests, 1, var)
