@@ -302,6 +302,12 @@ drop_unit_i_multi <- function(msyn, i) {
     drop_i$y <- msyn$data$y[-i, , drop = F]
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
+    
+    long_df = msyn$long_df
+    unit = colnames(long_df)[1]
+    long_df = long_df[order(long_df[,unit]),] # make alphabetical, because the ith unit is the index in alphabetical ordering
+    ith_unit = unique(long_df[,unit])[i]
+    long_df = long_df[long_df[,unit] != ith_unit,]
 
     # re-fit everything
     args_list <- list(wide = drop_i, relative = msyn$relative,
@@ -311,8 +317,7 @@ drop_unit_i_multi <- function(msyn, i) {
                       scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
                       fit_resids = msyn$fit_resids,
-                      time_cohort = msyn$time_cohort)
-
+                      time_cohort = msyn$time_cohort, long_df = long_df)
     msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
     
     # check for dropped treated units/time periods

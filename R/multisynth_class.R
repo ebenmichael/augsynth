@@ -59,7 +59,6 @@ multisynth <- function(form, unit, time, data,
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
-
     force <- if(fixedeff) 3 else 2
 
     # if n_leads is NULL set it to be the largest possible number of leads
@@ -77,6 +76,8 @@ multisynth <- function(form, unit, time, data,
         n_lags <- ncol(wide$X)
     }
 
+    long_df <- data[c(quo_name(unit), quo_name(time), as.character(trt), as.character(outcome))]
+
     msynth <- multisynth_formatted(wide = wide, relative = T,
                                 n_leads = n_leads, n_lags = n_lags,
                                 nu = nu, lambda = lambda,
@@ -84,7 +85,7 @@ multisynth <- function(form, unit, time, data,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
-                                eps_rel = eps_rel, verbose = verbose, ...)
+                                eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
@@ -133,6 +134,7 @@ multisynth <- function(form, unit, time, data,
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
+#' @param long_df A long dataframe with 4 columns in the order unit, time, trt, outcome
 #' @param ... Extra arguments
 #' @noRd
 #' @return multisynth object
@@ -144,11 +146,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        time_w, lambda_t,
                        fit_resids,
                        eps_abs, eps_rel,
-                       verbose, ...) {
-
+                       verbose, long_df, ...) {
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
-
     if(time_cohort) {
         grps <- unique(wide$trt[is.finite(wide$trt)])
     } else {
@@ -165,7 +165,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         residuals <- out$residuals
         params <- out$time_weights
     } else if(is.null(n_factors)) {
-        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
+        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt, force=force)
         y0hat <- out$y0hat
         params <- out$params
         n_factors <- ncol(params$factor)
@@ -193,7 +193,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         params <- NULL
     } else {
         ## if number of factors is provided don't do CV
-        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt,
+        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
                                 r=n_factors, r.end=n_factors,
                                 CV=0, force=force)
         y0hat <- out$y0hat
@@ -299,6 +299,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 eps_rel = eps_rel, 
                                 verbose = verbose), 
                            list(...))
+    msynth$long_df <- long_df
 
     ##format output
     class(msynth) <- "multisynth"

@@ -132,7 +132,7 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
         spread(!!time, !!outcome) %>%
         select(-!!unit) %>%
         as.matrix()
-
+    
     ## post treatment outcomes
     y <- data %>%
         filter(!!time >= t_int) %>%

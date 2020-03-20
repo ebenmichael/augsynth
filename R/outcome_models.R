@@ -199,7 +199,6 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     transform(long_df, unit = as.numeric(unit))
     gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", index = c("unit", "time"), force = force, CV = CV)
 
-
     t0 <- dim(X)[2]
     t_final <- t0 + dim(y)[2]
     n <- dim(X)[1]
