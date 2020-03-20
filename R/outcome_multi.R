@@ -16,7 +16,7 @@
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_gsynth_multi <- function(long_df, X, trt, r=0, r.end=5, force=3, CV=1) {
+fit_gsynth_multi <- function(long_df, X, trt, r=0, force=3, CV=1) {
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
     }
@@ -24,7 +24,7 @@ fit_gsynth_multi <- function(long_df, X, trt, r=0, r.end=5, force=3, CV=1) {
     n <- nrow(X)
 
     labels <- colnames(long_df)
-    gsyn <- gsynth::gsynth(data = long_df, Y = labels[4], D = labels[3], index = c(labels[1], labels[2]), force = force, CV = CV)
+    gsyn <- gsynth::gsynth(data = long_df, Y = labels[4], D = labels[3], index = c(labels[1], labels[2]), force = force, CV = CV, r=r)
     
     y0hat <- matrix(0, nrow=n, ncol=ttot)
     y0hat[!is.finite(trt),]  <- t(gsyn$Y.co - gsyn$est.co$residuals)

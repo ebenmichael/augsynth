@@ -165,14 +165,27 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         residuals <- out$residuals
         params <- out$time_weights
     } else if(is.null(n_factors)) {
-        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt, force=force)
+        out <- tryCatch({
+            fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt, force=force)
+        }, error = function(error_condition) {
+            stop("Cannot run CV because there are too few pre-treatment periods.")
+        })
+
         y0hat <- out$y0hat
         params <- out$params
         n_factors <- ncol(params$factor)
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
         
+    } else if (n_factors != 0) {
+        ## if number of factors is provided don't do CV
+        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
+                                r=n_factors, CV=0, force=force)
+        y0hat <- out$y0hat
+        params <- out$params        
         
+        ## get residuals from outcome model
+        residuals <- cbind(wide$X, wide$y) - y0hat
     } else if(force == 0 & n_factors == 0) {
         # if no fixed effects or factors, just take out 
         # control averages at each time point
@@ -183,7 +196,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                           byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
         params <- NULL
-    } else if(force != 0) {
+    } else {
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
                                             ncol=ncol(wide$y)))
@@ -191,17 +204,6 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- NULL
-    } else {
-        ## if number of factors is provided don't do CV
-        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
-                                r=n_factors, r.end=n_factors,
-                                CV=0, force=force)
-        y0hat <- out$y0hat
-        params <- out$params        
-
-        ## get residuals from outcome model
-        residuals <- cbind(wide$X, wide$y) - y0hat
-
     }
 
     ## balance the residuals
