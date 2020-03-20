@@ -8,7 +8,6 @@
 #'  \item{qtr}{Quarter (1-4) of measurement}
 #'  \item{state}{Name of State}
 #'  \item{gdp}{Gross State Product (millions of \$) Values before 2005 are linearly interpolated between years}
-#'  \item{revenuepop}
 #'  \item{rev_state_total}{State total revenue (millions of \$)}
 #'  \item{rev_local_total}{Local total revenue (millions of \$)}
 #'  \item{popestimate}{Population estimate}
