@@ -105,7 +105,7 @@ plot(ppool_syn_summ)
 And again we can hone in on the average effects.
 
 ```{r ppool_syn_plot_avg, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
-plot(ppool_syn_summ, level = "Average")
+plot(ppool_syn_summ, levels = "Average")
 ```
 
 
@@ -173,7 +173,7 @@ plot(wevent_summ)
 ```
 
 ```{r wevent_plot_avg, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
-plot(wevent_summ, level = "Average")
+plot(wevent_summ, levels = "Average")
 ```
 
 
@@ -200,7 +200,7 @@ scm_gsyn_summ
 ```
 
 ```{r scm_gsyn_plot, fig.width=8, fig.height=4.5, fig.align="center", warning=F, message=F}
-plot(scm_gsyn_summ, level="Average")
+plot(scm_gsyn_summ, levels="Average")
 ```
 
 
