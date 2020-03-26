@@ -66,10 +66,6 @@ summary(syn)
 
 It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
 
-```{r fig_syn_hide, fig.show="hide"}
-plot(syn)
-```
-
 ```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(syn)
 ```
@@ -85,11 +81,6 @@ We can look at the summary and plot the results. Now in the summary output we se
 ```{r summ_asyn}
 summary(asyn)
 ```
-
-```{r fig_asyn_hide, fig.show="hide"}
-plot(asyn)
-```
-
 
 ```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(asyn)
@@ -109,10 +100,6 @@ Again we can look at the summary and plot the results.
 summary(covsyn)
 ```
 
-```{r fig_covsyn_hide, fig.show="hide"}
-plot(covsyn)
-```
-
 ```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(covsyn)
 ```
@@ -128,35 +115,29 @@ covsyn_aug <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita)
 summary(covsyn_aug)
 ```
 
-```{r fig_covsyn_aug_hide, fig.show="hide"}
-plot(covsyn_aug)
-```
 
 ```{r fig_covsyn_aug, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(covsyn_aug)
 ```
 
 
-Finally, we can augment synth with many different outcome models, this is as easy as changing the `progfunc`. For instance, we can augment synth with matrix completion using `mcpanel`.
+Finally, we can augment synth with many different outcome models, this is as easy as changing the `progfunc`. For instance, we can augment synth with the generalized synthetic control method `gsynth`.
 
 ```{r fit_mcp, message=F, warning=F}
-mcpsyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
-                   progfunc="MCP", scm=T)
+gsyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
+                   progfunc="GSYN", scm=T)
 ```
 
 For the other outcome models we do not (yet) supply standard error estimates.
 ```{r summ_mcpsyn}
-summary(mcpsyn)
+summary(gsyn)
 ```
 
-```{r fig_mcpsyn_hide, fig.show="hide"}
-plot(mcpsyn)
-```
 
 ```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
-plot(mcpsyn)
+plot(gsyn)
 ```
 
-Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and the generalized synthetic control method `gsynth`. For each outcome model you can supply an optional set of parameters, see documentation for details.
+Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details.
 
 
