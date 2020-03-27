@@ -40,3 +40,8 @@ kansas <- kansas %>%
                estabscapita = qtrly_estabs_count / popestimate) %>%
         filter(year_qtr <= 2016) %>%
         inner_join(state_abb)
+
+for (name in colnames(kansas)) {
+        attributes(kansas[[name]])$label = NULL 
+}
+
