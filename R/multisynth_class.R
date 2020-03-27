@@ -760,27 +760,33 @@ print.summary.multisynth <- function(x, ...) {
         summ$att %>% filter(Time > level, Level==level) -> att_est
     }
 
-
-    cat(paste("Global L2 Imbalance (Scaled): ",
-              format(round(summ$global_l2,3), nsmall=3), "  (",
-              format(round(summ$scaled_global_l2,3), nsmall=3), ")\n\n",
-              "Individual L2 Imbalance (Scaled): ",
-              format(round(summ$ind_l2,3), nsmall=3), "  (",
-              format(round(summ$scaled_ind_l2,3), nsmall=3), ")\t",
+    cat(paste("Average ATT Estimate (Std. Error): ",
+              summ$att %>%
+                  filter(Level == level, is.na(Time)) %>%
+                  pull(Estimate) %>%
+                  round(3) %>% format(nsmall=3),
+              "  (",
+              summ$att %>%
+                  filter(Level == level, is.na(Time)) %>%
+                  pull(Std.Error) %>%
+                  round(3) %>% format(nsmall=3),
+              ")\n\n", sep=""))
+    
+    cat(paste("Global L2 Imbalance: ",
+              format(round(summ$global_l2,3), nsmall=3), "\n",
+              "Scaled Global L2 Imbalance: ",
+              format(round(summ$scaled_global_l2,3), nsmall=3), "\n",
+              "Percent improvement from uniform global weights: ", 
+              format(round(1-summ$scaled_global_l2,3)*100), "\n\n",
+              "Individual L2 Imbalance: ",
+              format(round(summ$ind_l2,3), nsmall=3), "\n",
+              "Scaled Individual L2 Imbalance: ", 
+              format(round(summ$scaled_ind_l2,3), nsmall=3), "\n",
+              "Percent improvement from uniform individual weights: ", 
+              format(round(1-summ$scaled_ind_l2,3)*100), "\t",
               "\n\n",
               sep=""))
 
-    cat(paste("Average ATT Estimate (Std. Error): ",
-              summ$att %>%
-              filter(Level == level, is.na(Time)) %>%
-              pull(Estimate) %>%
-              round(3) %>% format(nsmall=3),
-              "  (",
-              summ$att %>%
-              filter(Level == level, is.na(Time)) %>%
-              pull(Std.Error) %>%
-              round(3) %>% format(nsmall=3),
-              ")\n\n", sep=""))
 
     print(att_est, row.names=F)
 
