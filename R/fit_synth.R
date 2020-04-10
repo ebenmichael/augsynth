@@ -5,7 +5,7 @@
 #' Fit synthetic controls on outcomes after formatting data
 #' @param synth_data Panel data in format of Synth::dataprep
 #' @param V Matrix to scale the obejctive by
-#'
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Synth weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -48,6 +48,7 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
 #' @param X1 Target vector
 #' @param X0 Matrix of control outcomes
 #' @param V Scaling matrix
+#' @noRd
 synth_qp <- function(X1, X0, V) {
     
     Pmat <- X0 %*% V %*% t(X0)

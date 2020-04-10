@@ -10,6 +10,7 @@
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
+#' @noRd
 #' @return att estimates, test statistics, p-values
 loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
@@ -89,6 +90,7 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 #' @param wide_data (X, y, trt)
 #' @param Z Covariates matrix
 #' @param i Unit to drop
+#' @noRd
 drop_unit_i <- function(wide_data, Z, i) {
 
         new_wide_data <- list()
@@ -130,6 +132,7 @@ drop_unit_i <- function(wide_data, Z, i) {
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
 #' @param fixedeff Take out fixed effects or not
+#' @noRd
 #' @return att estimates, test statistics, p-values
 jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
@@ -162,6 +165,7 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
 #' @param wide_list (X, y, trt)
 #' @param Z Covariates matrix
 #' @param i Unit to drop
+#' @noRd
 drop_unit_i_multiout <- function(wide_list, Z, i) {
 
         new_wide_data <- list()
@@ -178,6 +182,7 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
 #' Estimate standard errors for single ASCM with the jackknife
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
+#' @noRd
 jackknife_se_single <- function(ascm) {
     
     wide_data <- ascm$data
@@ -245,6 +250,7 @@ jackknife_se_single <- function(ascm) {
 #' Compute standard errors using the jackknife
 #' @param multisynth fitted multisynth object
 #' @param relative Whether to compute effects according to relative time
+#' @noRd
 jackknife_se_multi <- function(multisynth, relative=NULL) {
     ## get info from the multisynth object
     if(is.null(relative)) {
@@ -281,6 +287,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 #' Helper function to drop unit i and refit
 #' @param msyn multisynth_object
 #' @param i Unit to drop
+#' @noRd
 drop_unit_i_multi <- function(msyn, i) {
 
     n <- nrow(msyn$data$X)
@@ -295,6 +302,12 @@ drop_unit_i_multi <- function(msyn, i) {
     drop_i$y <- msyn$data$y[-i, , drop = F]
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
+    
+    long_df = msyn$long_df
+    unit = colnames(long_df)[1]
+    long_df = long_df[order(long_df[,unit]),] # make alphabetical, because the ith unit is the index in alphabetical ordering
+    ith_unit = unique(long_df[,unit])[i]
+    long_df = long_df[long_df[,unit] != ith_unit,]
 
     # re-fit everything
     args_list <- list(wide = drop_i, relative = msyn$relative,
@@ -304,8 +317,7 @@ drop_unit_i_multi <- function(msyn, i) {
                       scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
                       fit_resids = msyn$fit_resids,
-                      time_cohort = msyn$time_cohort)
-
+                      time_cohort = msyn$time_cohort, long_df = long_df)
     msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
     
     # check for dropped treated units/time periods
@@ -321,6 +333,7 @@ drop_unit_i_multi <- function(msyn, i) {
 
 #' Estimate standard errors for multi outcome ascm with jackknife
 #' @param ascm Fitted augsynth object
+#' @noRd
 jackknife_se_multiout <- function(ascm) {
 
     wide_data <- ascm$data

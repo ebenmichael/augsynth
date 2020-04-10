@@ -19,7 +19,7 @@
 #'              \item{avg }{Average responses into 1 outcome}
 #'              \item{multi }{Use multi response regression in glmnet}}
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -92,7 +92,7 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
 #' @param trt Vector of treatment indicator
 #' @param avg Predict the average post-treatment outcome
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -169,44 +169,43 @@ fit_prog_rf <- function(X, y, trt, avg=FALSE, ...) {
 #' @param force Fixed effects (0=none, 1=unit, 2=time, 3=two-way)
 #' @param CV Whether to do CV (0=no CV, 1=yes CV)
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
 fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
-
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         stop("In order to fit generalized synthetic controls, you must install the gsynth package.")
     }
-    
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters when using gSynth: ", paste(names(extra_params), collapse = ", "))
     }
     
-    ## matrix with start of treatment
+    df_x = data.frame(X, check.names=FALSE)
+    df_x$unit = rownames(df_x)
+    df_x$trt = rep(0, nrow(df_x))
+    df_x <- df_x %>% select(unit, trt, everything())
+    long_df_x = gather(df_x, time, obs, -c(unit,trt))
+
+    df_y = data.frame(y, check.names=FALSE)
+    df_y$unit = rownames(df_y)
+    df_y$trt = trt
+    df_y <- df_y %>% select(unit, trt, everything())
+    long_df_y = gather(df_y, time, obs, -c(unit,trt))
+    long_df = rbind(long_df_x, long_df_y)
+
+    transform(long_df, time = as.numeric(time))
+    transform(long_df, unit = as.numeric(unit))
+    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", index = c("unit", "time"), force = force, CV = CV)
+
     t0 <- dim(X)[2]
     t_final <- t0 + dim(y)[2]
     n <- dim(X)[1]
-    
-    trtmat <- matrix(0, ncol=n, nrow=t_final)
-    trtmat[t0:t_final, trt == 1] <- 1
-
-    ## observed matrix
-    I <- matrix(1, t_final, n)
-
-    ## combine pre and post periods
-    comb <- t(cbind(X, y))
-    
-    ## use internal gsynth function
-    capture.output(gsyn <- gsynth:::synth.core(comb, NULL, trtmat, I,
-                                               r=r, r.end=r.end,
-                                               force=force, CV=CV,
-                                               tol=0.001))
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
     y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] -
-                         gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
+                             gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
 
     y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
 
@@ -216,12 +215,10 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     ## control and treated residuals
     gsyn$est.co$ctrl_resids <- gsyn$est.co$residuals
     gsyn$est.co$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
-                                            y[trt==1,,drop=FALSE])) -
+                                             y[trt==1,,drop=FALSE])) -
         rowMeans(gsyn$est.co$Y.ct)
-    
     return(list(y0hat=y0hat,
                 params=gsyn$est.co))
-    
 }
 
 
@@ -233,7 +230,7 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 #' @param unit_fixed Whether to estimate unit fixed effects
 #' @param time_fixed Whether to estimate time fixed effects
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -300,7 +297,7 @@ fit_prog_mcpanel <- function(X, y, trt, unit_fixed=1, time_fixed=1, ...) {
 #' @param poly_order Order of time trend polynomial to fit, default 1
 #' @param weights Weights to use in WLS, default is no weights
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
@@ -412,7 +409,7 @@ fit_prog_cits <- function(X, y, trt, poly_order=1, weights=NULL, ...) {
 #' @param y Matrix of post-period outcomes
 #' @param trt Vector of treatment indicator
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}
@@ -488,7 +485,7 @@ fit_prog_causalimpact <- function(X, y, trt, ...) {
 #' @param val_split Proportion of control units to use for validation
 #' @param verbose Whether to print training progress
 #' @param ... optional arguments for outcome model
-#'
+#' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Model parameters}}

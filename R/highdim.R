@@ -6,7 +6,7 @@
 
 #' Use zero weights, do nothing but output everything in the right way
 #' @param synth_data Panel data in format of Synth::dataprep
-#'
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Synth weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -33,7 +33,7 @@ fit_zero_weights <- function(synth_data) {
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
 #' @param ... optional arguments for outcome model
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -73,7 +73,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param scm Whether the SCM weighting function is used
 #' @param ... optional arguments for outcome model
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -123,7 +123,7 @@ fit_augsyn <- function(wide_data, synth_data,
 #' @param fit_progscore Function to fit prognostic score
 #' @param fit_weights Function to fit synth weights
 #' @param ... optional arguments for outcome model
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
@@ -176,7 +176,7 @@ fit_residaug_formatted <- function(wide_data, synth_data,
 #'                   SCM=Vanilla Synthetic Controls
 #'                   NONE=No reweighting, just outcome model
 #' @param ... optional arguments for outcome model
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}

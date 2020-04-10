@@ -82,16 +82,12 @@ summary(syn)
 
 It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
 
-```{r fig_syn_hide, fig.show="hide"}
-plot(syn)
-```
-
 ```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(syn)
 ```
 
 ### Augmenting synth with an outcome model
-In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.377, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`:
+In this example the pre-intervention synthetic control fit is quite good: the L2 imbalance is 0.373, about 5% of the imbalance between the Basque country and the average of the other regions. We can get slightly by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`:
 ```{r fit_asynth, message=F, warning=F}
 asyn <- augsynth(gdpcap ~ treatment, regionno, year, basque,
                 progfunc="Ridge", scm=T, lambda=8)
@@ -101,11 +97,6 @@ We can look at the summary and plot the results. Now in the summary output we se
 ```{r summ_asyn}
 summary(asyn)
 ```
-
-```{r fig_asyn_hide, fig.show="hide"}
-plot(asyn)
-```
-
 
 ```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(asyn)
@@ -125,10 +116,6 @@ Again we can look at the summary and plot the results.
 summary(covsyn)
 ```
 
-```{r fig_covsyn_hide, fig.show="hide"}
-plot(covsyn)
-```
-
 ```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
 plot(covsyn)
 ```
@@ -142,10 +129,6 @@ covsyn_aug <- augsynth(gdpcap ~ treatment | invest + sec.agriculture + sec.energ
 
 ```{r summ_cvsyn_aug}
 summary(covsyn_aug)
-```
-
-```{r fig_covsyn_aug_hide, fig.show="hide"}
-plot(covsyn_aug)
 ```
 
 ```{r fig_covsyn_aug, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
@@ -164,10 +147,6 @@ mcpsyn <- augsynth(gdpcap ~ treatment,
 For the other outcome models we do not (yet) supply standard error estimates.
 ```{r summ_mcpsyn}
 summary(mcpsyn)
-```
-
-```{r fig_mcpsyn_hide, fig.show="hide"}
-plot(mcpsyn)
 ```
 
 ```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}

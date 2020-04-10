@@ -4,9 +4,19 @@
 \alias{single_augsynth}
 \title{Fit Augmented SCM}
 \usage{
-single_augsynth(form, unit, time, t_int, data, progfunc = c("Ridge",
-  "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact", "seq2seq"),
-  scm = T, fixedeff = FALSE, cov_agg = NULL, ...)
+single_augsynth(
+  form,
+  unit,
+  time,
+  t_int,
+  data,
+  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact",
+    "seq2seq"),
+  scm = T,
+  fixedeff = FALSE,
+  cov_agg = NULL,
+  ...
+)
 }
 \arguments{
 \item{form}{outcome ~ treatment | auxillary covariates}

@@ -1,0 +1,143 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Single Outcome AugSynth Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+library(kableExtra)
+```
+
+# `augsynth`: The Augmented Synthetic Control Method
+
+
+## Installation
+
+You can install `augsynth` from github using `devtools`.
+
+```{r install, results="hide", message=F, eval=F}
+## Install devtools if noy already installed
+install.packages("devtools", repos='http://cran.us.r-project.org')
+## Install augsynth from github
+devtools::install_github("ebenmichael/augsynth")
+```
+
+## Example: Effects of the 2012 Kansas Tax Cuts 
+
+### The data
+To show the usage and features of `augsynth`, we'll use data on the impact of personal income tax cuts in Kansas that comes with the `AugSynth` package. Our interest is in estimating the effect of income tax cuts on gross state product (GSP) per capita.
+
+```{r load_data, results="hide", warning=F, message=F}
+library(magrittr)
+library(dplyr)
+library(augsynth)
+data(kansas)
+```
+
+The `kansas` dataset contains the GSP per capita (the outcome measure) `lngdpcapita` for all 50 states from the first quarter of 1990 to the first quarter of 2016.
+
+To run `augsynth`, we need to include a treatment status column that indicates which region was treated and at what time. The table in `kansas` contains the column `treated` to denote this. In the original study, the second quarter of 2012 was the implementation of the tax cut in Kansas.
+
+```{r treated_units}
+kansas %>% select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
+```
+
+
+### Synth
+Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are, optionally provide when intervention took place (the code will automatically determine this if `t_int` is not provided), and specify that we don't want to fit an outcome model
+
+```{r fit_synth, message=F, warning=F}
+library(augsynth)
+syn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
+                progfunc="None", scm=T, t_int = 2012.25)
+```
+
+We can then look at the ATT estimates for each post-intervention time period and overall. We'll also see standard errors estimated using leave-out-one estimates of the noise and the quality of the synthetic control fit measured by the L2 distance between Kansas and its synthetic control.
+
+```{r summ_syn}
+summary(syn)
+```
+
+It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
+
+```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(syn)
+```
+
+### Augmenting synth with an outcome model
+In this example the pre-intervention synthetic control fit has an L2 imbalance of 0.083, about 20% of the imbalance between Kansas and the average of the other states. We can reduce this by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`, while not specifying `lambda` will determine one through cross validation:
+```{r fit_asynth, message=F, warning=F}
+asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
+                progfunc="Ridge", scm=T)
+```
+
+We can look at the summary and plot the results. Now in the summary output we see an estimate of the overall bias of synth; we measure this with the average amount that augmentation changes the synth estimate. Notice that the estimates become somewhat larger in magnitude, and the standard errors are tighter.
+```{r summ_asyn}
+summary(asyn)
+```
+
+```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(asyn)
+```
+
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values and regress out the auxiliary covariates.
+
+```{r fit_covsynth, message=F, warning=F}
+covsyn <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
+                   fips, year_qtr, kansas,
+                   progfunc="None", scm=T)
+
+```
+
+Again we can look at the summary and plot the results.
+```{r summ_cvsyn}
+summary(covsyn)
+```
+
+```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(covsyn)
+```
+
+Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
+```{r fit_covsynth_aug, message=F, warning=F}
+covsyn_aug <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
+                   fips, year_qtr, kansas,
+                   progfunc="Ridge", scm=T)
+```
+
+```{r summ_cvsyn_aug}
+summary(covsyn_aug)
+```
+
+
+```{r fig_covsyn_aug, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(covsyn_aug)
+```
+
+
+Finally, we can augment synth with many different outcome models, this is as easy as changing the `progfunc`. For instance, we can augment synth with the generalized synthetic control method `gsynth`.
+
+```{r fit_mcp, message=F, warning=F}
+gsyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
+                   progfunc="GSYN", scm=T)
+```
+
+For the other outcome models we do not (yet) supply standard error estimates.
+```{r summ_mcpsyn}
+summary(gsyn)
+```
+
+
+```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+plot(gsyn)
+```
+
+Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details.
+
+
