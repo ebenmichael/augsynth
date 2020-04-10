@@ -215,9 +215,17 @@ plot.augsynth <- function(x, ...) {
     if (length(list(...)) > 0 && "cv" %in% names(list(...)) && list(...)$cv == T) {
         errors = data.frame(lambdas=augsynth$lambdas, errors=augsynth$lambda_errors, errors_se=augsynth$lambda_errors_se)
         p <- ggplot2::ggplot(errors, ggplot2::aes(x=lambdas, y=errors)) + ggplot2::geom_point(size = 2) + 
-            ggplot2::geom_errorbar(ggplot2::aes(ymin=errors, ymax=errors+errors_se), width=0.3, size = 0.5) 
-        p + ggplot2::labs(title="Cross Validation MSE over lambdas", x="lambda", y = "Cross Validation MSE", parse=TRUE)
-        p + ggplot2::scale_x_log10()
+            ggplot2::geom_errorbar(ggplot2::aes(ymin=errors, ymax=errors+errors_se), width=0.2, size = 0.5) 
+        p = p + ggplot2::labs(title=bquote("Cross Validation MSE over " ~ lambda), x=expression(lambda), y = "Cross Validation MSE", parse=TRUE)
+        p = p + ggplot2::scale_x_log10()
+        
+        min_lambda = choose_lambda(augsynth$lambdas, augsynth$lambda_errors, augsynth$lambda_errors_se, F)
+        min_1se_lambda = choose_lambda(augsynth$lambdas, augsynth$lambda_errors, augsynth$lambda_errors_se, T)
+        min_lambda_index = which(augsynth$lambdas == min_lambda)
+        min_1se_lambda_index = which(augsynth$lambdas == min_1se_lambda)
+        
+        p = p + ggplot2::geom_point(ggplot2::aes(x=min_lambda, y=augsynth$lambda_errors[min_lambda_index]), color="gold")
+        p + ggplot2::geom_point(ggplot2::aes(x=min_1se_lambda, y=augsynth$lambda_errors[min_1se_lambda_index]), color="gold")
     } else {
         plot(summary(augsynth, se), se = se)
     }
