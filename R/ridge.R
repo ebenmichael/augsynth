@@ -126,9 +126,11 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
     # add back in covariate weights
     if(!is.null(Z)) {
+        no_cov_weights <- weights
         ridge_w <- t(t(Z_1) - t(Z_c) %*% weights) %*% 
                     solve(t(Z_c) %*% Z_c) %*% t(Z_c)
         weights <- weights + t(ridge_w)
+        
     }
 
     l2_imbalance <- sqrt(sum((synth_data$X0 %*% weights - synth_data$X1)^2))
@@ -157,8 +159,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                         lambda * diag(ncol(X_c))) %*%
                         t(X_c) %*% y_c
     }
-    
-    return(list(weights = weights,
+    output <- list(weights = weights,
                 l2_imbalance = l2_imbalance,
                 scaled_l2_imbalance = scaled_l2_imabalance,
                 mhat = mhat,
@@ -167,7 +168,11 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                 synw = synw,
                 lambdas = lambdas,
                 lambda_errors = lambda_errors,
-                lambda_errors_se = lambda_errors_se))
+                lambda_errors_se = lambda_errors_se)
+    if(!is.null(Z)) {
+        output$no_cov_weights <- no_cov_weights
+    }
+    return(output)
 }
 
 #' Helper function to fit ridge ASCM
