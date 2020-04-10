@@ -180,7 +180,7 @@ plot(wevent_summ, level = "Average")
 
 ### Augmenting with other outcome models
 
-We can also augment the partially pooled SCM estimates by directly fitting a factor model with [`gsynth`](https://cran.r-project.org/web/packages/gsynth/gsynth.pdf). To do this, we can set the `n_factors` argument to be the number of factors we want to estimate. By default, `n_factors = 0`, which combined with `fixedeff = T` gives the weighted event study above. (Setting `n_factors = NULL` chooses the number of factors via cross validation)
+We can also augment the partially pooled SCM estimates by directly fitting a factor model with [`gsynth`](https://cran.r-project.org/web/packages/gsynth/gsynth.pdf). To do this, we can set the `n_factors` argument to be the number of factors we want to estimate. By default, `n_factors = 0`, which combined with `fixedeff = T` gives the weighted event study above. (Setting `n_factors = NULL` chooses the number of factors via cross validation, but will not work on this dataset because of certain hardcoded parameters in `gsynth`.)
 
 ```{r }
 scm_gsyn <- multisynth(lnppexpend ~ cbr, State, year,
