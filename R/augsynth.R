@@ -209,8 +209,18 @@ plot.augsynth <- function(x, ...) {
     } else {
         se <- T
     }
+
     augsynth <- x
-    plot(summary(augsynth, se), se = se)
+    
+    if (length(list(...)) > 0 && "cv" %in% names(list(...)) && list(...)$cv == T) {
+        errors = data.frame(lambdas=augsynth$lambdas, errors=augsynth$lambda_errors, errors_se=augsynth$lambda_errors_se)
+        p <- ggplot2::ggplot(errors, ggplot2::aes(x=lambdas, y=errors)) + ggplot2::geom_point(size = 2) + 
+            ggplot2::geom_errorbar(ggplot2::aes(ymin=errors, ymax=errors+errors_se), width=0.3, size = 0.5) 
+        p + ggplot2::labs(title="Cross Validation MSE over lambdas", x="lambda", y = "Cross Validation MSE", parse=TRUE)
+        p + ggplot2::scale_x_log10()
+    } else {
+        plot(summary(augsynth, se), se = se)
+    }
 }
 
 

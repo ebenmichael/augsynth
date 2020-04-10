@@ -157,7 +157,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                         lambda * diag(ncol(X_c))) %*%
                         t(X_c) %*% y_c
     }
-
+    
     return(list(weights = weights,
                 l2_imbalance = l2_imbalance,
                 scaled_l2_imbalance = scaled_l2_imabalance,
