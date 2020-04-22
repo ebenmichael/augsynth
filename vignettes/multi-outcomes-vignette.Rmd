@@ -1,0 +1,39 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multi Outcomes AugSynth Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+library(kableExtra)
+```
+
+# `augsynth`: Estimating multiple outcome effects
+
+### The data
+To demonstrate `augsynth` with multiple outcomes, we'll use data on the impact of personal income tax cuts in Kansas that comes with the `AugSynth` package. Our interest is in estimating the effect of income tax cuts on gross state product (GSP) per capita, employment, wages, and other macroeconomic indicators.
+
+```{r load_data, results="hide", warning=F, message=F}
+library(magrittr)
+library(dplyr)
+library(augsynth)
+data(kansas)
+```
+
+The `kansas` dataset contains the GSP per capita (the outcome measure) `lngdpcapita` for all 50 states from the first quarter of 1990 to the first quarter of 2016.
+
+To run `augsynth`, we need to include a treatment status column that indicates which region was treated and at what time. The table in `kansas` contains the column `treated` to denote this. In the original study, the second quarter of 2012 was the implementation of the tax cut in Kansas.
+
+```{r treated_units}
+kansas %>% select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
+```
+
+
+### The single outcome case
+We will begin by running the synthetic controls method and the augmented synthetic controls method on our outcome variables separately.
