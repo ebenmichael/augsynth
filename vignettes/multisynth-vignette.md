@@ -219,7 +219,7 @@ And again we can hone in on the average effects.
 
 
 ```r
-plot(ppool_syn_summ, level = "Average")
+plot(ppool_syn_summ, levels = "Average")
 ```
 
 <img src="figure/ppool_syn_plot_avg-1.png" title="plot of chunk ppool_syn_plot_avg" alt="plot of chunk ppool_syn_plot_avg" style="display: block; margin: auto;" />
@@ -400,7 +400,7 @@ plot(wevent_summ)
 
 
 ```r
-plot(wevent_summ, level = "Average")
+plot(wevent_summ, levels = "Average")
 ```
 
 <img src="figure/wevent_plot_avg-1.png" title="plot of chunk wevent_plot_avg" alt="plot of chunk wevent_plot_avg" style="display: block; margin: auto;" />
@@ -461,7 +461,7 @@ scm_gsyn_summ
 
 
 ```r
-plot(scm_gsyn_summ, level="Average")
+plot(scm_gsyn_summ, levels="Average")
 ```
 
 <img src="figure/scm_gsyn_plot-1.png" title="plot of chunk scm_gsyn_plot" alt="plot of chunk scm_gsyn_plot" style="display: block; margin: auto;" />
