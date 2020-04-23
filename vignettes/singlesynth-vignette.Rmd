@@ -108,7 +108,7 @@ Now we can additionally fit ridge ASCM on the residuals, look at the summary, an
 ```{r fit_covsynth_aug, message=F, warning=F}
 covsyn_aug <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
                    fips, year_qtr, kansas,
-                   progfunc="Ridge", scm=T)
+                   progfunc="Ridge", scm=T, lambda_min_ratio=1e-5)
 ```
 
 ```{r summ_cvsyn_aug}

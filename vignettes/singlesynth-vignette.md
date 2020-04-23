@@ -196,7 +196,7 @@ Now we can additionally fit ridge ASCM on the residuals, look at the summary, an
 ```r
 covsyn_aug <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
                    fips, year_qtr, kansas,
-                   progfunc="Ridge", scm=T)
+                   progfunc="Ridge", scm=T, lambda_min_ratio=1e-5)
 ```
 
 
@@ -205,31 +205,32 @@ summary(covsyn_aug)
 #> 
 #> Call:
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
-#>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
+#>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2, 
+#>     lambda_min_ratio = 1e-05)
 #> 
-#> Average ATT Estimate (Std. Error): -0.161  (0.325)
-#> L2 Imbalance: 0.004
-#> Scaled L2 Imbalance: 0.011
-#> Percent improvement from uniform weights: 98.9%
-#> Avg Estimated Bias: 0.087
+#> Average ATT Estimate (Std. Error): -0.059  (0.016)
+#> L2 Imbalance: 0.041
+#> Scaled L2 Imbalance: 0.102
+#> Percent improvement from uniform weights: 89.8%
+#> Avg Estimated Bias: -0.015
 #> 
-#>     Time    Estimate Std.Error
-#>  2012.25 -0.03214328 0.1310501
-#>  2012.50 -0.02421939 0.1634960
-#>  2012.75  0.01892306 0.3852166
-#>  2013.00 -0.07550951 0.3548441
-#>  2013.25 -0.07349945 0.3113322
-#>  2013.50 -0.04971947 0.2678973
-#>  2013.75 -0.11817176 0.1913746
-#>  2014.00 -0.27776807 0.5577621
-#>  2014.25 -0.27398661 0.4631122
-#>  2014.50 -0.27158120 0.4948095
-#>  2014.75 -0.28223332 0.5564048
-#>  2015.00 -0.20567019 0.4494654
-#>  2015.25 -0.17205419 0.3922254
-#>  2015.50 -0.19262658 0.4024699
-#>  2015.75 -0.25507290 0.4540250
-#>  2016.00 -0.29837902 0.5259730
+#>     Time    Estimate   Std.Error
+#>  2012.25 -0.01958348 0.006713539
+#>  2012.50 -0.03959612 0.012905898
+#>  2012.75 -0.04541429 0.020531362
+#>  2013.00 -0.04674158 0.016220482
+#>  2013.25 -0.05601212 0.017558693
+#>  2013.50 -0.07088784 0.018233158
+#>  2013.75 -0.06054975 0.016696615
+#>  2014.00 -0.07935354 0.021656417
+#>  2014.25 -0.07492268 0.022045868
+#>  2014.50 -0.06022028 0.023887764
+#>  2014.75 -0.05110227 0.024712744
+#>  2015.00 -0.06892611 0.022686422
+#>  2015.25 -0.05835650 0.022404527
+#>  2015.50 -0.06855496 0.018867981
+#>  2015.75 -0.06438172 0.018669299
+#>  2016.00 -0.07763690 0.019838542
 ```
 
 
