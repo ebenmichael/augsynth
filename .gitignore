@@ -26,3 +26,5 @@ inst/doc
 *.dll
 
 test.R
+
+*-vignette.pdf

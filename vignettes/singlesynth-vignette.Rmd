@@ -129,12 +129,14 @@ gsyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
 ```
 
 For the other outcome models we do not (yet) supply standard error estimates.
-```{r summ_mcpsyn}
-summary(gsyn)
+```{r summ_gsyn, results = "hide"}
+gsyn_summ <- summary(gsyn)
+```
+```{r summ_gsyn_res}
+gsyn_summ
 ```
 
-
-```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_mcpsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center", message = F, warning = F, results = "hide", echo = TRUE}
 plot(gsyn)
 ```
 
