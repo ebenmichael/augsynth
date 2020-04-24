@@ -36,13 +36,13 @@ kansas %>% select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% fil
 
 
 ### Using the Synthetic Controls Method
-We will begin by running the synthetic controls method on GDP per capita, wages, and the number of establishments. To run the vanilla synthetic controls method using `augsynth`, set `progfunc` to `None` and `scm` to `FALSE`.
+We will begin by running the synthetic controls method on GDP per capita, wages, and the number of establishments. To run the vanilla synthetic controls method using `augsynth`, set `progfunc` to `None` and `scm` to `TRUE`.
 
 #### Single outcomes
 First, we will examine each outcome variable separately, beginning with log GDP per capita `lngdpcapita`.
 
 ```{r lngdpcapita_syn}
-syn_lngdpcapita <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=F)
+syn_lngdpcapita <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
 summary(syn_lngdpcapita)
 ```
 
@@ -53,7 +53,7 @@ plot(syn_lngdpcapita)
 Next we will examine the log total wages per capita. Since this column doesn't already exist in the dataframe, we will create a `lntotalwagescapita` column.
 ```{r lntotalwagescapita_syn}
 kansas$lntotalwagescapita <- log(kansas$totalwagescapita)
-syn_lntotalwagescapita <- augsynth(lntotalwagescapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=F)
+syn_lntotalwagescapita <- augsynth(lntotalwagescapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
 summary(syn_lntotalwagescapita)
 ```
 
@@ -63,7 +63,7 @@ plot(syn_lntotalwagescapita)
 
 Lastly, we will examine the number of establishments per capita, `estabscapita`.
 ```{r estabscapita_syn}
-syn_estabscapita <- augsynth(estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=F)
+syn_estabscapita <- augsynth(estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
 summary(syn_estabscapita)
 ```
 
@@ -74,7 +74,7 @@ plot(syn_estabscapita)
 #### Multiple outcomes
 Now we will combine our outcome variables into one study. To add more outcome variables, we add them to the LHS of the formula. 
 ```{r multi_outcome_syn}
-syn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=F)
+syn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
 summary(syn_multi)
 ```
 
@@ -84,7 +84,7 @@ plot(syn_multi)
 
 
 ### Using the Augnented Synthetic Controls Method
-We will now repeat the study using the Augmented Synthetic Controls Method with ridge regression.
+We will now repeat the study using the Augmented Synthetic Controls Method with ridge regression. In ASCM, we first fit the SCM weights, then combine it with a ridge regression, thus setting `progfunc="Ridge", scm=T`.
 
 ```{r lngdpcapita_asyn}
 asyn_lngdpcapita <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
