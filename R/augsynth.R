@@ -120,7 +120,7 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
                                synth_data = fit_synth_data,
-                               Z = Z, ridge = F, scm = T, V = V)))
+                               Z = Z, ridge = F, scm = T, V = V, ...)))
     } else {
         ## Other outcome models
         augsynth <- fit_augsyn(fit_wide, fit_synth_data, 

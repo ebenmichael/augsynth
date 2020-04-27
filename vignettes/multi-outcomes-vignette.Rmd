@@ -83,7 +83,7 @@ plot(syn_multi)
 ```
 
 
-### Using the Augnented Synthetic Controls Method
+### Using the Augmented Synthetic Controls Method
 We will now repeat the study using the Augmented Synthetic Controls Method with ridge regression. In ASCM, we first fit the SCM weights, then combine it with a ridge regression, thus setting `progfunc="Ridge", scm=T`.
 
 ```{r lngdpcapita_asyn}
@@ -92,7 +92,7 @@ summary(asyn_lngdpcapita)
 ```
 
 ```{r lngdpcapita_asyn_plot}
-plot(syn_lngdpcapita)
+plot(asyn_lngdpcapita)
 ```
 
 ```{r lntotalwagescapita_asyn}
