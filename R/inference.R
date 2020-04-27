@@ -303,11 +303,12 @@ drop_unit_i_multi <- function(msyn, i) {
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
     
-    long_df = msyn$long_df
-    unit = colnames(long_df)[1]
-    long_df = long_df[order(long_df[,unit]),] # make alphabetical, because the ith unit is the index in alphabetical ordering
-    ith_unit = unique(long_df[,unit])[i]
-    long_df = long_df[long_df[,unit] != ith_unit,]
+    long_df <- msyn$long_df
+    unit <- colnames(long_df)[1]
+    # make alphabetical, because the ith unit is the index in alphabetical ordering
+    long_df <- long_df[order(long_df[, unit, drop = TRUE]),]
+    ith_unit <- unique(long_df[,unit, drop = TRUE])[i]
+    long_df <- long_df[long_df[,unit] != ith_unit,]
 
     # re-fit everything
     args_list <- list(wide = drop_i, relative = msyn$relative,
