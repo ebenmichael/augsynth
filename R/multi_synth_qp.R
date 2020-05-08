@@ -293,7 +293,7 @@ make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
     tile_sparse <- function(d,j) {
         kronecker(Matrix::Matrix(1, nrow = j, ncol = j), Matrix::Diagonal(d))
     }
-    V2 <- tile_sparse(d, J) / n_lags
+    V2 <- tile_sparse(max_dim, J) / n_lags
     Pmat <- nu * V2 + (1 - nu) * V1
     # combine
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)

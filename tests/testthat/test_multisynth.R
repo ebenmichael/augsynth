@@ -87,3 +87,19 @@ test_that("Separate synth is the same as fitting separate synths", {
     expect_equal(c(predict(scm16, att=F)), pred_msyn[, 2], tolerance=5e-3)
 }
 )
+
+test_that("Limiting number of lags works", {
+
+
+    basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                                !regionno %in% c(16, 17) ~ 0,
+                                                regionno %in% c(16, 17) ~ 1)) %>%
+        filter(regionno != 1)
+
+    expect_error(
+      multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
+                 scm=T, eps_rel=1e-5, eps_abs=1e-5, n_lags =3),
+      NA
+    )
+}
+)
