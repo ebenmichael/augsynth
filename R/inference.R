@@ -343,6 +343,152 @@ drop_time_t <- function(wide_data, Z, t_drop) {
                     Z = Z)) 
 }
 
+conformal_inf <- function(ascm, alpha = 0.05, type = "block", 
+                          ns = 1000, grid_size = 100, ...) {
+  wide_data <- ascm$data
+  synth_data <- ascm$data$synth_data
+  n <- nrow(wide_data$X)
+  n_c <- dim(synth_data$Z0)[2]
+  Z <- wide_data$Z
+
+  t0 <- dim(synth_data$Z0)[1]
+  tpost <- ncol(wide_data$y)
+  t_final <- dim(synth_data$Y0plot)[1]
+
+  # iterate over post-treatment periods to get pointwise CIs
+  lapply(1:tpost,
+         function(j) {
+          # fit using t0 + j as a pre-treatment period and get reisduals
+          new_wide_data <- wide_data
+          new_wide_data$X <- cbind(wide_data$X, wide_data$y[, j, drop = TRUE])
+          if(tpost > 1) {
+            new_wide_data$y <- wide_data$y[, -j, drop = FALSE]
+          } else {
+            # TODO: this is a stupid hack because the post period has to be *something*
+            new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
+          }
+
+          X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+          x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+                      ncol=1)
+
+          new_synth_data <- list()
+          new_synth_data$Z0 <- t(X0)
+          new_synth_data$X0 <- t(X0)
+          new_synth_data$Z1 <- x1
+          new_synth_data$X1 <- x1
+
+          new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_wide_data,
+                            synth_data = new_synth_data,
+                            Z = wide_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+
+          predict(new_ascm, att = T)[1:(t0 + 1)]
+         }) -> resids
+
+  # get residuals for the average using the sliding average technique
+  avg_data <- get_sliding_average(wide_data)
+  avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
+  avg_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = avg_data,
+                            synth_data = avg_synth_data,
+                            Z = avg_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+  avg_resids <- predict(avg_ascm, att = T)
+
+  perm_out <- vapply(resids, 
+                     function(x) compute_permute_ci(x, alpha, t0, 
+                                                    type, ns, grid_size),
+                     numeric(3))
+  avg_perm <- compute_permute_ci(avg_resids, alpha, floor(t0 / tpost), type, ns, grid_size)
+  out <- list()
+  att <- predict(ascm, att = T)
+  out$att <- c(att, mean(att[(t0 + 1):t_final]))
+  out$se <- rep(NA, t_final)
+  out$sigma <- NA
+  out$lb <- c(rep(NA, t0), pmin(att[(t0 + 1):t_final], 
+              perm_out[1, ]), min(avg_perm[1], out$att[t_final + 1]))
+  out$ub <- c(rep(NA, t0), pmax(att[(t0 + 1):t_final], 
+              perm_out[2, ]), max(avg_perm[2], out$att[t_final + 1]))
+  out$pval <- c(rep(NA, t0), perm_out[3, ], avg_perm[3])
+  return(out)
+}
+
+
+compute_permute_test_stats <- function(resids, h0, t0, type, ns = 1000) {
+
+  # adjust resduals by null h0
+  tpost <- length(resids)
+  resids[(t0 + 1):tpost] <- resids[(t0 + 1):tpost] - h0
+
+  # permute residuals and compute test statistic
+  if(type == "iid") {
+    test_stats <- sapply(1:ns, 
+                        function(x) mean(abs(sample(resids)[(t0 + 1):tpost])))
+  } else {
+    ## increment time by one step and wrap
+    test_stats <- sapply(1:tpost,
+                        function(j) {
+                          reorder <- resids[(1:tpost + j) %% tpost + 1]
+                          mean(abs(reorder[(t0 + 1):tpost]))
+                        })
+  }
+  test_stats
+}
+
+compute_permute_pval <- function(resids, h0, t0, type, ns = 1000) {
+
+  # adjust resduals by null h0
+  tpost <- length(resids)
+  resids[(t0 + 1):tpost] <- resids[(t0 + 1):tpost] - h0
+
+  # permute residuals and compute test statistic
+  if(type == "iid") {
+    test_stats <- sapply(1:ns, 
+                        function(x) mean(abs(sample(resids)[(t0 + 1):tpost])))
+  } else {
+    ## increment time by one step and wrap
+    test_stats <- sapply(1:tpost,
+                        function(j) {
+                          reorder <- resids[(1:tpost + j) %% tpost + 1]
+                          mean(abs(reorder[(t0 + 1):tpost]))
+                        })
+  }
+  mean(mean(abs(resids[(t0 + 1):tpost])) <= test_stats)
+}
+
+compute_permute_ci <- function(resids, alpha, t0, type, ns = 1000, grid_size = 100) {
+  # make a grid of estimates
+  grid <- c(seq(min(resids), max(resids), length.out = grid_size), 0)
+
+  ps <-sapply(grid, 
+              function(x) compute_permute_pval(resids, x, t0, type, ns))
+  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
+}
+
+
+get_sliding_average <- function(wide_data) {
+  tpost <- ncol(wide_data$y)
+  t0 <- ncol(wide_data$X)
+  # average the data in intervals of tpost
+  new_wide_data <- wide_data
+  new_wide_data$X <- t(apply(wide_data$X, 1,
+                           function(x) {
+                             stats::filter(x, 
+                                           rep(1 / tpost, tpost), 
+                                           sides = 1)[seq(tpost, t0, tpost)]
+                           }))
+  new_wide_data$y <- as.matrix(rowMeans(wide_data$y), ncol = 1)
+  return(new_wide_data)
+}
+
 #' Estimate standard errors for single ASCM with residual bootstrap
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object

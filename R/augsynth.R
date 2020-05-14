@@ -247,6 +247,8 @@ summary.augsynth <- function(object, ...) {
             att_se <- bs_se_single(augsynth, ...)
         } else if(se_type == "t_dist") {
             att_se <- chernozhukov_t(augsynth, ...)
+        } else if(se_type == "conformal") {
+          att_se <- conformal_inf(augsynth, ...)
         } else {
             stop("se_type is wrong")
         }
@@ -256,7 +258,7 @@ summary.augsynth <- function(object, ...) {
                           Std.Error = att_se$se[1:t_final])
         att_avg <- att_se$att[t_final + 1]
         att_avg_se <- att_se$se[t_final + 1]
-        if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist")) {
+        if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
             att$lower_bound <- att_se$lb[1:t_final]
             att$upper_bound <- att_se$ub[1:t_final]
         }
@@ -274,7 +276,7 @@ summary.augsynth <- function(object, ...) {
 
     summ$att <- att
     summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
-    if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist")) {
+    if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
         summ$average_att$lower_bound <- att_se$lb[t_final + 1]
         summ$average_att$upper_bound <- att_se$ub[t_final + 1]
     }
