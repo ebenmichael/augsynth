@@ -355,8 +355,12 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
   tpost <- ncol(wide_data$y)
   t_final <- dim(synth_data$Y0plot)[1]
 
+  # grid of nulls
+  att <- predict(ascm, att = T)
+  grid <- c(seq( 2 * min(att), 2 * max(att), length.out = grid_size))
+
   # iterate over post-treatment periods to get pointwise CIs
-  lapply(1:tpost,
+  vapply(1:tpost,
          function(j) {
           # fit using t0 + j as a pre-treatment period and get reisduals
           new_wide_data <- wide_data
@@ -368,56 +372,28 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
             new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
           }
 
-          X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
-          x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
-                      ncol=1)
+          
 
-          new_synth_data <- list()
-          new_synth_data$Z0 <- t(X0)
-          new_synth_data$X0 <- t(X0)
-          new_synth_data$Z1 <- x1
-          new_synth_data$X1 <- x1
-
-          new_ascm <- do.call(fit_augsynth_internal,
-                    c(list(wide = new_wide_data,
-                            synth_data = new_synth_data,
-                            Z = wide_data$Z,
-                            progfunc = ascm$progfunc,
-                            scm = ascm$scm,
-                            fixedeff = ascm$fixedeff),
-                        ascm$extra_args))
-
-          predict(new_ascm, att = T)[1:(t0 + 1)]
-         }) -> resids
-
+          compute_permute_ci(new_wide_data, ascm, grid, alpha, type, ns)
+         },
+         numeric(2)) -> cis
   # get residuals for the average using the sliding average technique
   avg_data <- get_sliding_average(wide_data)
   avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
-  avg_ascm <- do.call(fit_augsynth_internal,
-                    c(list(wide = avg_data,
-                            synth_data = avg_synth_data,
-                            Z = avg_data$Z,
-                            progfunc = ascm$progfunc,
-                            scm = ascm$scm,
-                            fixedeff = ascm$fixedeff),
-                        ascm$extra_args))
-  avg_resids <- predict(avg_ascm, att = T)
+  avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
 
-  perm_out <- vapply(resids, 
-                     function(x) compute_permute_ci(x, alpha, t0, 
-                                                    type, ns, grid_size),
-                     numeric(3))
-  avg_perm <- compute_permute_ci(avg_resids, alpha, floor(t0 / tpost), type, ns, grid_size)
   out <- list()
   att <- predict(ascm, att = T)
   out$att <- c(att, mean(att[(t0 + 1):t_final]))
   out$se <- rep(NA, t_final)
   out$sigma <- NA
-  out$lb <- c(rep(NA, t0), pmin(att[(t0 + 1):t_final], 
-              perm_out[1, ]), min(avg_perm[1], out$att[t_final + 1]))
-  out$ub <- c(rep(NA, t0), pmax(att[(t0 + 1):t_final], 
-              perm_out[2, ]), max(avg_perm[2], out$att[t_final + 1]))
-  out$pval <- c(rep(NA, t0), perm_out[3, ], avg_perm[3])
+  # out$lb <- c(rep(NA, t0), pmin(att[(t0 + 1):t_final], 
+  #             perm_out[1, ]), min(avg_perm[1], out$att[t_final + 1]))
+  # out$ub <- c(rep(NA, t0), pmax(att[(t0 + 1):t_final], 
+  #             perm_out[2, ]), max(avg_perm[2], out$att[t_final + 1]))
+  out$lb <- c(rep(NA, t0), cis[1, ], avg_ci[1])
+  out$ub <- c(rep(NA, t0), cis[2, ], avg_ci[2])
+  # out$pval <- c(rep(NA, t0), perm_out[3, ], avg_perm[3])
   return(out)
 }
 
@@ -443,12 +419,35 @@ compute_permute_test_stats <- function(resids, h0, t0, type, ns = 1000) {
   test_stats
 }
 
-compute_permute_pval <- function(resids, h0, t0, type, ns = 1000) {
+compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
 
-  # adjust resduals by null h0
-  tpost <- length(resids)
-  resids[(t0 + 1):tpost] <- resids[(t0 + 1):tpost] - h0
+  # format data
+  new_wide_data <- wide_data
+  t0 <- ncol(wide_data$X) - 1
+  # adjust outcomes for null
+  new_wide_data$X[wide_data$trt == 1,t0 + 1] <- new_wide_data$X[wide_data$trt == 1,t0 + 1] - h0
+  X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+  x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+              ncol=1)
 
+  new_synth_data <- list()
+  new_synth_data$Z0 <- t(X0)
+  new_synth_data$X0 <- t(X0)
+  new_synth_data$Z1 <- x1
+  new_synth_data$X1 <- x1
+
+  # fit synth with adjusted data and get residuals
+  new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_wide_data,
+                            synth_data = new_synth_data,
+                            Z = wide_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+
+  resids <- predict(new_ascm, att = T)[1:(t0 + 1)]
+  tpost <- t0 + 1
   # permute residuals and compute test statistic
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
@@ -464,13 +463,13 @@ compute_permute_pval <- function(resids, h0, t0, type, ns = 1000) {
   mean(mean(abs(resids[(t0 + 1):tpost])) <= test_stats)
 }
 
-compute_permute_ci <- function(resids, alpha, t0, type, ns = 1000, grid_size = 100) {
-  # make a grid of estimates
-  grid <- c(seq(min(resids), max(resids), length.out = grid_size), 0)
+compute_permute_ci <- function(wide_data, ascm, grid, alpha, type, ns = 1000) {
 
   ps <-sapply(grid, 
-              function(x) compute_permute_pval(resids, x, t0, type, ns))
-  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
+              function(x) {
+                compute_permute_pval(wide_data, ascm, x, type, ns)
+              })
+  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]))
 }
 
 
