@@ -102,7 +102,8 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         mhat <- matrix(0, n, ttot)
     }
     ## fit augsynth
-    if(progfunc == "Ridge") {
+    progfunc = tolower(progfunc)
+    if(progfunc == "ridge") {
         if(scm) {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
@@ -115,7 +116,7 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                    synth_data = fit_synth_data,
                                    Z = Z, ridge = T, scm = F, V = V, ...))
         }
-    } else if(progfunc == "None") {
+    } else if(progfunc == "none") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
@@ -123,8 +124,15 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                Z = Z, ridge = F, scm = T, V = V, ...)))
     } else {
         ## Other outcome models
-        augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
-                               progfunc, scm, ...)
+        progfuncs = c("ridge", "none", "en", "rf", "gsyn", "mcp",
+                      "cits", "causalimpact", "seq2seq")
+        if (progfunc %in% progfuncs) {
+            augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
+                                   progfunc, scm, ...)
+        } else {
+            stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
+        }
+        
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
