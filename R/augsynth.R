@@ -110,6 +110,9 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         mhat <- matrix(0, n, ttot)
     }
     ## fit augsynth
+    if (is.null(progfunc)) {
+        progfunc = "none"
+    }
     progfunc = tolower(progfunc)
     if(progfunc == "ridge") {
         if(scm) {
@@ -138,7 +141,7 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
             augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
                                    progfunc, scm, ...)
         } else {
-            stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
+            stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq', 'None'")
         }
         
     }
