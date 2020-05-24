@@ -77,7 +77,9 @@ test_that("Separate synth is the same as fitting separate synths", {
                        scm=T, eps_rel=1e-5, eps_abs=1e-5)
     
     # weights are the same-ish
-    expect_equal(c(scm17$weights), c(msyn$weights[-c(15, 16), 2]), tolerance=3e-2)
+    sscm_weights <- unname(c(scm17$weights))
+    mscm_weights <- unname(c(msyn$weights[-c(15, 16), 2]))
+    expect_equal(sscm_weights, mscm_weights, tolerance=3e-2)
     # expect_equal(c(scm16$weights), c(msyn$weights[-c(15, 16), 1]), tolerance=3e-2)
     
     # estimates are the same-ish

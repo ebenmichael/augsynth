@@ -86,6 +86,12 @@ multisynth <- function(form, unit, time, data,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
                                 eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
+    
+   
+    if("weights" %in% names(msynth)) {
+        units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
+        rownames(msynth$weights) <- units
+    }
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data

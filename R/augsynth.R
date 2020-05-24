@@ -52,8 +52,9 @@ single_augsynth <- function(form, unit, time, t_int, data,
     synth_data <- do.call(format_synth, wide)
 
     
-    treated_unit = pull(unique(data %>% filter(!!trt == 1) %>% select(!!unit)))
-    control_units = pull(unique(data %>% select(!!unit) %>% filter(!!unit != treated_unit)))
+    treated_unit <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
+    control_units <- data %>% filter(!!unit != treated_unit) %>% distinct(!!unit) %>% pull(!!unit)
+    
     
     ## add covariates
     if(length(form)[2] == 2) {
@@ -72,8 +73,8 @@ single_augsynth <- function(form, unit, time, t_int, data,
     augsynth$t_int <- t_int 
     
     if("weights" %in% names(augsynth)) {
-        augsynth$weights = matrix(augsynth$weights)
-        rownames(augsynth$weights) = control_units
+        augsynth$weights <- matrix(augsynth$weights)
+        rownames(augsynth$weights) <- control_units
     }
 
     return(augsynth)
