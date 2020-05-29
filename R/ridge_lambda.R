@@ -15,7 +15,6 @@
 #' @noRd
 #' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
 get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
-  
   # vector that stores the sum MSE across all CV sets
   errors <- matrix(0, nrow = ncol(X_c) - holdout_length, ncol = length(lambdas))
   lambda_errors = numeric(length(lambdas)) 

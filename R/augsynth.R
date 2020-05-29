@@ -48,11 +48,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     trt <- terms(formula(form, rhs=1))[[3]]
 
     wide <- format_data(outcome, trt, unit, time, t_int, data)
-
     synth_data <- do.call(format_synth, wide)
-
-    
-
     ## add covariates
     if(length(form)[2] == 2) {
         Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)

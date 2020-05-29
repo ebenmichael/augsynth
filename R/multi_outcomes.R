@@ -133,7 +133,9 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #'         }
 combine_outcomes <- function(wide_list, combine_method, fixedeff,
                              k= NULL, ...) {
-
+    print(class(wide_list$X))
+    print(is.list(wide_list$X))
+    print(class(wide_list$X$lngdpcapita))
     n_outs <- length(wide_list$X)
     total_pre <- Map(ncol, wide_list$X) %>% Reduce(`+`, .)
     total_post <- Map(ncol, wide_list$y) %>% Reduce(`+`, .)
