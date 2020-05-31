@@ -88,10 +88,9 @@ multisynth <- function(form, unit, time, data,
                                 eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
     
    
-    if("weights" %in% names(msynth)) {
-        units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
-        rownames(msynth$weights) <- units
-    }
+    units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
+    rownames(msynth$weights) <- units
+
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
@@ -680,7 +679,9 @@ summary.multisynth <- function(object, ...) {
     att <- predict(multisynth, relative, att=T)
     
     if(jackknife) {
+        print("HERE")
         se <- jackknife_se_multi(multisynth, relative)
+        print("DONE")
     } else {
         # se <- compute_se(multisynth, relative)
         se <- matrix(NA, nrow(att), ncol(att))

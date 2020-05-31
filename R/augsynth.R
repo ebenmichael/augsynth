@@ -72,10 +72,8 @@ single_augsynth <- function(form, unit, time, t_int, data,
     augsynth$call <- call_name
     augsynth$t_int <- t_int 
     
-    if("weights" %in% names(augsynth)) {
-        augsynth$weights <- matrix(augsynth$weights)
-        rownames(augsynth$weights) <- control_units
-    }
+    augsynth$weights <- matrix(augsynth$weights)
+    rownames(augsynth$weights) <- control_units
 
     return(augsynth)
 }
