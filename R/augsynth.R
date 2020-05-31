@@ -99,6 +99,9 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     }
     ## fit augsynth
     if(progfunc == "Ridge") {
+        # 1. find hyperparameter using CV call, if lambda is null
+        # 2. call fit_ridgeuag_formatted with best CV (if-else case below, depending on scm=T or F)
+        # TODO: remove if else statement here since scm is an arg
         if(scm) {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
