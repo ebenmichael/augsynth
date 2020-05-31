@@ -153,7 +153,7 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     augsynth$scm <- scm
     augsynth$fixedeff <- fixedeff
     augsynth$extra_args <- list(...)
-    if(progfunc == "Ridge") {
+    if(progfunc == "ridge") {
         augsynth$extra_args$lambda <- augsynth$lambda
     }
     ##format output
