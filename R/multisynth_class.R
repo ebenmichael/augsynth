@@ -679,9 +679,7 @@ summary.multisynth <- function(object, ...) {
     att <- predict(multisynth, relative, att=T)
     
     if(jackknife) {
-        print("HERE")
         se <- jackknife_se_multi(multisynth, relative)
-        print("DONE")
     } else {
         # se <- compute_se(multisynth, relative)
         se <- matrix(NA, nrow(att), ncol(att))
