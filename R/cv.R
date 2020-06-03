@@ -46,8 +46,10 @@ cv <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_length, .
     
     lambda_error_vals <- vapply(lambdas, function(lambda){
       periods <- 1:(ncol(X) - holdout_length)
+      print(periods)
       errors <- vapply(periods, function(t){
         t_drop <- t:(t+holdout_length - 1)
+        print(t_drop)
         new_ascm <- drop_time_and_refit(wide_data, Z, t_drop, progfunc, scm, fixedeff, lambda = lambda, ...)
         err <- sum((predict(new_ascm, att = T)[(ncol(X)-holdout_length+1):ncol(X)])^2)
         err
@@ -57,4 +59,20 @@ cv <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_length, .
       c(lambda_error, lambda_error_se)
     }, numeric(2))
     return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
-  }
+}
+
+cv2 <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_periods, ...) {
+  X <- wide_data$X
+  lambda_error_vals <- vapply(lambdas, function(lambda){
+    errors <- apply(holdout_periods, 1, function(t_drop){
+      print(t_drop)
+      new_ascm <- drop_time_and_refit(wide_data, Z, t_drop, progfunc, scm, fixedeff, lambda = lambda, ...)
+      err <- sum((predict(new_ascm, att = T)[(ncol(X)-length(t_drop)+1):ncol(X)])^2)
+      err
+    })
+    lambda_error <- mean(errors)
+    lambda_error_se <- sd(errors) / sqrt(length(errors))
+    c(lambda_error, lambda_error_se)
+  }, numeric(2))
+  return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
+}
