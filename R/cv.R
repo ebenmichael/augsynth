@@ -43,22 +43,18 @@ drop_time_and_refit <- function(wide_data, Z, t_drop, progfunc, scm, fixedeff, .
 cv <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_length, ...) {
     # TODO: instead of holdout_lenght, assume input parameter is a list of folds (each fold represented by the periods to drop)
     X <- wide_data$X
-    # vector that stores the sum MSE across all CV sets
-    errors <- matrix(0, nrow = ncol(X) - holdout_length, ncol = length(lambdas))
-    lambda_errors = numeric(length(lambdas)) 
-    lambda_errors_se = numeric(length(lambdas)) 
     
-    # TODO: turn for loop into apply over lambda sequence, (vapply)
-    for (i in 1:(ncol(X) - holdout_length)) {
-      for (j in 1:length(lambdas)) {
-        t_drop <- i:(i+holdout_length - 1)
-        new_ascm <- drop_time_and_refit(wide_data, Z, t_drop, progfunc, scm, fixedeff, lambda = j, ...)
+    lambda_error_vals <- vapply(lambdas, function(lambda){
+      periods <- 1:(ncol(X) - holdout_length)
+      errors <- vapply(periods, function(t){
+        t_drop <- t:(t+holdout_length - 1)
+        new_ascm <- drop_time_and_refit(wide_data, Z, t_drop, progfunc, scm, fixedeff, lambda = lambda, ...)
         err <- sum((predict(new_ascm, att = T)[(ncol(X)-holdout_length+1):ncol(X)])^2)
-        errors[i, j] <-  err
-      }
-    }
-    lambda_errors <- apply(errors, 2, mean)
-    lambda_errors_se <- apply(errors, 2, function(x) sd(x) / sqrt(length(x)))
-    return(list(lambda_errors = lambda_errors, 
-                lambda_errors_se = lambda_errors_se))
+        err
+      }, numeric(1))
+      lambda_error <- mean(errors)
+      lambda_error_se <- sd(errors) / sqrt(length(errors))
+      c(lambda_error, lambda_error_se)
+    }, numeric(2))
+    return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
   }

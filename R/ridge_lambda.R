@@ -14,7 +14,7 @@
 #' @param scm Include SCM or not
 #' @noRd
 #' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
-get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=3, scm=T) {
+get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
   lambdas = 1:5
   holdout_length = 3
   # vector that stores the sum MSE across all CV sets
