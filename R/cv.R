@@ -41,12 +41,10 @@ drop_time_and_refit <- function(wide_data, Z, t_drop, progfunc, scm, fixedeff, .
 }
 
 cv <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_length, ...) {
-    # TODO: instead of holdout_lenght, assume input parameter is a list of folds (each fold represented by the periods to drop)
     X <- wide_data$X
     
     lambda_error_vals <- vapply(lambdas, function(lambda){
       periods <- 1:(ncol(X) - holdout_length)
-      print(periods)
       errors <- vapply(periods, function(t){
         t_drop <- t:(t+holdout_length - 1)
         print(t_drop)
@@ -61,11 +59,10 @@ cv <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_length, .
     return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
 }
 
-cv2 <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_periods, ...) {
+cv2 <- function(wide_data, Z, progfunc, scm, fixedeff, lambdas, holdout_periods, ...) {
   X <- wide_data$X
   lambda_error_vals <- vapply(lambdas, function(lambda){
     errors <- apply(holdout_periods, 1, function(t_drop){
-      print(t_drop)
       new_ascm <- drop_time_and_refit(wide_data, Z, t_drop, progfunc, scm, fixedeff, lambda = lambda, ...)
       err <- sum((predict(new_ascm, att = T)[(ncol(X)-length(t_drop)+1):ncol(X)])^2)
       err
@@ -75,4 +72,13 @@ cv2 <- function(lambdas, wide_data, Z, progfunc, scm, fixedeff, holdout_periods,
     c(lambda_error, lambda_error_se)
   }, numeric(2))
   return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
+}
+
+cv_internal <- function(wide_data, Z, progfunc, scm, fixedeff, how = 'time', holdout_length = 1, lambdas = NULL, ...) {
+  X <- wide_data$X
+  if (how == 'time') {
+    period_starts <- 1:(ncol(X) - holdout_length)
+    holdout_periods <- t(vapply(period_starts, function(t) t:(t+holdout_length-1), numeric(holdout_length)))
+    return(cv2(wide_data, Z, progfunc, scm, fixedeff, lambdas, holdout_periods, ...))
+  }
 }
