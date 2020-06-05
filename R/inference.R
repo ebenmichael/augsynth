@@ -364,7 +364,7 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
 
   # grid of nulls
   att <- predict(ascm, att = T)
-  grid <- c(seq( 3 * min(att), 3 * max(att), length.out = grid_size))
+  grid <- c(seq( - 3 * max(abs(att)), 3 * max(abs(att)), length.out = grid_size))
 
   # iterate over post-treatment periods to get pointwise CIs
   vapply(1:tpost,
