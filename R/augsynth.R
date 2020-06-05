@@ -103,11 +103,21 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         # 2. call fit_ridgeuag_formatted with best CV (if-else case below, depending on scm=T or F)
         # TODO: remove if else statement here since scm is an arg
         if(scm) {
-            ## Ridge ASCM
-            augsynth <- do.call(fit_ridgeaug_formatted,
-                                list(wide_data = fit_wide, 
-                                   synth_data = fit_synth_data, 
-                                   Z = Z, V = V, ...))
+            # Ridge ASCM
+            if(is.null(list(...)$lambda)) {
+                augsynth <- do.call(cv, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, scm = scm, fixedeff = fixedeff, ...))
+                return(augsynth)
+            } else {
+                augsynth <- do.call(fit_ridgeaug_formatted,
+                        list(wide_data = fit_wide,
+                           synth_data = fit_synth_data,
+                           Z = Z, V = V, ...))
+            }
+            
+            # augsynth <- do.call(fit_ridgeaug_formatted,
+            #                     list(wide_data = fit_wide,
+            #                        synth_data = fit_synth_data,
+            #                        Z = Z, V = V, ...))
         } else {
             ## Just ridge regression
             augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
