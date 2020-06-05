@@ -1,0 +1,125 @@
+---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Multi Outcomes AugSynth Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+  )
+library(kableExtra)
+```
+
+# `augsynth`: Estimating multiple outcome effects
+
+### The data
+To demonstrate `augsynth` with multiple outcomes, we'll use data on the impact of personal income tax cuts in Kansas that comes with the `AugSynth` package. Our interest is in estimating the effect of income tax cuts on gross state product (GSP) per capita, wages, establishment counts, and other macroeconomic indicators.
+
+```{r load_data, results="hide", warning=F, message=F}
+library(magrittr)
+library(dplyr)
+library(augsynth)
+data(kansas)
+```
+
+The `kansas` dataset contains the GSP per capita (the outcome measure) `lngdpcapita` for all 50 states from the first quarter of 1990 to the first quarter of 2016.
+
+To run `augsynth`, we need to include a treatment status column that indicates which region was treated and at what time. The table in `kansas` contains the column `treated` to denote this. In the original study, the second quarter of 2012 was the implementation of the tax cut in Kansas.
+
+```{r treated_units}
+kansas %>% select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
+```
+
+
+### Using the Synthetic Controls Method
+We will begin by running the synthetic controls method on GDP per capita, wages, and the number of establishments. To run the vanilla synthetic controls method using `augsynth`, set `progfunc` to `None` and `scm` to `TRUE`.
+
+#### Single outcomes
+First, we will examine each outcome variable separately, beginning with log GDP per capita `lngdpcapita`.
+
+```{r lngdpcapita_syn}
+syn_lngdpcapita <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
+summary(syn_lngdpcapita)
+```
+
+```{r lngdpcapita_syn_plot}
+plot(syn_lngdpcapita)
+```
+
+Next we will examine the log total wages per capita. Since this column doesn't already exist in the dataframe, we will create a `lntotalwagescapita` column.
+```{r lntotalwagescapita_syn}
+kansas$lntotalwagescapita <- log(kansas$totalwagescapita)
+syn_lntotalwagescapita <- augsynth(lntotalwagescapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
+summary(syn_lntotalwagescapita)
+```
+
+```{r lntotalwagescapita_syn_plot}
+plot(syn_lntotalwagescapita)
+```
+
+Lastly, we will examine the number of establishments per capita, `estabscapita`.
+```{r estabscapita_syn}
+syn_estabscapita <- augsynth(estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
+summary(syn_estabscapita)
+```
+
+```{r single_estabscapita_syn_plot}
+plot(syn_estabscapita)
+```
+
+#### Multiple outcomes
+Now we will combine our outcome variables into one study. To add more outcome variables, we add them to the LHS of the formula. 
+```{r multi_outcome_syn}
+syn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, fips, year_qtr, kansas, progfunc="None", scm=T)
+summary(syn_multi)
+```
+
+```{r multi_outcome_syn_plot}
+plot(syn_multi)
+```
+
+
+### Using the Augmented Synthetic Controls Method
+We will now repeat the study using the Augmented Synthetic Controls Method with ridge regression. In ASCM, we first fit the SCM weights, then combine it with a ridge regression, thus setting `progfunc="Ridge", scm=T`.
+
+```{r lngdpcapita_asyn}
+asyn_lngdpcapita <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
+summary(asyn_lngdpcapita)
+```
+
+```{r lngdpcapita_asyn_plot}
+plot(asyn_lngdpcapita)
+```
+
+```{r lntotalwagescapita_asyn}
+asyn_lntotalwagescapita <- augsynth(lntotalwagescapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
+summary(asyn_lntotalwagescapita)
+```
+
+```{r lntotalwagescapita_asyn_plot}
+plot(asyn_lntotalwagescapita)
+```
+
+```{r estabscapita_asyn}
+asyn_estabscapita <- augsynth(estabscapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
+summary(asyn_estabscapita)
+```
+
+```{r single_estabscapita_asyn_plot}
+plot(asyn_estabscapita)
+```
+
+#### Multiple outcomes
+Now we will combine our outcome variables into one study. To add more outcome variables, we add them to the LHS of the formula. 
+```{r multi_outcome_asyn}
+asyn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
+summary(asyn_multi)
+```
+
+```{r multi_outcome_asyn_plot}
+plot(asyn_multi)
+```
