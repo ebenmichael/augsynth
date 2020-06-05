@@ -52,22 +52,28 @@ single_augsynth <- function(form, unit, time, t_int, data,
     synth_data <- do.call(format_synth, wide)
 
     
-
+    treated_unit <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
+    control_units <- data %>% filter(!!unit != treated_unit) %>% distinct(!!unit) %>% pull(!!unit)
+    
+    
     ## add covariates
     if(length(form)[2] == 2) {
         Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)
     } else {
         Z <- NULL
     }
-
+    
     # fit augmented SCM
     augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc, 
                                       scm, fixedeff, ...)
-
+    
     # add some extra data
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     augsynth$call <- call_name
     augsynth$t_int <- t_int 
+    
+    augsynth$weights <- matrix(augsynth$weights)
+    rownames(augsynth$weights) <- control_units
 
     return(augsynth)
 }
@@ -102,7 +108,11 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         mhat <- matrix(0, n, ttot)
     }
     ## fit augsynth
-    if(progfunc == "Ridge") {
+    if (is.null(progfunc)) {
+        progfunc = "none"
+    }
+    progfunc = tolower(progfunc)
+    if(progfunc == "ridge") {
         if(scm) {
             ## Ridge ASCM
             augsynth <- do.call(fit_ridgeaug_formatted,
@@ -115,16 +125,23 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                    synth_data = fit_synth_data,
                                    Z = Z, ridge = T, scm = F, V = V, ...))
         }
-    } else if(progfunc == "None") {
+    } else if(progfunc == "none") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
                                synth_data = fit_synth_data,
-                               Z = Z, ridge = F, scm = T, V = V)))
+                               Z = Z, ridge = F, scm = T, V = V, ...)))
     } else {
         ## Other outcome models
-        augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
-                               progfunc, scm, ...)
+        progfuncs = c("ridge", "none", "en", "rf", "gsyn", "mcp",
+                      "cits", "causalimpact", "seq2seq")
+        if (progfunc %in% progfuncs) {
+            augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
+                                   progfunc, scm, ...)
+        } else {
+            stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq', 'None'")
+        }
+        
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
@@ -136,7 +153,7 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     augsynth$scm <- scm
     augsynth$fixedeff <- fixedeff
     augsynth$extra_args <- list(...)
-    if(progfunc == "Ridge") {
+    if(progfunc == "ridge") {
         augsynth$extra_args$lambda <- augsynth$lambda
     }
     ##format output

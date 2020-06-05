@@ -84,17 +84,18 @@ fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
                        scm=T, ...) {
     ## prognostic score and weight functions to use
-    if(progfunc == "EN") {
+    progfunc = tolower(progfunc)
+    if(progfunc == "en") {
         progf <- fit_prog_reg
-    } else if(progfunc == "RF") {
+    } else if(progfunc == "rf") {
         progf <- fit_prog_rf
-    } else if(progfunc == "GSYN"){
+    } else if(progfunc == "gsyn"){
         progf <- fit_prog_gsynth
-    } else if(progfunc == "MCP"){
+    } else if(progfunc == "mcp"){
         progf <- fit_prog_mcpanel
-    } else if(progfunc == "CITS") {
+    } else if(progfunc == "cits") {
         progf <- fit_prog_cits
-    } else if(progfunc == "CausalImpact") {
+    } else if(progfunc == "causalimpact") {
         progf <- fit_prog_causalimpact
     } else if(progfunc == "seq2seq"){
         progf <- fit_prog_seq2seq
