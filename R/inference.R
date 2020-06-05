@@ -226,19 +226,26 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     out <- list()
     att <- predict(ascm, att = T)
     # use leave one out ATT estimates
-    out$att <- c(held_out_errs, 
-                 att[(t0 + 1):t_final], 
+    # out$att <- c(held_out_errs, 
+    #              att[(t0 + 1):t_final], 
+    #              mean(att[(t0 + 1):t_final]))
+    out$att <- c(att, 
                  mean(att[(t0 + 1):t_final]))
-    se <- apply(jack_dist[3,,], 1, sd)
-    out$se <- c(rep(NA, t0), se)
+    # held out ATT
+    out$heldout_att <- c(held_out_errs, 
+                          att[(t0 + 1):t_final], 
+                          mean(att[(t0 + 1):t_final]))
+    # se <- apply(jack_dist[3,,], 1, sd)
+    # out$se <- c(rep(NA, t0), se)
+    out$se <- rep(NA, 10 + tpost)
     out$sigma <- NA
     if(conservative) {
-        qerr <- quantile(abs(held_out_errs), 1 - alpha / 2)
+        qerr <- quantile(abs(held_out_errs), 1 - alpha)
         out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
         out$ub <- c(rep(NA, t0), apply(jack_dist[4,,], 1, max) + qerr)
     } else {
-        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 4))
-        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 4))
+        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 2))
+        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 2))
     }
     # shift back to ATT scale
     y1 <- predict(ascm, att = F) + att
@@ -357,7 +364,7 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
 
   # grid of nulls
   att <- predict(ascm, att = T)
-  grid <- c(seq( 2 * min(att), 2 * max(att), length.out = grid_size))
+  grid <- c(seq( 3 * min(att), 3 * max(att), length.out = grid_size))
 
   # iterate over post-treatment periods to get pointwise CIs
   vapply(1:tpost,
@@ -378,9 +385,13 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
          },
          numeric(2)) -> cis
   # get residuals for the average using the sliding average technique
-  avg_data <- get_sliding_average(wide_data)
-  avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
-  avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
+  if(ncol(wide_data$y) < ncol(wide_data$X)) {
+    avg_data <- get_sliding_average(wide_data)
+    avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
+    avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
+  } else {
+    avg_ci <- c(NA, NA)
+  }
 
   out <- list()
   att <- predict(ascm, att = T)
@@ -398,28 +409,8 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
 }
 
 
-compute_permute_test_stats <- function(resids, h0, t0, type, ns = 1000) {
+compute_permute_test_stats <- function(wide_data, ascm, h0, type, ns = 1000) {
 
-  # adjust resduals by null h0
-  tpost <- length(resids)
-  resids[(t0 + 1):tpost] <- resids[(t0 + 1):tpost] - h0
-
-  # permute residuals and compute test statistic
-  if(type == "iid") {
-    test_stats <- sapply(1:ns, 
-                        function(x) mean(abs(sample(resids)[(t0 + 1):tpost])))
-  } else {
-    ## increment time by one step and wrap
-    test_stats <- sapply(1:tpost,
-                        function(j) {
-                          reorder <- resids[(1:tpost + j) %% tpost + 1]
-                          mean(abs(reorder[(t0 + 1):tpost]))
-                        })
-  }
-  test_stats
-}
-
-compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
 
   # format data
   new_wide_data <- wide_data
@@ -460,8 +451,18 @@ compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
                           mean(abs(reorder[(t0 + 1):tpost]))
                         })
   }
-  mean(mean(abs(resids[(t0 + 1):tpost])) <= test_stats)
+  
+  return(list(resids = resids, 
+              test_stats = test_stats))
 }
+
+compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
+  t0 <- ncol(wide_data$X) - 1
+  tpost <- t0 + 1
+  out <- compute_permute_test_stats(wide_data, ascm, h0, type, ns)
+  mean(mean(abs(out$resids[(t0 + 1):tpost])) <= out$test_stats)
+}
+
 
 compute_permute_ci <- function(wide_data, ascm, grid, alpha, type, ns = 1000) {
 
