@@ -87,6 +87,7 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
 #' @param scm Whether to fit SCM
 #' @param fixedeff Whether to de-mean synth
 #' @param ... Extra args for outcome model
+#' @noRd
 fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
                                            progfunc, scm, fixedeff, ...) {
 
@@ -124,7 +125,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #' @param fixedeff Whether to take out unit fixed effects or not
 #' @param k Number of principal directions to keep, default all
 #' @param ... Extra argumemnts for combination
-#' 
+#' @noRd
 #' @return \itemize{
 #'          \item{"X"}{Matrix of combined pre-treatment outcomes}
 #'          \item{"trt"}{Vector of treatment assignments}

@@ -12,7 +12,7 @@
 #' @param trt Boolean vector of treatment assignments
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas
 #' @param scm Include SCM or not
-#' 
+#' @noRd
 #' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
 get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
   

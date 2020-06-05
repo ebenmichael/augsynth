@@ -19,7 +19,7 @@
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
 #' @param ... Extra arguments
-#'
+#' 
 #' @return multisynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
@@ -59,7 +59,6 @@ multisynth <- function(form, unit, time, data,
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
-
     force <- if(fixedeff) 3 else 2
 
     # if n_leads is NULL set it to be the largest possible number of leads
@@ -77,6 +76,8 @@ multisynth <- function(form, unit, time, data,
         n_lags <- ncol(wide$X)
     }
 
+    long_df <- data[c(quo_name(unit), quo_name(time), as.character(trt), as.character(outcome))]
+
     msynth <- multisynth_formatted(wide = wide, relative = T,
                                 n_leads = n_leads, n_lags = n_lags,
                                 nu = nu, lambda = lambda,
@@ -84,7 +85,7 @@ multisynth <- function(form, unit, time, data,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
-                                eps_rel = eps_rel, verbose = verbose, ...)
+                                eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
@@ -133,8 +134,9 @@ multisynth <- function(form, unit, time, data,
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
+#' @param long_df A long dataframe with 4 columns in the order unit, time, trt, outcome
 #' @param ... Extra arguments
-#'
+#' @noRd
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        nu, lambda,
@@ -144,11 +146,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        time_w, lambda_t,
                        fit_resids,
                        eps_abs, eps_rel,
-                       verbose, ...) {
-
+                       verbose, long_df, ...) {
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
-
     if(time_cohort) {
         grps <- unique(wide$trt[is.finite(wide$trt)])
     } else {
@@ -165,14 +165,27 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         residuals <- out$residuals
         params <- out$time_weights
     } else if(is.null(n_factors)) {
-        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt, force=force)
+        out <- tryCatch({
+            fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt, force=force)
+        }, error = function(error_condition) {
+            stop("Cannot run CV because there are too few pre-treatment periods.")
+        })
+
         y0hat <- out$y0hat
         params <- out$params
         n_factors <- ncol(params$factor)
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
         
+    } else if (n_factors != 0) {
+        ## if number of factors is provided don't do CV
+        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
+                                r=n_factors, CV=0, force=force)
+        y0hat <- out$y0hat
+        params <- out$params        
         
+        ## get residuals from outcome model
+        residuals <- cbind(wide$X, wide$y) - y0hat
     } else if(force == 0 & n_factors == 0) {
         # if no fixed effects or factors, just take out 
         # control averages at each time point
@@ -183,7 +196,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                           byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
         params <- NULL
-    } else if(force != 0) {
+    } else {
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
                                             ncol=ncol(wide$y)))
@@ -191,17 +204,6 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- NULL
-    } else {
-        ## if number of factors is provided don't do CV
-        out <- fit_gsynth_multi(cbind(wide$X, wide$y), wide$trt,
-                                r=n_factors, r.end=n_factors,
-                                CV=0, force=force)
-        y0hat <- out$y0hat
-        params <- out$params        
-
-        ## get residuals from outcome model
-        residuals <- cbind(wide$X, wide$y) - y0hat
-
     }
 
     ## balance the residuals
@@ -299,6 +301,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 eps_rel = eps_rel, 
                                 verbose = verbose), 
                            list(...))
+    msynth$long_df <- long_df
 
     ##format output
     class(msynth) <- "multisynth"
@@ -757,27 +760,33 @@ print.summary.multisynth <- function(x, ...) {
         summ$att %>% filter(Time > level, Level==level) -> att_est
     }
 
-
-    cat(paste("Global L2 Imbalance (Scaled): ",
-              format(round(summ$global_l2,3), nsmall=3), "  (",
-              format(round(summ$scaled_global_l2,3), nsmall=3), ")\n\n",
-              "Individual L2 Imbalance (Scaled): ",
-              format(round(summ$ind_l2,3), nsmall=3), "  (",
-              format(round(summ$scaled_ind_l2,3), nsmall=3), ")\t",
+    cat(paste("Average ATT Estimate (Std. Error): ",
+              summ$att %>%
+                  filter(Level == level, is.na(Time)) %>%
+                  pull(Estimate) %>%
+                  round(3) %>% format(nsmall=3),
+              "  (",
+              summ$att %>%
+                  filter(Level == level, is.na(Time)) %>%
+                  pull(Std.Error) %>%
+                  round(3) %>% format(nsmall=3),
+              ")\n\n", sep=""))
+    
+    cat(paste("Global L2 Imbalance: ",
+              format(round(summ$global_l2,3), nsmall=3), "\n",
+              "Scaled Global L2 Imbalance: ",
+              format(round(summ$scaled_global_l2,3), nsmall=3), "\n",
+              "Percent improvement from uniform global weights: ", 
+              format(round(1-summ$scaled_global_l2,3)*100), "\n\n",
+              "Individual L2 Imbalance: ",
+              format(round(summ$ind_l2,3), nsmall=3), "\n",
+              "Scaled Individual L2 Imbalance: ", 
+              format(round(summ$scaled_ind_l2,3), nsmall=3), "\n",
+              "Percent improvement from uniform individual weights: ", 
+              format(round(1-summ$scaled_ind_l2,3)*100), "\t",
               "\n\n",
               sep=""))
 
-    cat(paste("Average ATT Estimate (Std. Error): ",
-              summ$att %>%
-              filter(Level == level, is.na(Time)) %>%
-              pull(Estimate) %>%
-              round(3) %>% format(nsmall=3),
-              "  (",
-              summ$att %>%
-              filter(Level == level, is.na(Time)) %>%
-              pull(Std.Error) %>%
-              round(3) %>% format(nsmall=3),
-              ")\n\n", sep=""))
 
     print(att_est, row.names=F)
 

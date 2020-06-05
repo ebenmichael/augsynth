@@ -4,10 +4,24 @@
 \alias{multisynth}
 \title{Fit staggered synth}
 \usage{
-multisynth(form, unit, time, data, n_leads = NULL, n_lags = NULL,
-  nu = NULL, lambda = 0, fixedeff = FALSE, n_factors = 0,
-  scm = T, time_cohort = F, eps_abs = 1e-04, eps_rel = 1e-04,
-  verbose = FALSE, ...)
+multisynth(
+  form,
+  unit,
+  time,
+  data,
+  n_leads = NULL,
+  n_lags = NULL,
+  nu = NULL,
+  lambda = 0,
+  fixedeff = FALSE,
+  n_factors = 0,
+  scm = T,
+  time_cohort = F,
+  eps_abs = 1e-04,
+  eps_rel = 1e-04,
+  verbose = FALSE,
+  ...
+)
 }
 \arguments{
 \item{form}{outcome ~ treatment}

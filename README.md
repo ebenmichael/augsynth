@@ -9,7 +9,7 @@
 This package implements the Augmented Synthetic Control Method (ASCM).
 
 For a more detailed description of the main functionality check out:
-- [the vignette for simultaneous adoption](https://github.com/ebenmichael/augsynth/blob/master/vignettes/augsynth-vignette.md)
+- [the vignette for simultaneous adoption](https://github.com/ebenmichael/augsynth/blob/master/vignettes/singlesynth-vignette.md)
 - [the vignette for staggered adoption](https://github.com/ebenmichael/augsynth/blob/master/vignettes/multisynth-vignette.md)
 
 ## Installation

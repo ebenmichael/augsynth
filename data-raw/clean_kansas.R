@@ -34,9 +34,14 @@ kansas <- kansas %>%
                emplvl2capita = month2_emplvl / popestimate,
                emplvl3capita = month3_emplvl / popestimate,
                emplvlcapita = (month1_emplvl + month2_emplvl + month3_emplvl) / (3 * popestimate),
-               totalwagescapita = total_qtrly_wages / popestimate * 1e6,
-               taxwagescapita = taxable_qtrly_wages / popestimate * 1e6,
-               avgwklywagecapita = avg_wkly_wage / popestimate * 1e6,
+               totalwagescapita = total_qtrly_wages / popestimate,
+               taxwagescapita = taxable_qtrly_wages / popestimate,
+               avgwklywagecapita = avg_wkly_wage,
                estabscapita = qtrly_estabs_count / popestimate) %>%
         filter(year_qtr <= 2016) %>%
         inner_join(state_abb)
+
+for (name in colnames(kansas)) {
+        attributes(kansas[[name]])$label = NULL 
+}
+
