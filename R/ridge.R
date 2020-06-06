@@ -100,7 +100,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         X_cent[trt == 0,] <- res_c
         X_cent[trt == 1,] <- res_t
 
-
         new_synth_data$Z1 <- t(res_t)
         new_synth_data$X1 <- t(res_t)
         new_synth_data$Z0 <- t(res_c)

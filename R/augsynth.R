@@ -105,15 +105,24 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         if(scm) {
             # Ridge ASCM
             if(is.null(list(...)$lambda)) {
-                augsynth <- do.call(cv, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, scm = scm, fixedeff = fixedeff, ...))
-                return(augsynth)
+                lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
+                                                         scm = scm, fixedeff = fixedeff, V = V, ...))
+                augsynth <- do.call(fit_ridgeaug_formatted,
+                                    list(wide_data = fit_wide,
+                                         synth_data = fit_synth_data,
+                                         Z = Z, V = V, ...))
+                augsynth$lambda <- lambda_results$lambda
+                augsynth$lambdas <- lambda_results$lambdas
+                augsynth$lambda_errors <- lambda_results$lambda_errors
+                augsynth$lambda_errors_se <- lambda_results$lambda_errors_se
             } else {
                 augsynth <- do.call(fit_ridgeaug_formatted,
-                        list(wide_data = fit_wide,
-                           synth_data = fit_synth_data,
-                           Z = Z, V = V, ...))
+                                    list(wide_data = fit_wide,
+                                         synth_data = fit_synth_data,
+                                         Z = Z, V = V, ...))
             }
-            
+
+
             # augsynth <- do.call(fit_ridgeaug_formatted,
             #                     list(wide_data = fit_wide,
             #                        synth_data = fit_synth_data,
