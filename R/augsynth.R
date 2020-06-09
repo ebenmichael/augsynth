@@ -300,6 +300,9 @@ summary.augsynth <- function(object, ...) {
             att$lower_bound <- att_se$lb[1:t_final]
             att$upper_bound <- att_se$ub[1:t_final]
         }
+        if(se_type == "conformal") {
+          att$p_val <- att_se$p_val[1:t_final]
+        }
 
     } else {
         t0 <- ncol(augsynth$data$X)
@@ -317,6 +320,9 @@ summary.augsynth <- function(object, ...) {
     if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
         summ$average_att$lower_bound <- att_se$lb[t_final + 1]
         summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+    }
+    if(se_type == "conformal") {
+      summ$average_att$p_val <- att_se$p_val[t_final + 1]
     }
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call

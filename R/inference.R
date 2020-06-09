@@ -383,14 +383,14 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
 
           compute_permute_ci(new_wide_data, ascm, grid, alpha, type, ns)
          },
-         numeric(2)) -> cis
+         numeric(3)) -> cis
   # get residuals for the average using the sliding average technique
   if(ncol(wide_data$y) < ncol(wide_data$X)) {
     avg_data <- get_sliding_average(wide_data)
     avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
     avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
   } else {
-    avg_ci <- c(NA, NA)
+    avg_ci <- c(NA, NA, NA)
   }
 
   out <- list()
@@ -398,13 +398,10 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
   out$att <- c(att, mean(att[(t0 + 1):t_final]))
   out$se <- rep(NA, t_final)
   out$sigma <- NA
-  # out$lb <- c(rep(NA, t0), pmin(att[(t0 + 1):t_final], 
-  #             perm_out[1, ]), min(avg_perm[1], out$att[t_final + 1]))
-  # out$ub <- c(rep(NA, t0), pmax(att[(t0 + 1):t_final], 
-  #             perm_out[2, ]), max(avg_perm[2], out$att[t_final + 1]))
   out$lb <- c(rep(NA, t0), cis[1, ], avg_ci[1])
   out$ub <- c(rep(NA, t0), cis[2, ], avg_ci[2])
-  # out$pval <- c(rep(NA, t0), perm_out[3, ], avg_perm[3])
+  out$p_val <- c(rep(NA, t0), cis[3, ], avg_ci[3])
+  
   return(out)
 }
 
@@ -465,12 +462,13 @@ compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
 
 
 compute_permute_ci <- function(wide_data, ascm, grid, alpha, type, ns = 1000) {
-
+  # make sure 0 is in the grid
+  grid <- c(grid, 0)
   ps <-sapply(grid, 
               function(x) {
                 compute_permute_pval(wide_data, ascm, x, type, ns)
               })
-  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]))
+  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
 }
 
 
