@@ -86,6 +86,11 @@ multisynth <- function(form, unit, time, data,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
                                 eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
+    
+   
+    units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
+    rownames(msynth$weights) <- units
+
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
@@ -847,21 +852,31 @@ plot.summary.multisynth <- function(x, ...) {
 
     ## add ses
     if(se) {
+        max_time <- max(summ$att$Time, na.rm = T)
+        if(max_time == 0) {
+          error_plt <- ggplot2::geom_errorbar
+          clr <- "black"
+          alph <- 1
+        } else {
+          error_plt <- ggplot2::geom_ribbon
+          clr <- NA
+          alph <- 0.2
+        }
         if("Average" %in% levels) {
-            p <- p + ggplot2::geom_ribbon(
+            p <- p + error_plt(
                 ggplot2::aes(ymin=Estimate-2*Std.Error,
                              ymax=Estimate+2*Std.Error),
-                alpha=0.2, color=NA,
+                alpha = alph, color=clr,
                 data = summ$att %>% 
                         filter(Level == "Average",
                                Time >= 0))
             
         } else {
-            p <- p + ggplot2::geom_ribbon(
+            p <- p + error_plt(
                 ggplot2::aes(ymin=Estimate-2*Std.Error,
                              ymax=Estimate+2*Std.Error),
                              data = . %>% filter(Time >= 0),
-                alpha=0.2, color=NA)
+                alpha = alph, color = clr)
         }
     }
 
