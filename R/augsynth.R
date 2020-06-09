@@ -99,37 +99,26 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     }
     ## fit augsynth
     if(progfunc == "Ridge") {
-        if(scm) {
-            # Ridge ASCM
-            if(is.null(list(...)[["lambda"]])) {
-                lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
-                                                         scm = scm, fixedeff = fixedeff, V = V, ...))
-                augsynth <- do.call(fit_ridgeaug_formatted,
-                                    list(wide_data = fit_wide,
-                                         synth_data = fit_synth_data,
-                                         Z = Z, V = V, ...))
-                augsynth$lambda <- lambda_results$lambda
-                augsynth$lambdas <- lambda_results$lambdas
-                augsynth$lambda_errors <- lambda_results$lambda_errors
-                augsynth$lambda_errors_se <- lambda_results$lambda_errors_se
-            } else {
-                augsynth <- do.call(fit_ridgeaug_formatted,
-                                    list(wide_data = fit_wide,
-                                         synth_data = fit_synth_data,
-                                         Z = Z, V = V, ...))
-            }
-
-
-            # augsynth <- do.call(fit_ridgeaug_formatted,
-            #                     list(wide_data = fit_wide,
-            #                        synth_data = fit_synth_data,
-            #                        Z = Z, V = V, ...))
+        # Ridge ASCM
+        if(is.null(list(...)[["lambda"]])) {
+            lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
+                                                     scm = scm, fixedeff = fixedeff, V = V, ...))
+            lambda <- lambda_results$lambda
+            lambdas <- lambda_results$lambdas
+            lambda_errors <- lambda_results$lambda_errors
+            lambda_errors_se <- lambda_results$lambda_errors_se
         } else {
-            ## Just ridge regression
-            augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
-                                   synth_data = fit_synth_data,
-                                   Z = Z, ridge = T, scm = F, V = V, ...))
+            lambdas <- NULL
+            lambda_errors <- NULL
+            lambda_errors_se <- NULL
         }
+        augsynth <- do.call(fit_ridgeaug_formatted,
+                            list(wide_data = fit_wide,
+                                 synth_data = fit_synth_data,
+                                 Z = Z, V = V, scm = scm, ...))
+        augsynth$lambdas <- lambdas
+        augsynth$lambda_errors <- lambda_errors
+        augsynth$lambda_errors_se <- lambda_errors_se
     } else if(progfunc == "None") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
