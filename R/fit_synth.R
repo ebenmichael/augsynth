@@ -2,8 +2,27 @@
 # Helper scripts to fit synthetic controls to simulations
 #######################################################
 
+#' Fit synthetic controls on outcomes with data in 'wide' format
+#' @param wide_data List of outcomes in wide format
+#' @param V Matrix to scale the objective by
+#' @noRd
+#' @return \itemize{
+#'          \item{"weights"}{Synth weights}
+#'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
+#'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
+#' }
+fit_synth_wide <- function(wide_data, V = NULL) {
+
+  # get pre treatment outcomes into the right form
+  X1 <- colMeans(wide_data$X[wide_data$trt == 1, , drop = F])
+  X0 <- wide_data$X[wide_data$trt == 0, , drop = F]
+
+  return(fit_synth_formatted(X1, X0, V))
+}
+
 #' Fit synthetic controls on outcomes after formatting data
-#' @param synth_data Panel data in format of Synth::dataprep
+#' @param X1 Vector of pre-treatment outcomes for treated unit
+#' @param X0 Matrix of pre-treatment outcomes for control units
 #' @param V Matrix to scale the obejctive by
 #' @noRd
 #' @return \itemize{
@@ -11,13 +30,12 @@
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #' }
-fit_synth_formatted <- function(synth_data, V = NULL) {
+fit_synth_formatted <- function(X1, X0, V = NULL) {
 
 
     t0 <- dim(synth_data$Z0)[1]
-    ## if no  is supplied, set equal to 1
+    # if no V, set equal to 1
     if(is.null(V)) {
-        # custom.v <- rep(1, dim(synth_data$Z0)[1])
         V <- diag(rep(1, t0))
     } else if(is.vector(V)) {
         V <- diag(V)
@@ -30,18 +48,20 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
         stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
     }
 
+    # fit synth
+    weights <- synth_qp(X1, X0, V)
 
-    weights <- synth_qp(synth_data$X1, t(synth_data$X0), V)
-    l2_imbalance <- sqrt(sum((synth_data$Z0 %*% weights - synth_data$Z1)^2))
+    # compute the l2 imbalance
+    l2_imbalance <- sqrt(sum((t(X0) %*% weights - X1) ^ 2))
 
-    ## primal objective value scaled by least squares difference for mean
-    uni_w <- matrix(1/ncol(synth_data$Z0), nrow=ncol(synth_data$Z0), ncol=1)
-    unif_l2_imbalance <- sqrt(sum((synth_data$Z0 %*% uni_w - synth_data$Z1)^2))
+    # L2 imbalance scaled by L2 imbalance for uniform weights
+    uni_w <- matrix(1 / nrow(X0), nrow = nrow(X0), ncol = 1)
+    unif_l2_imbalance <- sqrt(sum((t(X0) %*% uni_w - X1) ^ 2))
     scaled_l2_imbalance <- l2_imbalance / unif_l2_imbalance
 
-    return(list(weights=weights,
-                l2_imbalance=l2_imbalance,
-                scaled_l2_imbalance=scaled_l2_imbalance))
+    return(list(weights = weights,
+                l2_imbalance = l2_imbalance,
+                scaled_l2_imbalance = scaled_l2_imbalance))
 }
 
 #' Solve the synth QP directly
@@ -50,7 +70,7 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
 #' @param V Scaling matrix
 #' @noRd
 synth_qp <- function(X1, X0, V) {
-    
+
     Pmat <- X0 %*% V %*% t(X0)
     qvec <- - t(X1) %*% V %*% t(X0)
 
