@@ -5,7 +5,6 @@
 #' Ridge augmented weights (possibly with covariates)
 #'
 #' @param wide_data Output of `format_data`
-#' @param synth_data Output of `format_synth`
 #' @param Z Matrix of covariates, default is  NULL
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
@@ -30,8 +29,7 @@
 #'          \item{"lambda_errors"}{"The MSE associated with each lambda term in lambdas."}
 #'          \item{"lambda_errors_se"}{"The SE of the MSE associated with each lambda term in lambdas."}
 #' }
-fit_ridgeaug_formatted <- function(wide_data, synth_data,
-                                   Z=NULL, lambda=NULL, ridge=T, scm=T,
+fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=T,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
                                    holdout_length = 1, min_1se = T,
@@ -76,9 +74,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     X_c <- X_c %*% V
     X_1 <- X_1 %*% V
 
-    new_synth_data <- synth_data
-
-
     ## if there are auxiliary covariates, use them
     if(!is.null(Z)) {
         ## center covariates
@@ -100,17 +95,14 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         X_cent[trt == 0,] <- res_c
         X_cent[trt == 1,] <- res_t
 
-        new_synth_data$Z1 <- t(res_t)
-        new_synth_data$X1 <- t(res_t)
-        new_synth_data$Z0 <- t(res_c)
-        new_synth_data$X0 <- t(res_c)
+        X1 <- t(res_t)
+        X0 <- res_c
     } else {
-        new_synth_data$Z1 <- t(X_1)
-        new_synth_data$X1 <- t(X_1)
-        new_synth_data$Z0 <- t(X_c)
-        new_synth_data$X0 <- t(X_c)
+        X1 <- t(X_1)
+        X0 <- X_c
     }
-    out <- fit_ridgeaug_inner(X_c, X_1, trt, new_synth_data,
+
+    out <- fit_ridgeaug_inner(X_c, X_1, trt, X1, X0,
                                lambda, ridge, scm,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
@@ -132,12 +124,12 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         
     }
 
-    l2_imbalance <- sqrt(sum((synth_data$X0 %*% weights - synth_data$X1)^2))
+    l2_imbalance <- sqrt(sum((t(X0) %*% weights - X1) ^ 2))
 
     ## primal objective value scaled by least squares difference for mean
-    uni_w <- matrix(1/ncol(synth_data$X0), nrow=ncol(synth_data$X0), ncol=1)
-    unif_l2_imbalance <- sqrt(sum((synth_data$X0 %*% uni_w - synth_data$X1)^2))
-    scaled_l2_imabalance <- l2_imbalance / unif_l2_imbalance
+    uni_w <- matrix(1 / nrow(X0), nrow = nrow(X0), ncol = 1)
+    unif_l2_imbalance <- sqrt(sum((t(X0) %*% uni_w - X1) ^ 2))
+    scaled_l2_imbalance <- l2_imbalance / unif_l2_imbalance
 
 
     ## no outcome model
@@ -160,7 +152,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     }
     output <- list(weights = weights,
                 l2_imbalance = l2_imbalance,
-                scaled_l2_imbalance = scaled_l2_imabalance,
+                scaled_l2_imbalance = scaled_l2_imbalance,
                 mhat = mhat,
                 lambda = lambda,
                 ridge_mhat = ridge_mhat,
@@ -178,7 +170,6 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 #' @param X_c Matrix of control lagged outcomes
 #' @param X_1 Vector of treated leagged outcomes
 #' @param trt Vector of treatment indicators
-#' @param synth_data Output of `format_synth`
 #' @param lambda Ridge hyper-parameter, if NULL use CV
 #' @param ridge Include ridge or not
 #' @param scm Include SCM or not
@@ -196,7 +187,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 #'          \item{"lambda_errors"}{"The MSE associated with each lambda term in lambdas."}
 #'          \item{"lambda_errors_se"}{"The SE of the MSE associated with each lambda term in lambdas."}
 #' }
-fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
+fit_ridgeaug_inner <- function(X_c, X_1, trt, X1, X0,
                                lambda, ridge, scm,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
@@ -204,17 +195,18 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
     lambda_errors <- NULL
     lambda_errors_se <- NULL
     lambdas <- NULL
+    
 
     ## if SCM fit scm
     if(scm) {
-        syn <- fit_synth_formatted(synth_data)$weights
+        syn <- fit_synth_formatted(X1, X0)$weights
     } else {
         ## else use uniform weights
         syn <- rep(1 / sum(trt == 0), sum(trt == 0))
     }
     if(ridge) {
         if(is.null(lambda)) {
-            cv_out <- cv_lambda(X_c, X_1, synth_data, trt, holdout_length, scm,
+            cv_out <- cv_lambda(X_c, X_1, trt, holdout_length, scm,
                       lambda_max, lambda_min_ratio, n_lambda, min_1se)
 
             lambda <- cv_out$lambda
@@ -281,7 +273,6 @@ choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
 #' Choose best lambda with CV
 #' @param X_c Matrix of control lagged outcomes
 #' @param X_1 Vector of treated leagged outcomes
-#' @param synth_data Output of `format_synth`
 #' @param trt Vector of treatment indicators
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param scm Include SCM or not
@@ -296,7 +287,7 @@ choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
 #'          \item{"lambda_errors"}{"The MSE associated with each lambda term in lambdas."}
 #'          \item{"lambda_errors_se"}{"The SE of the MSE associated with each lambda term}
 #' }
-cv_lambda <- function(X_c, X_1, synth_data, trt, holdout_length, scm,
+cv_lambda <- function(X_c, X_1, trt, holdout_length, scm,
                       lambda_max, lambda_min_ratio, n_lambda, min_1se) {
     if(is.null(lambda_max)) {
         lambda_max <- get_lambda_max(X_c) 
@@ -304,8 +295,7 @@ cv_lambda <- function(X_c, X_1, synth_data, trt, holdout_length, scm,
 
     lambdas <- create_lambda_list(lambda_max, lambda_min_ratio, n_lambda)
     
-    lambda_out <- get_lambda_errors(lambdas, X_c, X_1,
-                                        synth_data, trt,
+    lambda_out <- get_lambda_errors(lambdas, X_c, X_1, trt,
                                         holdout_length, scm)
     lambda_errors <- lambda_out$lambda_errors
     lambda_errors_se <- lambda_out$lambda_errors_se

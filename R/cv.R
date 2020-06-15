@@ -15,15 +15,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
     y0 <- new_wide_data$y[new_wide_data$trt == 0,, drop = F]
     y1 <- colMeans(new_wide_data$y[new_wide_data$trt == 1,, drop = F])
     
-    new_synth_data <- list()
-    new_synth_data$Z0 <- t(X0)
-    new_synth_data$X0 <- t(X0)
-    new_synth_data$Z1 <- x1
-    new_synth_data$X1 <- x1
-    
-    return(list(wide_data = new_wide_data,
-                synth_data = new_synth_data,
-                Z = Z)) 
+    return(list(wide_data = new_wide_data, Z = Z)) 
   }
 }
 
@@ -31,7 +23,6 @@ drop_time_and_refit <- function(wide_data, Z, t_drop, progfunc, scm, fixedeff, .
   new_data <- drop_time_t(wide_data, Z, t_drop)
   new_ascm <- do.call(fit_augsynth_internal,
                       c(list(wide = new_data$wide,
-                             synth_data = new_data$synth_data,
                              Z = new_data$Z,
                              progfunc = progfunc,
                              scm = scm,
@@ -54,7 +45,7 @@ cv_internal <- function(wide_data, Z, progfunc, scm, fixedeff, lambdas, holdout_
   return(list(lambda_errors = lambda_error_vals[1,], lambda_errors_se = lambda_error_vals[2,]))
 }
 
-cv_ridge <- function(wide_data, synth_data, Z, progfunc, scm, fixedeff, how = 'time', holdout_length = 1, lambdas = NULL, 
+cv_ridge <- function(wide_data, Z, progfunc, scm, fixedeff, how = 'time', holdout_length = 1, lambdas = NULL, 
                lambda_min_ratio = 1e-8, n_lambda = 20, lambda_max = NULL, min_1se = T, V = NULL, ...) {
   X <- wide_data$X
   trt <- wide_data$trt

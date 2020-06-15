@@ -48,7 +48,6 @@ single_augsynth <- function(form, unit, time, t_int, data,
     trt <- terms(formula(form, rhs=1))[[3]]
 
     wide <- format_data(outcome, trt, unit, time, t_int, data)
-    synth_data <- do.call(format_synth, wide)
     
     treated_unit <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
     control_units <- data %>% filter(!!unit != treated_unit) %>% distinct(!!unit) %>% pull(!!unit)
@@ -61,7 +60,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     }
     
     # fit augmented SCM
-    augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc, 
+    augsynth <- fit_augsynth_internal(wide, Z, progfunc, 
                                       scm, fixedeff, ...)
     
     # add some extra data
@@ -88,23 +87,25 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' 
 #' @noRd
 #' 
-fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
+fit_augsynth_internal <- function(wide, Z, progfunc,
                                   scm, fixedeff, V = NULL, ...) {
 
     n <- nrow(wide$X)
     t0 <- ncol(wide$X)
     ttot <- t0 + ncol(wide$y)
     if(fixedeff) {
-        demeaned <- demean_data(wide, synth_data)
+        demeaned <- demean_data(wide)
         fit_wide <- demeaned$wide
-        fit_synth_data <- demeaned$synth_data
+        X1 <- demeaned$X1
+        X0 <- demeaned$X0
         mhat <- demeaned$mhat
     } else {
         fit_wide <- wide
-        fit_synth_data <- synth_data
+        X1 <- colMeans(fit_wide$X[fit_wide$trt == 1, , drop = F])
+        X0 <- fit_wide$X[fit_wide$trt == 0, , drop = F]
         mhat <- matrix(0, n, ttot)
     }
-    if (is.null(progfunc)) {
+    if(is.null(progfunc)) {
         progfunc = "none"
     }
     progfunc = tolower(progfunc)
@@ -112,21 +113,24 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     if(progfunc == "ridge") {
         # Ridge ASCM
         if(is.null(list(...)[["lambda"]])) {
-            lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
+            lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, Z = Z, progfunc = progfunc, 
                                                      scm = scm, fixedeff = fixedeff, V = V, ...))
             lambda <- lambda_results$lambda
             lambdas <- lambda_results$lambdas
             lambda_errors <- lambda_results$lambda_errors
             lambda_errors_se <- lambda_results$lambda_errors_se
         } else {
+            lambda <- list(...)[["lambda"]]
             lambdas <- NULL
             lambda_errors <- NULL
             lambda_errors_se <- NULL
         }
+        
+        optional_args <- list(...)
+        optional_args$lambda <- lambda
         augsynth <- do.call(fit_ridgeaug_formatted,
-                            list(wide_data = fit_wide,
-                                 synth_data = fit_synth_data,
-                                 Z = Z, V = V, scm = scm, ...))
+                            c(list(wide_data = fit_wide,
+                                 Z = Z, V = V, scm = scm), optional_args))
         augsynth$lambdas <- lambdas
         augsynth$lambda_errors <- lambda_errors
         augsynth$lambda_errors_se <- lambda_errors_se
@@ -134,14 +138,13 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                         c(list(wide_data = fit_wide, 
-                               synth_data = fit_synth_data,
                                Z = Z, ridge = F, scm = T, V = V, ...)))
     } else {
         ## Other outcome models
         progfuncs = c("ridge", "none", "en", "rf", "gsyn", "mcp",
                       "cits", "causalimpact", "seq2seq")
         if (progfunc %in% progfuncs) {
-            augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
+            augsynth <- fit_augsyn(fit_wide, X1, X0, 
                                    progfunc, scm, ...)
         } else {
             stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq', 'None'")
@@ -153,7 +156,8 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$Z <- Z
-    augsynth$data$synth_data <- synth_data
+    augsynth$data$X1 <- X1
+    augsynth$data$X0 <- X0
     augsynth$progfunc <- progfunc
     augsynth$scm <- scm
     augsynth$fixedeff <- fixedeff

@@ -8,13 +8,12 @@
 #' @param lambdas Vector of lambda values to compute errors for
 #' @param X_c Matrix of control group pre-treatment outcomes
 #' @param X_t Matrix of treatment group pre-treatment outcomes
-#' @param synth_data Output of `format_synth`
 #' @param trt Boolean vector of treatment assignments
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas
 #' @param scm Include SCM or not
 #' @noRd
 #' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
-get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
+get_lambda_errors <- function(lambdas, X_c, X_t, trt, holdout_length=1, scm=T) {
   # vector that stores the sum MSE across all CV sets
   errors <- matrix(0, nrow = ncol(X_c) - holdout_length, ncol = length(lambdas))
   lambda_errors = numeric(length(lambdas)) 
@@ -25,14 +24,11 @@ get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length
     X_1 <- matrix(X_t[-(i:(i + holdout_length - 1))])
     X_0v <- X_c[,i:(i + holdout_length - 1)]
     X_1v <- matrix(X_t[i:(i + holdout_length - 1)], ncol = 1)
-    new_synth_data <- synth_data
-    new_synth_data$Z1 <- X_1
-    new_synth_data$X1 <- X_1
-    new_synth_data$Z0 <- t(X_0)
-    new_synth_data$X0 <- t(X_0)
+    X1 <- X_1
+    X0 <- X_0
 
     if(scm) {
-      syn <- fit_synth_formatted(new_synth_data)$weights
+      syn <- fit_synth_formatted(X1, X0)$weights
     } else {
       syn <- rep(1/sum(trt==0), sum(trt==0))
     }

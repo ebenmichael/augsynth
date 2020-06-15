@@ -197,9 +197,8 @@ format_synth <- function(X, trt, y) {
 
 #' Remove unit means 
 #' @param wide_data X, y, trt
-#' @param synth_data List with data formatted as Synth::dataprep
 #' @noRd
-demean_data <- function(wide_data, synth_data) {
+demean_data <- function(wide_data) {
 
     # pre treatment means
     means <- rowMeans(wide_data$X)
@@ -212,19 +211,16 @@ demean_data <- function(wide_data, synth_data) {
     new_wide_data$y <- wide_data$y - means
     new_wide_data$trt <- trt
 
-    new_synth_data <- list()
-    new_synth_data$X0 <- t(new_X[trt == 0,, drop = FALSE])
-    new_synth_data$Z0 <- new_synth_data$X0
-    new_synth_data$X1 <- as.matrix((colMeans(new_X[trt==1,,drop = F])), 
+    X0 <- t(new_X[trt == 0,, drop = FALSE])
+    X1 <- as.matrix((colMeans(new_X[trt==1,,drop = F])), 
                                    ncol = 1)
-    new_synth_data$Z1 <- new_synth_data$X1
-
 
     # estimate post-treatment as pre-treatment means
     mhat <- replicate(ncol(wide_data$X) + ncol(wide_data$y), means)
 
     return(list(wide = new_wide_data,
                 synth_data = new_synth_data,
+                X0 = X0, X1 = X1,
                 mhat = mhat))
 }
 

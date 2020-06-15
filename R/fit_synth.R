@@ -33,7 +33,7 @@ fit_synth_wide <- function(wide_data, V = NULL) {
 fit_synth_formatted <- function(X1, X0, V = NULL) {
 
 
-    t0 <- dim(synth_data$Z0)[1]
+    t0 <- dim(X0)[2]
     # if no V, set equal to 1
     if(is.null(V)) {
         V <- diag(rep(1, t0))
@@ -50,7 +50,6 @@ fit_synth_formatted <- function(X1, X0, V = NULL) {
 
     # fit synth
     weights <- synth_qp(X1, X0, V)
-
     # compute the l2 imbalance
     l2_imbalance <- sqrt(sum((t(X0) %*% weights - X1) ^ 2))
 
@@ -73,7 +72,7 @@ synth_qp <- function(X1, X0, V) {
 
     Pmat <- X0 %*% V %*% t(X0)
     qvec <- - t(X1) %*% V %*% t(X0)
-
+  
     n0 <- nrow(X0)
     A <- rbind(rep(1, n0), diag(n0))
     l <- c(1, numeric(n0))
