@@ -19,8 +19,8 @@ fit_zero_weights <- function(X1, X0) {
     unif_l2_imbalance <- sqrt(sum((t(X0) %*% uni_w - X1) ^ 2))
     scaled_l2_imbalance <- 1
     
-    return(list(weights = weights,
-                l2_imbalance = l2_imbalance,
+    return(list(weights = rep(0, nrow(X0)),
+                l2_imbalance = unif_l2_imbalance,
                 scaled_l2_imbalance = scaled_l2_imbalance))
 }
 
@@ -51,7 +51,6 @@ fit_augsyn_formatted <- function(wide_data, X1, X0,
     ## fit prognostic scores
     fitout <- do.call(fit_progscore,
                           list(X=X, y=y, trt=trt, ...))
-    
     ## fit synth
     syn <- fit_weights(X1, X0)
 

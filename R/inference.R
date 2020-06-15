@@ -219,7 +219,6 @@ jackknife_se_single <- function(ascm) {
                        # refit
                        new_ascm <- do.call(fit_augsynth_internal,
                                 c(list(wide = new_data$wide,
-                                       synth_data = new_data$synth_data,
                                        Z = new_data$Z,
                                        progfunc = ascm$progfunc,
                                        scm = ascm$scm,

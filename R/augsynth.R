@@ -156,8 +156,7 @@ fit_augsynth_internal <- function(wide, Z, progfunc,
                                   augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$Z <- Z
-    augsynth$data$X1 <- X1
-    augsynth$data$X0 <- X0
+    augsynth$data$synth_data <- do.call(format_synth, wide)
     augsynth$progfunc <- progfunc
     augsynth$scm <- scm
     augsynth$fixedeff <- fixedeff
