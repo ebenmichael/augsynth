@@ -74,6 +74,7 @@ format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
 }
 
 
+# TODO: add a function that takes in wide_data -> X1 X0 (like fit_synth-wide). Update calls in augsynth_internal and highdim.R
 
 
 #' Format "long" panel data into "wide" program evaluation matrices with staggered adoption
@@ -219,7 +220,6 @@ demean_data <- function(wide_data) {
     mhat <- replicate(ncol(wide_data$X) + ncol(wide_data$y), means)
 
     return(list(wide = new_wide_data,
-                synth_data = new_synth_data,
                 X0 = X0, X1 = X1,
                 mhat = mhat))
 }
@@ -256,4 +256,12 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
         select(-unit) %>%
         as.matrix() -> Z
     return(Z)
+}
+
+get_X1X0 <- function(wide_data) {
+    
+    # get pre treatment outcomes into the right form
+    X1 <- colMeans(wide_data$X[wide_data$trt == 1, , drop = F])
+    X0 <- wide_data$X[wide_data$trt == 0, , drop = F]
+    return(list(X1=X1, X0=X0))
 }

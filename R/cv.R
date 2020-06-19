@@ -67,6 +67,7 @@ cv_ridge <- function(wide_data, Z, progfunc, scm, fixedeff, how = 'time', holdou
       } else {
         stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
       }
+      X_c_old <- X_c
       X_c <- X_c %*% V
 
       if(!is.null(Z)) {
@@ -76,7 +77,7 @@ cv_ridge <- function(wide_data, Z, progfunc, scm, fixedeff, how = 'time', holdou
         res_c <- X_c - Xc_hat
         X_c <- res_c
       }
-      lambda_max <- svd(X_c)$d[1] ^ 2
+      lambda_max <- svd(X_c_old)$d[1] ^ 2
     }
     lambdas <- create_lambda_list(lambda_max, lambda_min_ratio, n_lambda)
   }

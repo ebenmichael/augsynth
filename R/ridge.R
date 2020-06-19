@@ -55,7 +55,7 @@ fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=
     y_c <- y_cent[trt==0,,drop=FALSE]
 
     t0 <- ncol(X_c)
-
+    
     if(is.null(V)) {
         # custom.v <- rep(1, dim(synth_data$Z0)[1])
         V <- diag(rep(1, t0))
@@ -71,6 +71,7 @@ fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=
     }
 
     # apply V matrix transformation
+    
     X_c <- X_c %*% V
     X_1 <- X_1 %*% V
 
@@ -114,7 +115,6 @@ fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=
     lambdas <- out$lambdas
     lambda_errors <- out$lambda_errors
     lambda_errors_se <- out$lambda_errors_se
-
     # add back in covariate weights
     if(!is.null(Z)) {
         no_cov_weights <- weights
@@ -124,8 +124,10 @@ fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=
         
     }
 
+    X <- get_X1X0(wide_data)
+    X1 <- X$X1
+    X0 <- X$X0
     l2_imbalance <- sqrt(sum((t(X0) %*% weights - X1) ^ 2))
-
     ## primal objective value scaled by least squares difference for mean
     uni_w <- matrix(1 / nrow(X0), nrow = nrow(X0), ncol = 1)
     unif_l2_imbalance <- sqrt(sum((t(X0) %*% uni_w - X1) ^ 2))
@@ -187,6 +189,7 @@ fit_ridgeaug_formatted <- function(wide_data, Z=NULL, lambda=NULL, ridge=T, scm=
 #'          \item{"lambda_errors"}{"The MSE associated with each lambda term in lambdas."}
 #'          \item{"lambda_errors_se"}{"The SE of the MSE associated with each lambda term in lambdas."}
 #' }
+#' TODO: remove X_c, X_1
 fit_ridgeaug_inner <- function(X_c, X_1, trt, X1, X0,
                                lambda, ridge, scm,
                                lambda_min_ratio, n_lambda,
@@ -220,6 +223,7 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, X1, X0,
     } else {
         ridge_w <- matrix(0, ncol = sum(trt == 0), nrow=1)
     }
+    
     ## combine weights
     weights <- syn + t(ridge_w)
 

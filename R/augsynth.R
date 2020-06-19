@@ -101,8 +101,9 @@ fit_augsynth_internal <- function(wide, Z, progfunc,
         mhat <- demeaned$mhat
     } else {
         fit_wide <- wide
-        X1 <- colMeans(fit_wide$X[fit_wide$trt == 1, , drop = F])
-        X0 <- fit_wide$X[fit_wide$trt == 0, , drop = F]
+        X <- get_X1X0(fit_wide)
+        X1 <- X$X1
+        X0 <- X$X0
         mhat <- matrix(0, n, ttot)
     }
     if(is.null(progfunc)) {
@@ -156,6 +157,7 @@ fit_augsynth_internal <- function(wide, Z, progfunc,
                                   augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$Z <- Z
+    # TODO: remove
     augsynth$data$synth_data <- do.call(format_synth, wide)
     augsynth$progfunc <- progfunc
     augsynth$scm <- scm

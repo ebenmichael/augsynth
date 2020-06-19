@@ -107,7 +107,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
     synth_data$Y1plot <- colMeans(cbind(X, y)[trt == 1,, drop = F])
 
 
-    augsynth <- fit_augsynth_internal(wide_bal, synth_data, Z, progfunc, 
+    augsynth <- fit_augsynth_internal(wide_bal, Z, progfunc, 
                                       scm, fixedeff, V = V, ...)
 
     # potentially add back in fixed effects
