@@ -37,24 +37,24 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     if(!is.null(new_Z)) {
         new_Z <- Z[wide_data$trt==0,,drop=F]
     }
-    
-    
+
+
     ## iterate over control units
     for(i in 1:n_c) {
 
         ## reset synth data to make a control a treated
         new_synth_data <- synth_data
         new_synth_data$Z0 <- synth_data$Z0[, -i]
-        new_synth_data$X0 <- synth_data$X0[, -i]        
+        new_synth_data$X0 <- synth_data$X0[, -i]
         new_synth_data$Y0plot <- synth_data$Y0plot[, -i]
         new_synth_data$Z1 <- synth_data$Z0[, i, drop=FALSE]
-        new_synth_data$X1 <- synth_data$X0[, i, drop=FALSE]        
+        new_synth_data$X1 <- synth_data$X0[, i, drop=FALSE]
         new_synth_data$Y1plot <- synth_data$Y0plot[, i, drop=FALSE]
 
         ## reset ipw data to change treatment assignment
         new_wide_data$trt <- numeric(nrow(new_wide_data$X))
         new_wide_data$trt[i] <- 1
-        
+
         aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, new_Z, lam, ridge, scm)
 
         ## estimate satt
@@ -73,8 +73,8 @@ loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     # se2 <- t(errs) %*% aug_t$weights^2
 
     se <- sqrt(se2)
-    ## se <- (1 / sqrt(sum(wide_data$trt==1)) + 
-    ##        sqrt(sum(aug_t$weights^2))) * 
+    ## se <- (1 / sqrt(sum(wide_data$trt==1)) +
+    ##        sqrt(sum(aug_t$weights^2))) *
     ##     sig
 
     out <- list()
@@ -111,7 +111,7 @@ drop_unit_i <- function(wide_data, Z, i) {
         new_synth_data$X1 <- x1
         # new_synth_data$Y1plot <- synth_data$Y1plot
         # # get the control unit index
-        # yplot <- matrix(0, nrow = nrow(wide_data$X), 
+        # yplot <- matrix(0, nrow = nrow(wide_data$X),
         #                 ncol = ncol(wide_data$X) + ncol(wide_data$y))
         # yplot[wide_data$trt == 0,] <- t(synth_data$Y0plot)
         # yplot[wide_data$trt == 1,] <- synth_data$Y1plot
@@ -120,7 +120,7 @@ drop_unit_i <- function(wide_data, Z, i) {
 
         return(list(wide_data = new_wide_data,
                     synth_data = new_synth_data,
-                    Z = new_Z)) 
+                    Z = new_Z))
 }
 
 #' Estimate standard errors with the jackknife
@@ -137,7 +137,7 @@ drop_unit_i <- function(wide_data, Z, i) {
 jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
                             lambda=NULL,
                             ridge = T, scm = T, fixedeff = F) {
-    
+
     n <- nrow(wide_data$X)
     n_c <- dim(synth_data$Z0)[2]
 
@@ -147,7 +147,7 @@ jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
     errs <- matrix(0, n_c, t_final - t0)
 
     ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, 
+    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z,
                                     lambda, ridge, scm)
     att <- as.numeric(synth_data$Y1plot -
             synth_data$Y0plot %*% aug_t$weights)
@@ -184,7 +184,7 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
 #' @param ascm Fitted augsynth object
 #' @noRd
 jackknife_se_single <- function(ascm) {
-    
+
     wide_data <- ascm$data
     # synth_data <- format_synth(wide_data$X, wide_data$trt, wide_data$y)
     synth_data <- ascm$data$synth_data
@@ -198,7 +198,7 @@ jackknife_se_single <- function(ascm) {
     errs <- matrix(0, n_c, t_final - t0)
 
     ## att on actual sample
-    # aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, 
+    # aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z,
     #                                 lambda, ridge, scm)
     # att <- as.numeric(synth_data$Y1plot -
     #         synth_data$Y0plot %*% aug_t$weights)
@@ -212,7 +212,7 @@ jackknife_se_single <- function(ascm) {
     n_jack <- length(trt_idxs)
 
     # jackknife estimates
-    ests <- vapply(trt_idxs, 
+    ests <- vapply(trt_idxs,
                    function(i) {
                        # drop unit i
                        new_data <- drop_unit_i(wide_data, Z, i)
@@ -262,7 +262,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 
     J <- length(multisynth$grps)
 
-    ## drop each unit and estimate overall treatment effect   
+    ## drop each unit and estimate overall treatment effect
     jack_est <- vapply(1:n,
                        function(i) {
                            msyn_i <- drop_unit_i_multi(multisynth, i)
@@ -302,13 +302,13 @@ drop_unit_i_multi <- function(msyn, i) {
     drop_i$y <- msyn$data$y[-i, , drop = F]
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
-    
+
     long_df <- msyn$long_df
     unit <- colnames(long_df)[1]
     # make alphabetical, because the ith unit is the index in alphabetical ordering
     long_df <- long_df[order(long_df[, unit, drop = TRUE]),]
     ith_unit <- unique(long_df[,unit, drop = TRUE])[i]
-    long_df <- long_df[long_df[,unit] != ith_unit,]
+    long_df <- long_df[long_df[,unit, drop = TRUE] != ith_unit,]
 
     # re-fit everything
     args_list <- list(wide = drop_i, relative = msyn$relative,
@@ -320,7 +320,7 @@ drop_unit_i_multi <- function(msyn, i) {
                       fit_resids = msyn$fit_resids,
                       time_cohort = msyn$time_cohort, long_df = long_df)
     msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
-    
+
     # check for dropped treated units/time periods
     if(time_cohort) {
         dropped <- which(!msyn$grps %in% msyn_i$grps)
@@ -350,7 +350,7 @@ jackknife_se_multiout <- function(ascm) {
     trt_idxs <- (1:n)[as.logical(nnz_weights)]
 
     # jackknife estimates
-    ests <- lapply(trt_idxs, 
+    ests <- lapply(trt_idxs,
                    function(i) {
                        # drop unit i
                        new_data <- drop_unit_i_multiout(wide_list, Z, i)
@@ -378,7 +378,7 @@ jackknife_se_multiout <- function(ascm) {
     se <- sqrt(se2)
     out <- list()
     att <- predict(ascm, att = T)
-    att_post <- colMeans(att[as.numeric(rownames(att)) >= ascm$t_int,, drop = F], 
+    att_post <- colMeans(att[as.numeric(rownames(att)) >= ascm$t_int,, drop = F],
                          na.rm = T)
     out$att <- rbind(att, att_post)
     t0 <- sum(as.numeric(rownames(att)) < ascm$t_int)
