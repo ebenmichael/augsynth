@@ -155,6 +155,9 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     augsynth$extra_args <- list(...)
     if(progfunc == "ridge") {
         augsynth$extra_args$lambda <- augsynth$lambda
+    } else if(progfunc == "gsyn") {
+        augsynth$extra_args$r <- ncol(augsynth$params$factor)
+        augsynth$extra_args$CV <- 0
     }
     ##format output
     class(augsynth) <- "augsynth"
