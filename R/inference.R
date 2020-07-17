@@ -385,13 +385,13 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
          },
          numeric(3)) -> cis
   # get residuals for the average using the sliding average technique
-  if(ncol(wide_data$y) < ncol(wide_data$X)) {
-    avg_data <- get_sliding_average(wide_data)
-    avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
-    avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
-  } else {
+  # if(ncol(wide_data$y) < ncol(wide_data$X)) {
+  #   avg_data <- get_sliding_average(wide_data)
+  #   avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
+  #   avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
+  # } else {
     avg_ci <- c(NA, NA, NA)
-  }
+  # }
 
   out <- list()
   att <- predict(ascm, att = T)
