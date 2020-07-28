@@ -350,7 +350,8 @@ drop_time_t <- function(wide_data, Z, t_drop) {
                     Z = Z)) 
 }
 
-conformal_inf <- function(ascm, alpha = 0.05, type = "block", 
+conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
+                          q = 1,
                           ns = 1000, grid_size = 100, ...) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
@@ -364,8 +365,8 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
 
   # grid of nulls
   att <- predict(ascm, att = T)
-  grid <- c(seq( - 3 * max(abs(att)), 3 * max(abs(att)), length.out = grid_size))
-
+  post_att <- att[(t0 +1):t_final]
+  post_sd <- sqrt(mean(post_att ^ 2))
   # iterate over post-treatment periods to get pointwise CIs
   vapply(1:tpost,
          function(j) {
@@ -379,41 +380,44 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "block",
             new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
           }
 
-          
 
-          compute_permute_ci(new_wide_data, ascm, grid, alpha, type, ns)
+          # make a grid around the estimated ATT
+          grid <- seq(att[t0 + j] - 2 * post_sd, att[t0 + j] + 2 * post_sd,
+                      length.out = grid_size)
+
+          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, "block", q, ns)
          },
          numeric(3)) -> cis
-  # get residuals for the average using the sliding average technique
-  # if(ncol(wide_data$y) < ncol(wide_data$X)) {
-  #   avg_data <- get_sliding_average(wide_data)
-  #   avg_synth_data <- format_synth(avg_data$X, avg_data$trt, avg_data$y)
-  #   avg_ci <- compute_permute_ci(avg_data, ascm, grid, alpha, type, ns)
-  # } else {
-    avg_ci <- c(NA, NA, NA)
-  # }
 
+  # test a null post-treatment effect
+  new_wide_data <- wide_data
+  new_wide_data$X <- cbind(wide_data$X, wide_data$y)
+  new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
+  null_p <- compute_permute_pval(new_wide_data, ascm, 0, ncol(wide_data$y), 
+                                 type, q, ns)
+  
   out <- list()
   att <- predict(ascm, att = T)
   out$att <- c(att, mean(att[(t0 + 1):t_final]))
   out$se <- rep(NA, t_final)
   out$sigma <- NA
-  out$lb <- c(rep(NA, t0), cis[1, ], avg_ci[1])
-  out$ub <- c(rep(NA, t0), cis[2, ], avg_ci[2])
-  out$p_val <- c(rep(NA, t0), cis[3, ], avg_ci[3])
+  out$lb <- c(rep(NA, t0), cis[1, ], NA)
+  out$ub <- c(rep(NA, t0), cis[2, ], NA)
+  out$p_val <- c(rep(NA, t0), cis[3, ], null_p)
   
   return(out)
 }
 
 
-compute_permute_test_stats <- function(wide_data, ascm, h0, type, ns = 1000) {
-
-
+compute_permute_test_stats <- function(wide_data, ascm, h0,
+                                       post_length, type,
+                                       q, ns) {
   # format data
   new_wide_data <- wide_data
-  t0 <- ncol(wide_data$X) - 1
+  t0 <- ncol(wide_data$X) - post_length
+  tpost <- t0 + post_length
   # adjust outcomes for null
-  new_wide_data$X[wide_data$trt == 1,t0 + 1] <- new_wide_data$X[wide_data$trt == 1,t0 + 1] - h0
+  new_wide_data$X[wide_data$trt == 1,(t0 + 1):tpost ] <- new_wide_data$X[wide_data$trt == 1,(t0 + 1):tpost] - h0
   X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
   x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
               ncol=1)
@@ -433,40 +437,49 @@ compute_permute_test_stats <- function(wide_data, ascm, h0, type, ns = 1000) {
                             scm = ascm$scm,
                             fixedeff = ascm$fixedeff),
                         ascm$extra_args))
-
-  resids <- predict(new_ascm, att = T)[1:(t0 + 1)]
-  tpost <- t0 + 1
+  resids <- predict(new_ascm, att = T)[1:tpost]
   # permute residuals and compute test statistic
+  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
-                        function(x) mean(abs(sample(resids)[(t0 + 1):tpost])))
+                        function(x) {
+                          reorder <- sample(resids)
+                          stat_func(reorder[(t0 + 1):tpost])
+                        })
   } else {
     ## increment time by one step and wrap
     test_stats <- sapply(1:tpost,
                         function(j) {
-                          reorder <- resids[(1:tpost + j) %% tpost + 1]
-                          mean(abs(reorder[(t0 + 1):tpost]))
+                          reorder <- resids[(0:tpost -1 + j) %% tpost + 1]
+                          stat_func(reorder[(t0 + 1):tpost])
                         })
   }
   
-  return(list(resids = resids, 
-              test_stats = test_stats))
+  return(list(resids = resids,
+              test_stats = test_stats,
+              stat_func = stat_func))
 }
 
-compute_permute_pval <- function(wide_data, ascm, h0, type, ns = 1000) {
-  t0 <- ncol(wide_data$X) - 1
-  tpost <- t0 + 1
-  out <- compute_permute_test_stats(wide_data, ascm, h0, type, ns)
-  mean(mean(abs(out$resids[(t0 + 1):tpost])) <= out$test_stats)
+compute_permute_pval <- function(wide_data, ascm, h0,
+                                 post_length, type,
+                                 q, ns) {
+  t0 <- ncol(wide_data$X) - post_length
+  tpost <- t0 + post_length
+  out <- compute_permute_test_stats(wide_data, ascm, h0,
+                                    post_length, type, q, ns)
+  mean(out$stat_func(out$resids[(t0 + 1):tpost]) <= out$test_stats)
 }
 
 
-compute_permute_ci <- function(wide_data, ascm, grid, alpha, type, ns = 1000) {
+compute_permute_ci <- function(wide_data, ascm, grid,
+                               post_length, alpha, type,
+                               q, ns) {
   # make sure 0 is in the grid
   grid <- c(grid, 0)
   ps <-sapply(grid, 
               function(x) {
-                compute_permute_pval(wide_data, ascm, x, type, ns)
+                compute_permute_pval(wide_data, ascm, x, 
+                                     post_length, type, q, ns)
               })
   c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
 }
