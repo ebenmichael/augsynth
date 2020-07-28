@@ -271,7 +271,7 @@ summary.augsynth <- function(object, ...) {
     if ("se_type" %in% names(list(...))) {
         se_type <- list(...)$se_type
     } else {
-        se_type <- "jackknife"
+        se_type <- "conformal"
     }
     
     
@@ -283,20 +283,14 @@ summary.augsynth <- function(object, ...) {
     if(se) {
         if(se_type == "jackknife") {
             att_se <- jackknife_se_single(augsynth)
-        } else if(se_type == "placebo") {
-            att_se <- placebo_se_single(augsynth, ...)
-        } else if(se_type == "semipar_bs") {
-            att_se <- residual_bs_se_single(augsynth, ...)
         } else if(se_type == "jackknife+") {
             att_se <- time_jackknife_plus(augsynth, ...)
         } else if(se_type == "nonpar_bs") {
             att_se <- bs_se_single(augsynth, ...)
-        } else if(se_type == "t_dist") {
-            att_se <- chernozhukov_t(augsynth, ...)
         } else if(se_type == "conformal") {
           att_se <- conformal_inf(augsynth, ...)
         } else {
-            stop("se_type is wrong")
+            stop(paste(se_type, "is not a valid choice of 'se_type'"))
         }
 
         att <- data.frame(Time = augsynth$data$time,
@@ -325,12 +319,14 @@ summary.augsynth <- function(object, ...) {
 
     summ$att <- att
     summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
-    if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
-        summ$average_att$lower_bound <- att_se$lb[t_final + 1]
-        summ$average_att$upper_bound <- att_se$ub[t_final + 1]
-    }
-    if(se_type == "conformal") {
-      summ$average_att$p_val <- att_se$p_val[t_final + 1]
+    if(se) {
+      if(se_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
+          summ$average_att$lower_bound <- att_se$lb[t_final + 1]
+          summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+      }
+      if(se_type == "conformal") {
+        summ$average_att$p_val <- att_se$p_val[t_final + 1]
+      }
     }
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
