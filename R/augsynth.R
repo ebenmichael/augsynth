@@ -48,15 +48,12 @@ single_augsynth <- function(form, unit, time, t_int, data,
     trt <- terms(formula(form, rhs=1))[[3]]
 
     wide <- format_data(outcome, trt, unit, time, t_int, data)
-
     synth_data <- do.call(format_synth, wide)
-
     
-    treated_unit <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
-    control_units <- data %>% filter(!!unit != treated_unit) %>% distinct(!!unit) %>% pull(!!unit)
-    
-    
-    ## add covariates
+    treated_units <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
+    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>% 
+                        distinct(!!unit) %>% pull(!!unit)
+        ## add covariates
     if(length(form)[2] == 2) {
         Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)
     } else {
@@ -107,24 +104,32 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         fit_synth_data <- synth_data
         mhat <- matrix(0, n, ttot)
     }
-    ## fit augsynth
     if (is.null(progfunc)) {
         progfunc = "none"
     }
     progfunc = tolower(progfunc)
+    ## fit augsynth
     if(progfunc == "ridge") {
-        if(scm) {
-            ## Ridge ASCM
-            augsynth <- do.call(fit_ridgeaug_formatted,
-                                list(wide_data = fit_wide, 
-                                   synth_data = fit_synth_data, 
-                                   Z = Z, V = V, ...))
+        # Ridge ASCM
+        if(is.null(list(...)[["lambda"]])) {
+            lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
+                                                     scm = scm, fixedeff = fixedeff, V = V, ...))
+            lambda <- lambda_results$lambda
+            lambdas <- lambda_results$lambdas
+            lambda_errors <- lambda_results$lambda_errors
+            lambda_errors_se <- lambda_results$lambda_errors_se
         } else {
-            ## Just ridge regression
-            augsynth <- do.call(fit_ridgeaug_formatted, list(wide_data = fit_wide, 
-                                   synth_data = fit_synth_data,
-                                   Z = Z, ridge = T, scm = F, V = V, ...))
+            lambdas <- NULL
+            lambda_errors <- NULL
+            lambda_errors_se <- NULL
         }
+        augsynth <- do.call(fit_ridgeaug_formatted,
+                            list(wide_data = fit_wide,
+                                 synth_data = fit_synth_data,
+                                 Z = Z, V = V, scm = scm, ...))
+        augsynth$lambdas <- lambdas
+        augsynth$lambda_errors <- lambda_errors
+        augsynth$lambda_errors_se <- lambda_errors_se
     } else if(progfunc == "none") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
