@@ -347,6 +347,10 @@ summary.augsynth <- function(object, ...) {
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
     summ$scaled_l2_imbalance <- augsynth$scaled_l2_imbalance
+    if(!is.null(augsynth$covariate_l2_imbalance)) {
+      summ$covariate_l2_imbalance <- augsynth$covariate_l2_imbalance
+      summ$scaled_covariate_l2_imbalance <- augsynth$scaled_covariate_l2_imbalance
+    }
     ## get estimated bias
 
     if(augsynth$progfunc == "Ridge") {
@@ -417,19 +421,33 @@ print.summary.augsynth <- function(x, ...) {
     }
 
 
-    cat(paste(out_msg, 
+    out_msg <- paste(out_msg, 
               "L2 Imbalance: ",
               format(round(summ$l2_imbalance,3), nsmall=3), "\n",
-              "Scaled L2 Imbalance: ", 
-              format(round(summ$scaled_l2_imbalance,3), nsmall=3), "\n",
               "Percent improvement from uniform weights: ",
-              format(round(1 - summ$scaled_l2_imbalance,3)*100), "%\n",
+              format(round(1 - summ$scaled_l2_imbalance,3)*100), "%\n\n",
+              sep="")
+  if(!is.null(summ$covariate_l2_imbalance)) {
+
+    out_msg <- paste(out_msg,
+                     "Covariate L2 Imbalance: ",
+                     format(round(summ$covariate_l2_imbalance,3), 
+                                  nsmall=3),
+                    "\n",
+                     "Percent improvement from uniform weights: ",
+                     format(round(1 - summ$scaled_covariate_l2_imbalance,3)*100), 
+                     "%\n\n",
+                     sep="")
+
+  }
+  out_msg <- paste(out_msg, 
               "Avg Estimated Bias: ",
               format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
               "Inference type: ",
               inf_type,
               "\n\n",
-              sep=""))
+              sep="")
+  cat(out_msg)
 
     if(summ$inf_type == "jackknife") {
       print(summ$att[t_int:t_final,] %>% 

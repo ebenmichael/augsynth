@@ -37,12 +37,12 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    lambda_max = NULL,
                                    holdout_length = 1, min_1se = T,
                                    V = NULL,
-                                   residualize = TRUE, ...) {
+                                   residualize = FALSE, ...) {
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters in using ridge augmented weights: ", paste(names(extra_params), collapse = ", "))
     }
-    
+
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
@@ -185,6 +185,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                         lambda * diag(ncol(X_c))) %*%
                         t(X_c) %*% y_c
     }
+
     output <- list(weights = weights,
                 l2_imbalance = l2_imbalance,
                 scaled_l2_imbalance = scaled_l2_imabalance,
@@ -195,8 +196,17 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                 lambdas = lambdas,
                 lambda_errors = lambda_errors,
                 lambda_errors_se = lambda_errors_se)
+
     if(!is.null(Z)) {
         output$no_cov_weights <- no_cov_weights
+
+        z_l2_imbalance <- sqrt(sum((t(Z_c) %*% weights - t(Z_1))^2))
+        z_unif_l2_imbalance <- sqrt(sum((t(Z_c) %*% uni_w - t(Z_1))^2))
+        z_scaled_l2_imbalance <- z_l2_imbalance / z_unif_l2_imbalance
+
+        output$covariate_l2_imbalance <- z_l2_imbalance
+        output$scaled_covariate_l2_imbalance <- z_scaled_l2_imbalance
+
     }
     return(output)
 }
