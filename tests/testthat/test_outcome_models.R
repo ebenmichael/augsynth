@@ -69,7 +69,7 @@ test_that("Augmenting synth with gsynth runs and produces the correct result", {
       NA)
     asyn_gsyn <- augsynth(gdpcap ~ trt, regionno, year, basque,
                           progfunc = "GSYN", scm = F, CV = 0, r = 4)
-    expect_equal(summary(asyn_gsyn, se = F)$average_att$Estimate, 
+    expect_equal(summary(asyn_gsyn, inf = F)$average_att$Estimate, 
                  -0.1444637, tolerance=1e-4) 
 }
 )
