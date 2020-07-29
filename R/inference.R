@@ -3,7 +3,18 @@
 ################################################################################
 
 #' Jackknife+ algorithm over time
+#' @param ascm Fitted `augsynth` object
 #' @param alpha Confidence level
+#' @param conservative Whether to use the conservative jackknife+ procedure
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
 time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
@@ -51,10 +62,8 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     out$heldout_att <- c(held_out_errs, 
                           att[(t0 + 1):t_final], 
                           mean(att[(t0 + 1):t_final]))
-    # se <- apply(jack_dist[3,,], 1, sd)
-    # out$se <- c(rep(NA, t0), se)
-    out$se <- rep(NA, 10 + tpost)
-    out$sigma <- NA
+
+    # out$se <- rep(NA, 10 + tpost)
     if(conservative) {
         qerr <- quantile(abs(held_out_errs), 1 - alpha)
         out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
@@ -70,6 +79,7 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
     shifted_ub <- y1 - out$lb
     out$lb <- shifted_lb
     out$ub <- shifted_ub
+    out$alpha <- alpha
 
 
     return(out)
@@ -79,6 +89,7 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
 #' @param wide_data (X, y, trt)
 #' @param Z Covariates matrix
 #' @param t_drop Time to drop
+#' @noRd
 drop_time_t <- function(wide_data, Z, t_drop) {
 
         new_wide_data <- list()
@@ -105,9 +116,25 @@ drop_time_t <- function(wide_data, Z, t_drop) {
                     Z = Z)) 
 }
 
+#' Conformal inference procedure to compute p-values and point-wise confidence intervals
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' @param grid_size Number of grid points to use when inverting the hypothesis test
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"p_val"}{p-value for test of no post-treatment effect}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
 conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
-                          q = 1,
-                          ns = 1000, grid_size = 100, ...) {
+                          q = 1, ns = 1000, grid_size = 50, ...) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
   n <- nrow(wide_data$X)
@@ -153,16 +180,31 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
   out <- list()
   att <- predict(ascm, att = T)
   out$att <- c(att, mean(att[(t0 + 1):t_final]))
-  out$se <- rep(NA, t_final)
-  out$sigma <- NA
+  # out$se <- rep(NA, t_final)
+  # out$sigma <- NA
   out$lb <- c(rep(NA, t0), cis[1, ], NA)
   out$ub <- c(rep(NA, t0), cis[2, ], NA)
   out$p_val <- c(rep(NA, t0), cis[3, ], null_p)
-  
+  out$alpha <- alpha
   return(out)
 }
 
-
+#' Compute conformal test statistics
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"resids"}{Residuals after enforcing the null}
+#'          \item{"test_stats"}{Permutation distribution of test statistics}
+#'          \item{"stat_func"}{Test statistic function}
+#'         }
+#' @noRd
 compute_permute_test_stats <- function(wide_data, ascm, h0,
                                        post_length, type,
                                        q, ns) {
@@ -214,6 +256,18 @@ compute_permute_test_stats <- function(wide_data, ascm, h0,
               stat_func = stat_func))
 }
 
+
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return Computed p-value
+#' @noRd
 compute_permute_pval <- function(wide_data, ascm, h0,
                                  post_length, type,
                                  q, ns) {
@@ -224,7 +278,17 @@ compute_permute_pval <- function(wide_data, ascm, h0,
   mean(out$stat_func(out$resids[(t0 + 1):tpost]) <= out$test_stats)
 }
 
-
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param grid Set of null hypothesis to test for inversion
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
+#' @noRd
 compute_permute_ci <- function(wide_data, ascm, grid,
                                post_length, alpha, type,
                                q, ns) {
@@ -238,21 +302,6 @@ compute_permute_ci <- function(wide_data, ascm, grid,
   c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
 }
 
-
-get_sliding_average <- function(wide_data) {
-  tpost <- ncol(wide_data$y)
-  t0 <- ncol(wide_data$X)
-  # average the data in intervals of tpost
-  new_wide_data <- wide_data
-  new_wide_data$X <- t(apply(wide_data$X, 1,
-                           function(x) {
-                             stats::filter(x, 
-                                           rep(1 / tpost, tpost), 
-                                           sides = 1)[seq(tpost, t0, tpost)]
-                           }))
-  new_wide_data$y <- as.matrix(rowMeans(wide_data$y), ncol = 1)
-  return(new_wide_data)
-}
 
 
 #' Drop unit i from data
@@ -306,7 +355,15 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
 #' Estimate standard errors for single ASCM with the jackknife
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
-#' @noRd
+#' 
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"se"}{Standard error estimate}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
 jackknife_se_single <- function(ascm) {
 
     wide_data <- ascm$data
@@ -363,7 +420,7 @@ jackknife_se_single <- function(ascm) {
     out$att <- c(att, mean(att[(t0 + 1):t_final]))
 
     out$se <- c(rep(NA, t0), se)
-    out$sigma <- NA
+    # out$sigma <- NA
     return(out)
 }
 
