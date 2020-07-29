@@ -160,6 +160,9 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     augsynth$extra_args <- list(...)
     if(progfunc == "ridge") {
         augsynth$extra_args$lambda <- augsynth$lambda
+    } else if(progfunc == "gsyn") {
+        augsynth$extra_args$r <- ncol(augsynth$params$factor)
+        augsynth$extra_args$CV <- 0
     }
     ##format output
     class(augsynth) <- "augsynth"
@@ -249,21 +252,38 @@ plot.augsynth <- function(x, ...) {
         p = p + ggplot2::geom_point(ggplot2::aes(x=min_lambda, y=augsynth$lambda_errors[min_lambda_index]), color="gold")
         p + ggplot2::geom_point(ggplot2::aes(x=min_1se_lambda, y=augsynth$lambda_errors[min_1se_lambda_index]), color="gold")
     } else {
-        plot(summary(augsynth, se), se = se)
+        plot(summary(augsynth, ...), se = se)
     }
 }
 
 
 #' Summary function for augsynth
 #' @param object augsynth object
-#' @param ... Optional arguments
+#' @param inf Boolean, whether to get confidence intervals around the point estimates
+#' @param inf_type Type of inference algorithm. Options are
+#'         \itemize{
+#'          \item{"conformal"}{Conformal inference (default)}
+#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+#'          \item{"jackknife"}{Jackknife over units}
+#'         }
+#' @param ... Optional arguments for inference, for more details for each `inf_type` see
+#'         \itemize{
+#'          \item{"conformal"}{`conformal_inf`}
+#'          \item{"jackknife+"}{`time_jackknife_plus`}
+#'          \item{"jackknife"}{`jackknife_se_single`}
+#'         }
 #' @export
 summary.augsynth <- function(object, ...) {
     augsynth <- object
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
+    if ("inf" %in% names(list(...))) {
+        inf <- list(...)$inf
     } else {
-        se <- T
+        inf <- T
+    }
+    if ("inf_type" %in% names(list(...))) {
+        inf_type <- list(...)$inf_type
+    } else {
+        inf_type <- "conformal"
     }
     
     
@@ -272,13 +292,33 @@ summary.augsynth <- function(object, ...) {
     t0 <- ncol(augsynth$data$X)
     t_final <- t0 + ncol(augsynth$data$y)
 
-    if(se) {
-        att_se <- jackknife_se_single(augsynth)
+    if(inf) {
+        if(inf_type == "jackknife") {
+            att_se <- jackknife_se_single(augsynth)
+        } else if(inf_type == "jackknife+") {
+            att_se <- time_jackknife_plus(augsynth, ...)
+        } else if(inf_type == "conformal") {
+          att_se <- conformal_inf(augsynth, ...)
+        } else {
+            stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
+        }
+
         att <- data.frame(Time = augsynth$data$time,
-                          Estimate = att_se$att[1:t_final],
-                          Std.Error = att_se$se[1:t_final])
+                          Estimate = att_se$att[1:t_final])
+        if(inf_type == "jackknife") {
+          att$Std.Error <- att_se$se[1:t_final]
+          att_avg_se <- att_se$se[t_final + 1]
+        } else {
+          att_avg_se <- NA
+        }
         att_avg <- att_se$att[t_final + 1]
-        att_avg_se <- att_se$se[t_final + 1]
+        if(inf_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
+            att$lower_bound <- att_se$lb[1:t_final]
+            att$upper_bound <- att_se$ub[1:t_final]
+        }
+        if(inf_type == "conformal") {
+          att$p_val <- att_se$p_val[1:t_final]
+        }
 
     } else {
         t0 <- ncol(augsynth$data$X)
@@ -293,6 +333,16 @@ summary.augsynth <- function(object, ...) {
 
     summ$att <- att
     summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
+    if(inf) {
+      if(inf_type %in% c("jackknife+", "conformal")) {
+          summ$average_att$lower_bound <- att_se$lb[t_final + 1]
+          summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+          summ$alpha <-  att_se$alpha
+      }
+      if(inf_type == "conformal") {
+        summ$average_att$p_val <- att_se$p_val[t_final + 1]
+      }
+    }
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
@@ -313,7 +363,7 @@ summary.augsynth <- function(object, ...) {
     if(augsynth$progfunc == "None" | (!augsynth$scm)) {
         summ$bias_est <- NA
     }
-    
+    summ$inf_type <- inf_type
     class(summ) <- "summary.augsynth"
     return(summ)
 }
@@ -338,17 +388,36 @@ print.summary.augsynth <- function(x, ...) {
     att_pre <- att_est[1:(t_int-1)]
     att_post <- att_est[t_int:t_total]
 
-    ## pool the standard error estimates to summarise it
-    se_est <- summ$att$Std.Error
 
-    se_pool <- sqrt(mean(se_est[t_int:t_total]^2))
+    out_msg <- ""
 
+
+    # print out average post treatment estimate
     att_post <- summ$average_att$Estimate
-    se_pool <- summ$average_att$Std.Error
-    
-    cat(paste("Average ATT Estimate (Std. Error): ",
-              format(round(att_post,3), nsmall=3), "  (",
-              format(round(se_pool,3)), ")\n",
+    se_est <- summ$att$Std.Error
+    if(summ$inf_type == "jackknife") {
+      se_avg <- summ$average_att$Std.Error
+
+      out_msg <- paste("Average ATT Estimate (Jackknife Std. Error): ",
+                        format(round(att_post,3), nsmall=3), 
+                        "  (",
+                        format(round(se_avg,3)), ")\n")
+      inf_type <- "Jackknife over units"
+    } else if(summ$inf_type == "conformal") {
+      p_val <- summ$average_att$p_val
+      out_msg <- paste("Average ATT Estimate (p Value for Joint Null): ",
+                        format(round(att_post,3), nsmall=3), 
+                        "  (",
+                        format(round(p_val,3)), ")\n")
+      inf_type <- "Conformal inference"
+    } else if(summ$inf_type == "jackknife+") {
+      out_msg <- paste("Average ATT Estimate: ",
+                        format(round(att_post,3), nsmall=3), "\n")
+      inf_type <- "Jackknife+ over time periods"
+    }
+
+
+    cat(paste(out_msg, 
               "L2 Imbalance: ",
               format(round(summ$l2_imbalance,3), nsmall=3), "\n",
               "Scaled L2 Imbalance: ", 
@@ -357,31 +426,61 @@ print.summary.augsynth <- function(x, ...) {
               format(round(1 - summ$scaled_l2_imbalance,3)*100), "%\n",
               "Avg Estimated Bias: ",
               format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
+              "Inference type: ",
+              inf_type,
+              "\n\n",
               sep=""))
 
+    if(summ$inf_type == "jackknife") {
+      print(summ$att[t_int:t_final,] %>% 
+              select(Time, Estimate, Std.Error),
+            row.names = F)
+    } else if(summ$inf_type == "conformal") {
+      out_att <- summ$att[t_int:t_final,] %>% 
+              select(Time, Estimate, lower_bound, upper_bound, p_val)
+      names(out_att) <- c("Time", "Estimate", 
+                          paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
+                          paste0((1 - summ$alpha) * 100, "% CI Upper Bound"),
+                          paste0("p Value"))
+      print(out_att, row.names = F)
+    } else if(summ$inf_type == "jackknife+") {
+      out_att <- summ$att[t_int:t_final,] %>% 
+              select(Time, Estimate, lower_bound, upper_bound)
+      names(out_att) <- c("Time", "Estimate", 
+                          paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
+                          paste0((1 - summ$alpha) * 100, "% CI Upper Bound"))
+      print(out_att, row.names = F)
+    }
 
-    print(summ$att[t_int:t_final,], row.names=F)
     
 }
 
 #' Plot function for summary function for augsynth
 #' @param x Summary object
+#' @param inf Boolean, whether to plot confidence intervals
 #' @param ... Optional arguments
 #' @export
 plot.summary.augsynth <- function(x, ...) {
     summ <- x
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
+    if ("inf" %in% names(list(...))) {
+        inf <- list(...)$inf
     } else {
-        se <- T
+        inf <- T
     }
     
     p <- summ$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
-    if(se) {
-        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+    if(inf) {
+        if(all(is.na(summ$att$lower_bound))) {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
                     alpha=0.2)
+        } else {
+            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
+                        ymax=upper_bound),
+                    alpha=0.2)
+        }
+
     }
     p + ggplot2::geom_line() +
         ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +

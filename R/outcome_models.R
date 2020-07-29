@@ -78,8 +78,8 @@ fit_prog_reg <- function(X, y, trt, alpha=1, lambda=NULL,
     y0hat <- cbind(rep(1, dim(X)[1]),
                    X) %*% regweights
 
-    return(list(y0hat=y0hat,
-                params=regweights))    
+    return(list(y0hat = y0hat,
+                params  = regweights))
 }
 
 
@@ -197,7 +197,8 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
 
     transform(long_df, time = as.numeric(time))
     transform(long_df, unit = as.numeric(unit))
-    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", index = c("unit", "time"), force = force, CV = CV)
+    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", 
+                           index = c("unit", "time"), force = force, CV = CV, r = r)
 
     t0 <- dim(X)[2]
     t_final <- t0 + dim(y)[2]

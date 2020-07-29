@@ -2,88 +2,306 @@
 ## Code for inference
 ################################################################################
 
-#' Use leave out one estimates (placebo gaps) to estimate unit-level variance
-#' Do this for ridge-augmented synth
-#' @param wide_data Data formatted from format_data
-#' @param synth_data Data formatted from foramt_synth
-#' @param Z Matrix of auxiliary covariates
-#' @param lambda Ridge hyper-parameter, if NULL use CV
-#' @param ridge Include ridge or not
-#' @param scm Include SCM or not
-#' @noRd
-#' @return att estimates, test statistics, p-values
-loo_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
-                            lambda=NULL,
-                            ridge=T, scm=T) {
-
+#' Jackknife+ algorithm over time
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param conservative Whether to use the conservative jackknife+ procedure
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
+time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    n <- nrow(wide_data$X)
     n_c <- dim(synth_data$Z0)[2]
+    Z <- wide_data$Z
 
     t0 <- dim(synth_data$Z0)[1]
+    tpost <- ncol(wide_data$y)
     t_final <- dim(synth_data$Y0plot)[1]
-    errs <- matrix(0, n_c, t_final - t0)
 
-    ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z, lambda, ridge, scm)
-    att <- as.numeric(synth_data$Y1plot -
-            synth_data$Y0plot %*% aug_t$weights)
-    lam <- aug_t$lambda
-
-    new_wide_data <- wide_data
-    new_wide_data$X <- wide_data$X[wide_data$trt==0,,drop=F]
-    new_wide_data$y <- wide_data$y[wide_data$trt==0,,drop=F]
-
-
-    new_Z <- Z
-    if(!is.null(new_Z)) {
-        new_Z <- Z[wide_data$trt==0,,drop=F]
-    }
-
-
-    ## iterate over control units
-    for(i in 1:n_c) {
-
-        ## reset synth data to make a control a treated
-        new_synth_data <- synth_data
-        new_synth_data$Z0 <- synth_data$Z0[, -i]
-        new_synth_data$X0 <- synth_data$X0[, -i]
-        new_synth_data$Y0plot <- synth_data$Y0plot[, -i]
-        new_synth_data$Z1 <- synth_data$Z0[, i, drop=FALSE]
-        new_synth_data$X1 <- synth_data$X0[, i, drop=FALSE]
-        new_synth_data$Y1plot <- synth_data$Y0plot[, i, drop=FALSE]
-
-        ## reset ipw data to change treatment assignment
-        new_wide_data$trt <- numeric(nrow(new_wide_data$X))
-        new_wide_data$trt[i] <- 1
-
-        aug <- fit_ridgeaug_formatted(new_wide_data, new_synth_data, new_Z, lam, ridge, scm)
-
-        ## estimate satt
-        errs[i,] <- new_synth_data$Y1plot[(t0+1):t_final,] -
-            new_synth_data$Y0plot[(t0+1):t_final,] %*% aug$weights
-    }
-
-    ## standard errors
-
-    sig2 <- apply(errs^2, 2, mean) ## estimate of variance
-
-    se2 <- (#1 / sum(wide_data$trt==1) + ## contribution from treated unit
-           sum(aug_t$weights^2)) * ## contribution from weights
-        sig2
-
-    # se2 <- t(errs) %*% aug_t$weights^2
-
-    se <- sqrt(se2)
-    ## se <- (1 / sqrt(sum(wide_data$trt==1)) +
-    ##        sqrt(sum(aug_t$weights^2))) *
-    ##     sig
+    jack_ests <- lapply(1:t0, 
+        function(tdrop) {
+            # drop unit i
+            new_data <- drop_time_t(wide_data, Z, tdrop)
+            # refit
+            new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_data$wide,
+                            synth_data = new_data$synth_data,
+                            Z = new_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+            # get ATT estimates and held out error for time t
+            # t0 is prediction for held out time
+            est <- predict(new_ascm, att = F)[(t0 +1):t_final]
+            est <- c(est, mean(est))
+            err <- c(colMeans(wide_data$X[wide_data$trt == 1,
+                                         tdrop,
+                                         drop = F]) -
+                    predict(new_ascm, att = F)[t0])
+            list(err, rbind(est + abs(err), est - abs(err), est + err, est))
+        })
+    # get errors and jackknife distribution
+    held_out_errs <- vapply(jack_ests, `[[`, numeric(1), 1)
+    jack_dist <- vapply(jack_ests, `[[`,
+                        matrix(0, nrow = 4, ncol = tpost + 1), 2)
 
     out <- list()
-    out$att <- att
+    att <- predict(ascm, att = T)
+    out$att <- c(att, 
+                 mean(att[(t0 + 1):t_final]))
+    # held out ATT
+    out$heldout_att <- c(held_out_errs, 
+                          att[(t0 + 1):t_final], 
+                          mean(att[(t0 + 1):t_final]))
 
-    out$se <- c(rep(NA, t0), se)
-    out$sigma <- sqrt(sig2)
+    # out$se <- rep(NA, 10 + tpost)
+    if(conservative) {
+        qerr <- quantile(abs(held_out_errs), 1 - alpha)
+        out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
+        out$ub <- c(rep(NA, t0), apply(jack_dist[4,,], 1, max) + qerr)
+    } else {
+        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 2))
+        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 2))
+    }
+    # shift back to ATT scale
+    y1 <- predict(ascm, att = F) + att
+    y1 <-  c(y1, mean(y1[(t0 + 1):t_final]))
+    shifted_lb <- y1 - out$ub
+    shifted_ub <- y1 - out$lb
+    out$lb <- shifted_lb
+    out$ub <- shifted_ub
+    out$alpha <- alpha
+
+
     return(out)
 }
+
+#' Drop time period from pre-treatment data
+#' @param wide_data (X, y, trt)
+#' @param Z Covariates matrix
+#' @param t_drop Time to drop
+#' @noRd
+drop_time_t <- function(wide_data, Z, t_drop) {
+
+        new_wide_data <- list()
+        new_wide_data$trt <- wide_data$trt
+        new_wide_data$X <- wide_data$X[, -t_drop, drop = F]
+        new_wide_data$y <- cbind(wide_data$X[, t_drop, drop = F], 
+                                 wide_data$y)
+
+        X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+        x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,,
+                                              drop = F]),
+                     ncol=1)
+        y0 <- new_wide_data$y[new_wide_data$trt == 0,, drop = F]
+        y1 <- colMeans(new_wide_data$y[new_wide_data$trt == 1,, drop = F])
+
+        new_synth_data <- list()
+        new_synth_data$Z0 <- t(X0)
+        new_synth_data$X0 <- t(X0)
+        new_synth_data$Z1 <- x1
+        new_synth_data$X1 <- x1
+
+        return(list(wide_data = new_wide_data,
+                    synth_data = new_synth_data,
+                    Z = Z)) 
+}
+
+#' Conformal inference procedure to compute p-values and point-wise confidence intervals
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' @param grid_size Number of grid points to use when inverting the hypothesis test
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"p_val"}{p-value for test of no post-treatment effect}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
+conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
+                          q = 1, ns = 1000, grid_size = 50, ...) {
+  wide_data <- ascm$data
+  synth_data <- ascm$data$synth_data
+  n <- nrow(wide_data$X)
+  n_c <- dim(synth_data$Z0)[2]
+  Z <- wide_data$Z
+
+  t0 <- dim(synth_data$Z0)[1]
+  tpost <- ncol(wide_data$y)
+  t_final <- dim(synth_data$Y0plot)[1]
+
+  # grid of nulls
+  att <- predict(ascm, att = T)
+  post_att <- att[(t0 +1):t_final]
+  post_sd <- sqrt(mean(post_att ^ 2))
+  # iterate over post-treatment periods to get pointwise CIs
+  vapply(1:tpost,
+         function(j) {
+          # fit using t0 + j as a pre-treatment period and get reisduals
+          new_wide_data <- wide_data
+          new_wide_data$X <- cbind(wide_data$X, wide_data$y[, j, drop = TRUE])
+          if(tpost > 1) {
+            new_wide_data$y <- wide_data$y[, -j, drop = FALSE]
+          } else {
+            # set the post period has to be *something*
+            new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
+          }
+
+
+          # make a grid around the estimated ATT
+          grid <- seq(att[t0 + j] - 2 * post_sd, att[t0 + j] + 2 * post_sd,
+                      length.out = grid_size)
+          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, "block", q, ns)
+         },
+         numeric(3)) -> cis
+
+  # test a null post-treatment effect
+  new_wide_data <- wide_data
+  new_wide_data$X <- cbind(wide_data$X, wide_data$y)
+  new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
+  null_p <- compute_permute_pval(new_wide_data, ascm, 0, ncol(wide_data$y), 
+                                 type, q, ns)
+  
+  out <- list()
+  att <- predict(ascm, att = T)
+  out$att <- c(att, mean(att[(t0 + 1):t_final]))
+  # out$se <- rep(NA, t_final)
+  # out$sigma <- NA
+  out$lb <- c(rep(NA, t0), cis[1, ], NA)
+  out$ub <- c(rep(NA, t0), cis[2, ], NA)
+  out$p_val <- c(rep(NA, t0), cis[3, ], null_p)
+  out$alpha <- alpha
+  return(out)
+}
+
+#' Compute conformal test statistics
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"resids"}{Residuals after enforcing the null}
+#'          \item{"test_stats"}{Permutation distribution of test statistics}
+#'          \item{"stat_func"}{Test statistic function}
+#'         }
+#' @noRd
+compute_permute_test_stats <- function(wide_data, ascm, h0,
+                                       post_length, type,
+                                       q, ns) {
+  # format data
+  new_wide_data <- wide_data
+  t0 <- ncol(wide_data$X) - post_length
+  tpost <- t0 + post_length
+  # adjust outcomes for null
+  new_wide_data$X[wide_data$trt == 1,(t0 + 1):tpost ] <- new_wide_data$X[wide_data$trt == 1,(t0 + 1):tpost] - h0
+  X0 <- new_wide_data$X[new_wide_data$trt == 0,, drop = F]
+  x1 <- matrix(colMeans(new_wide_data$X[new_wide_data$trt == 1,, drop = F]),
+              ncol=1)
+
+  new_synth_data <- list()
+  new_synth_data$Z0 <- t(X0)
+  new_synth_data$X0 <- t(X0)
+  new_synth_data$Z1 <- x1
+  new_synth_data$X1 <- x1
+
+  # fit synth with adjusted data and get residuals
+  new_ascm <- do.call(fit_augsynth_internal,
+                    c(list(wide = new_wide_data,
+                            synth_data = new_synth_data,
+                            Z = wide_data$Z,
+                            progfunc = ascm$progfunc,
+                            scm = ascm$scm,
+                            fixedeff = ascm$fixedeff),
+                        ascm$extra_args))
+  resids <- predict(new_ascm, att = T)[1:tpost]
+  # permute residuals and compute test statistic
+  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  if(type == "iid") {
+    test_stats <- sapply(1:ns, 
+                        function(x) {
+                          reorder <- sample(resids)
+                          stat_func(reorder[(t0 + 1):tpost])
+                        })
+  } else {
+    ## increment time by one step and wrap
+    test_stats <- sapply(1:tpost,
+                        function(j) {
+                          reorder <- resids[(0:tpost -1 + j) %% tpost + 1]
+                          stat_func(reorder[(t0 + 1):tpost])
+                        })
+  }
+  
+  return(list(resids = resids,
+              test_stats = test_stats,
+              stat_func = stat_func))
+}
+
+
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return Computed p-value
+#' @noRd
+compute_permute_pval <- function(wide_data, ascm, h0,
+                                 post_length, type,
+                                 q, ns) {
+  t0 <- ncol(wide_data$X) - post_length
+  tpost <- t0 + post_length
+  out <- compute_permute_test_stats(wide_data, ascm, h0,
+                                    post_length, type, q, ns)
+  mean(out$stat_func(out$resids[(t0 + 1):tpost]) <= out$test_stats)
+}
+
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param grid Set of null hypothesis to test for inversion
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
+#' @noRd
+compute_permute_ci <- function(wide_data, ascm, grid,
+                               post_length, alpha, type,
+                               q, ns) {
+  # make sure 0 is in the grid
+  grid <- c(grid, 0)
+  ps <-sapply(grid, 
+              function(x) {
+                compute_permute_pval(wide_data, ascm, x, 
+                                     post_length, type, q, ns)
+              })
+  c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
+}
+
 
 
 #' Drop unit i from data
@@ -109,56 +327,11 @@ drop_unit_i <- function(wide_data, Z, i) {
         new_synth_data$X0 <- t(X0)
         new_synth_data$Z1 <- x1
         new_synth_data$X1 <- x1
-        # new_synth_data$Y1plot <- synth_data$Y1plot
-        # # get the control unit index
-        # yplot <- matrix(0, nrow = nrow(wide_data$X),
-        #                 ncol = ncol(wide_data$X) + ncol(wide_data$y))
-        # yplot[wide_data$trt == 0,] <- t(synth_data$Y0plot)
-        # yplot[wide_data$trt == 1,] <- synth_data$Y1plot
-        # new_synth_data$Y0plot <- t(yplot[-i,][new_wide_data$trt == 0,, drop = F])
         new_Z <- if(!is.null(Z)) Z[-i, , drop = F] else NULL
 
         return(list(wide_data = new_wide_data,
                     synth_data = new_synth_data,
                     Z = new_Z))
-}
-
-#' Estimate standard errors with the jackknife
-#' Do this for ridge-augmented synth
-#' @param wide_data Data formatted from format_data
-#' @param synth_data Data formatted from foramt_synth
-#' @param Z Matrix of auxiliary covariates
-#' @param lambda Ridge hyper-parameter, if NULL use CV
-#' @param ridge Include ridge or not
-#' @param scm Include SCM or not
-#' @param fixedeff Take out fixed effects or not
-#' @noRd
-#' @return att estimates, test statistics, p-values
-jackknife_se_ridgeaug <- function(wide_data, synth_data, Z=NULL,
-                            lambda=NULL,
-                            ridge = T, scm = T, fixedeff = F) {
-
-    n <- nrow(wide_data$X)
-    n_c <- dim(synth_data$Z0)[2]
-
-    t0 <- dim(synth_data$Z0)[1]
-    tpost <- ncol(wide_data$y)
-    t_final <- dim(synth_data$Y0plot)[1]
-    errs <- matrix(0, n_c, t_final - t0)
-
-    ## att on actual sample
-    aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z,
-                                    lambda, ridge, scm)
-    att <- as.numeric(synth_data$Y1plot -
-            synth_data$Y0plot %*% aug_t$weights)
-    lam <- aug_t$lambda
-
-    # only drop out control units with non-zero weights
-    nnz_weights <- numeric(n)
-    nnz_weights[wide_data$trt == 0] <- round(aug_t$weights, 3) != 0
-
-    trt_idxs <- (1:n)[as.logical(nnz_weights)]
-    n_jack <- length(trt_idxs)
 }
 
 #' Drop unit i from data
@@ -182,11 +355,18 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
 #' Estimate standard errors for single ASCM with the jackknife
 #' Do this for ridge-augmented synth
 #' @param ascm Fitted augsynth object
-#' @noRd
+#' 
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"se"}{Standard error estimate}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
 jackknife_se_single <- function(ascm) {
 
     wide_data <- ascm$data
-    # synth_data <- format_synth(wide_data$X, wide_data$trt, wide_data$y)
     synth_data <- ascm$data$synth_data
     n <- nrow(wide_data$X)
     n_c <- dim(synth_data$Z0)[2]
@@ -197,19 +377,17 @@ jackknife_se_single <- function(ascm) {
     t_final <- dim(synth_data$Y0plot)[1]
     errs <- matrix(0, n_c, t_final - t0)
 
-    ## att on actual sample
-    # aug_t <- fit_ridgeaug_formatted(wide_data, synth_data, Z,
-    #                                 lambda, ridge, scm)
-    # att <- as.numeric(synth_data$Y1plot -
-    #         synth_data$Y0plot %*% aug_t$weights)
-    # lam <- aug_t$lambda
 
     # only drop out control units with non-zero weights
     nnz_weights <- numeric(n)
     nnz_weights[wide_data$trt == 0] <- round(ascm$weights, 3) != 0
+    # if more than one unit is treated, include them in the jackknife
+    if(sum(wide_data$trt) > 1) {
+      nnz_weights[wide_data$trt == 1] <- 1
+    }
 
     trt_idxs <- (1:n)[as.logical(nnz_weights)]
-    n_jack <- length(trt_idxs)
+
 
     # jackknife estimates
     ests <- vapply(trt_idxs,
@@ -242,7 +420,7 @@ jackknife_se_single <- function(ascm) {
     out$att <- c(att, mean(att[(t0 + 1):t_final]))
 
     out$se <- c(rep(NA, t0), se)
-    out$sigma <- NA
+    # out$sigma <- NA
     return(out)
 }
 
@@ -276,7 +454,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
                            out
                        },
                        matrix(0, nrow=outddim,ncol=(J+1)))
-    ## return(jack_est)
+
     se2 <- apply(jack_est, c(1,2),
                 function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
 
