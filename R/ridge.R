@@ -16,6 +16,7 @@
 #' @param holdout_length Length of conseuctive holdout period for when tuning lambdas 
 #' @param min_1se If TRUE, chooses the maximum lambda within 1 standard error of the lambda that minimizes the CV error, if FALSE chooses the optimal lambda; default TRUE
 #' @param V V matrix for synth, default NULL
+#' @param residualize Whether to residualize auxiliary covariates or balance directly, default TRUE
 #' @param ... optional arguments for outcome model
 #' @noRd
 #' @return \itemize{
@@ -35,12 +36,13 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    lambda_min_ratio = 1e-8, n_lambda = 20,
                                    lambda_max = NULL,
                                    holdout_length = 1, min_1se = T,
-                                   V = NULL, ...) {
+                                   V = NULL,
+                                   residualize = FALSE, ...) {
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters in using ridge augmented weights: ", paste(names(extra_params), collapse = ", "))
     }
-    
+
     X <- wide_data$X
     y <- wide_data$y
     trt <- wide_data$trt
@@ -86,24 +88,42 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         Z_c <- Z_cent[trt==0,,drop=FALSE]
         Z_1 <- matrix(colMeans(Z_cent[trt==1,,drop=FALSE]), nrow=1)
 
-        ## regress out covariates
-        Xc_hat <- Z_c %*% solve(t(Z_c) %*% Z_c) %*% t(Z_c) %*% X_c
-        X1_hat <- Z_1 %*% solve(t(Z_c) %*% Z_c) %*% t(Z_c) %*% X_c
+        if(residualize) {
+          ## regress out covariates
+          Xc_hat <- Z_c %*% solve(t(Z_c) %*% Z_c) %*% t(Z_c) %*% X_c
+          X1_hat <- Z_1 %*% solve(t(Z_c) %*% Z_c) %*% t(Z_c) %*% X_c
 
-        # take residuals
-        res_t <- X_1  - X1_hat
-        res_c <- X_c - Xc_hat
+          # take residuals
+          res_t <- X_1  - X1_hat
+          res_c <- X_c - Xc_hat
 
-        X_c <- res_c
-        X_1 <- res_t
+          X_c <- res_c
+          X_1 <- res_t
 
-        X_cent[trt == 0,] <- res_c
-        X_cent[trt == 1,] <- res_t
+          X_cent[trt == 0,] <- res_c
+          X_cent[trt == 1,] <- res_t
 
-        new_synth_data$Z1 <- t(res_t)
-        new_synth_data$X1 <- t(res_t)
-        new_synth_data$Z0 <- t(res_c)
-        new_synth_data$X0 <- t(res_c)
+
+          new_synth_data$Z1 <- t(res_t)
+          new_synth_data$X1 <- t(res_t)
+          new_synth_data$Z0 <- t(res_c)
+          new_synth_data$X0 <- t(res_c)
+        } else {
+            # standardize covariates to be on the same scale as the outcomes
+            sdz <-  apply(Z_c, 2, sd)
+            sdx <- sd(X_c)
+            Z_c <- sdx * t(t(Z_c) / sdz)
+            Z_1 <- sdx * Z_1 / sdz
+
+          # concatenate
+          X_c <- cbind(X_c, Z_c)
+          X_1 <- cbind(X_1, Z_1)
+          new_synth_data$Z1 <- t(X_1)
+          new_synth_data$X1 <- t(X_1)
+          new_synth_data$Z0 <- t(X_c)
+          new_synth_data$X0 <- t(X_c)
+          V <- diag(ncol(X_c))
+        }
     } else {
         new_synth_data$Z1 <- t(X_1)
         new_synth_data$X1 <- t(X_1)
@@ -125,11 +145,14 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
     # add back in covariate weights
     if(!is.null(Z)) {
-        no_cov_weights <- weights
-        ridge_w <- t(t(Z_1) - t(Z_c) %*% weights) %*% 
-                    solve(t(Z_c) %*% Z_c) %*% t(Z_c)
-        weights <- weights + t(ridge_w)
-        
+        if(residualize) {
+          no_cov_weights <- weights
+          ridge_w <- t(t(Z_1) - t(Z_c) %*% weights) %*% 
+                      solve(t(Z_c) %*% Z_c) %*% t(Z_c)
+          weights <- weights + t(ridge_w)
+        } else {
+          no_cov_weights <- NULL
+        }
     }
 
     l2_imbalance <- sqrt(sum((synth_data$X0 %*% weights - synth_data$X1)^2))
@@ -144,6 +167,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
     mhat <- matrix(0, nrow=nrow(y), ncol=ncol(y))
     ridge_mhat <- mhat
     if(!is.null(Z)) {
+      if(residualize) {
         ridge_mhat <- ridge_mhat + Z_cent %*% solve(t(Z_c) %*% Z_c) %*%
                         t(Z_c) %*% y_c
 
@@ -151,6 +175,9 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
         yc_hat <- ridge_mhat[trt == 0,, drop = F]
         # take residuals of outcomes
         y_c <- y_c - yc_hat
+      } else {
+        X_cent <- cbind(X_cent, Z_cent)
+      }
     }
 
     if(ridge) {
@@ -158,6 +185,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                         lambda * diag(ncol(X_c))) %*%
                         t(X_c) %*% y_c
     }
+
     output <- list(weights = weights,
                 l2_imbalance = l2_imbalance,
                 scaled_l2_imbalance = scaled_l2_imabalance,
@@ -168,8 +196,17 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                 lambdas = lambdas,
                 lambda_errors = lambda_errors,
                 lambda_errors_se = lambda_errors_se)
+
     if(!is.null(Z)) {
         output$no_cov_weights <- no_cov_weights
+
+        z_l2_imbalance <- sqrt(sum((t(Z_c) %*% weights - t(Z_1))^2))
+        z_unif_l2_imbalance <- sqrt(sum((t(Z_c) %*% uni_w - t(Z_1))^2))
+        z_scaled_l2_imbalance <- z_l2_imbalance / z_unif_l2_imbalance
+
+        output$covariate_l2_imbalance <- z_l2_imbalance
+        output$scaled_covariate_l2_imbalance <- z_scaled_l2_imbalance
+
     }
     return(output)
 }
