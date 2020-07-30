@@ -21,6 +21,24 @@ test_that("augsynth runs single_synth when there is a single treated unit", {
 })
 
 
+test_that("augsynth finds the treated time when is a single treated unit", {
+
+  data(basque)
+  basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                              regionno != 17 ~0,
+                                              regionno == 17 ~ 1)) %>%
+      filter(regionno != 1)
+
+  syn <- augsynth(gdpcap ~ trt, regionno, year, basque,
+                  progfunc = "None", scm = T, t_int = 1975)
+
+  syn2 <- augsynth(gdpcap ~ trt, regionno, year, basque,
+                  progfunc = "None", scm = T)
+
+  expect_equal(syn$weights, syn2$weights)
+})
+
+
 test_that("augsynth runs single_synth when there is simultaneous adoption", {
 
   data(basque)
