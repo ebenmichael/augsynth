@@ -42,7 +42,9 @@ To run `augsynth`, we need to include a treatment status column that indicates w
 
 
 ```r
-kansas %>% select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
+kansas %>% 
+  select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% 
+  filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
 #> # A tibble: 4 x 7
 #>    year   qtr year_qtr state  treated    gdp lngdpcapita
 #>   <dbl> <dbl>    <dbl> <chr>    <dbl>  <dbl>       <dbl>
@@ -60,10 +62,12 @@ Now to find a synthetic control using the entire series of pre-intervention outc
 ```r
 library(augsynth)
 syn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
-                progfunc="None", scm=T, t_int = 2012.25)
+                progfunc = "None", scm = T)
 ```
 
-We can then look at the ATT estimates for each post-intervention time period and overall. We'll also see standard errors estimated using leave-out-one estimates of the noise and the quality of the synthetic control fit measured by the L2 distance between Kansas and its synthetic control.
+We can then look at the ATT estimates for each post-intervention time period and overall. 
+We'll also see the quality of the synthetic control fit measured by the L2 distance between Kansas and its synthetic control, and the percent improvement over uniform weights.
+By default, we'll also see pointwise confidence intervals using a [conformal inference procedure](https://arxiv.org/abs/1712.09089).
 
 
 ```r
@@ -73,42 +77,54 @@ summary(syn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (Std. Error): -0.029  (0.032)
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.325 )
 #> L2 Imbalance: 0.083
-#> Scaled L2 Imbalance: 0.205
 #> Percent improvement from uniform weights: 79.5%
-#> Avg Estimated Bias: NA
 #> 
-#>     Time    Estimate  Std.Error
-#>  2012.25 -0.01807275 0.02522761
-#>  2012.50 -0.04105313 0.03005177
-#>  2012.75 -0.03310023 0.02843157
-#>  2013.00 -0.01940747 0.02380166
-#>  2013.25 -0.02915453 0.02192548
-#>  2013.50 -0.04626635 0.02652482
-#>  2013.75 -0.03181209 0.02187922
-#>  2014.00 -0.04476664 0.02783040
-#>  2014.25 -0.04267269 0.03299546
-#>  2014.50 -0.02940448 0.03382640
-#>  2014.75 -0.01849616 0.03720388
-#>  2015.00 -0.02930564 0.04226317
-#>  2015.25 -0.01908377 0.03571756
-#>  2015.50 -0.02162342 0.04012163
-#>  2015.75 -0.01856676 0.04249425
-#>  2016.00 -0.02816962 0.04896375
+#> Avg Estimated Bias: 0.000
+#> 
+#> Inference type: Conformal inference
+#> 
+#>     Time    Estimate 95% CI Lower Bound 95% CI Upper Bound    p Value
+#>  2012.25 -0.01807275        -0.04461946       0.0059457035 0.11111111
+#>  2012.50 -0.04105313        -0.07012810      -0.0145064170 0.02222222
+#>  2012.75 -0.03310023        -0.06217519      -0.0065535146 0.04444444
+#>  2013.00 -0.01940747        -0.04595418       0.0046109870 0.11111111
+#>  2013.25 -0.02915453        -0.05317298      -0.0051360786 0.04444444
+#>  2013.50 -0.04626635        -0.07281306      -0.0222478978 0.02222222
+#>  2013.75 -0.03181209        -0.05583054      -0.0103218972 0.02222222
+#>  2014.00 -0.04476664        -0.07384161      -0.0182199278 0.02222222
+#>  2014.25 -0.04267269        -0.07427592      -0.0135977204 0.02222222
+#>  2014.50 -0.02940448        -0.06100771      -0.0003295131 0.04444444
+#>  2014.75 -0.01849616        -0.05262764       0.0105788120 0.14444444
+#>  2015.00 -0.02930564        -0.06596539       0.0048258429 0.07777778
+#>  2015.25 -0.01908377        -0.05068700       0.0099911959 0.12222222
+#>  2015.50 -0.02162342        -0.05575491       0.0074515445 0.11111111
+#>  2015.75 -0.01856676        -0.05522650       0.0130364708 0.18888889
+#>  2016.00 -0.02816962        -0.06735762       0.0084901215 0.10000000
 ```
 
-It's easier to see this information visually. Below we plot the difference between the Basque region and it's synthetic control. Before the increase in terrorism (to the left of the dashed line) we expect these to be close, and after the increase we measure the effect (plus or minus 2 standard errors).
+It's easier to see this information visually. Below we plot the difference between Kansas and it's synthetic control. Before the tax cuts (to the left of the dashed line) we expect these to be close, and after the tax cuts we measure the effect (with point-wise confidence intervals).
 
 <img src="figure/fig_syn-1.png" title="plot of chunk fig_syn" alt="plot of chunk fig_syn" style="display: block; margin: auto;" />
+
+We can also compute point-wise confidence intervals using the [Jackknife+ procedure](https://arxiv.org/abs/1905.02928) by changing the `inf_type` argument, although this requires additional assumptions.
+
+<img src="figure/fig_syn_plus-1.png" title="plot of chunk fig_syn_plus" alt="plot of chunk fig_syn_plus" style="display: block; margin: auto;" />
+
 
 ### Augmenting synth with an outcome model
 In this example the pre-intervention synthetic control fit has an L2 imbalance of 0.083, about 20% of the imbalance between Kansas and the average of the other states. We can reduce this by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`, while not specifying `lambda` will determine one through cross validation:
 
 ```r
 asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
-                progfunc="Ridge", scm=T)
+                progfunc = "Ridge", scm = T)
 ```
+
+We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = T` in the `plot` function:
+<img src="figure/fig_asyn_cv-1.png" title="plot of chunk fig_asyn_cv" alt="plot of chunk fig_asyn_cv" style="display: block; margin: auto;" />
+By default, the CV procedure chooses the maximal value of `lambda` with MSE within one standard deviation of the minimal MSE. To instead choose the `lambda` that minizes the cross validation MSE, set `min_1se = FALSE`.
+
 
 We can look at the summary and plot the results. Now in the summary output we see an estimate of the overall bias of synth; we measure this with the average amount that augmentation changes the synth estimate. Notice that the estimates become somewhat larger in magnitude, and the standard errors are tighter.
 
@@ -119,40 +135,44 @@ summary(asyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (Std. Error): -0.040  (0.024)
+#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.06 )
 #> L2 Imbalance: 0.062
-#> Scaled L2 Imbalance: 0.153
 #> Percent improvement from uniform weights: 84.7%
-#> Avg Estimated Bias: 0.011
 #> 
-#>     Time    Estimate  Std.Error
-#>  2012.25 -0.02233432 0.02085981
-#>  2012.50 -0.04703842 0.02421257
-#>  2012.75 -0.04252002 0.02117116
-#>  2013.00 -0.02967474 0.01658453
-#>  2013.25 -0.04119699 0.01645880
-#>  2013.50 -0.05922698 0.01985558
-#>  2013.75 -0.04466913 0.01714846
-#>  2014.00 -0.05803598 0.02046732
-#>  2014.25 -0.05516412 0.02538454
-#>  2014.50 -0.04148561 0.02696688
-#>  2014.75 -0.02923219 0.02973763
-#>  2015.00 -0.04004239 0.03360558
-#>  2015.25 -0.03045080 0.02705158
-#>  2015.50 -0.03269061 0.03077540
-#>  2015.75 -0.02895347 0.03251924
-#>  2016.00 -0.03829085 0.03818993
+#> Avg Estimated Bias: 0.000
+#> 
+#> Inference type: Conformal inference
+#> 
+#>     Time    Estimate 95% CI Lower Bound 95% CI Upper Bound    p Value
+#>  2012.25 -0.02233432        -0.04432874        0.003043846 0.05555556
+#>  2012.50 -0.04703842        -0.07580034       -0.018276493 0.02222222
+#>  2012.75 -0.04252002        -0.07128194       -0.010374336 0.02222222
+#>  2013.00 -0.02967474        -0.05505291       -0.004296572 0.03333333
+#>  2013.25 -0.04119699        -0.06657516       -0.012435060 0.02222222
+#>  2013.50 -0.05922698        -0.08798891       -0.030465057 0.02222222
+#>  2013.75 -0.04466913        -0.07343106       -0.019290964 0.02222222
+#>  2014.00 -0.05803598        -0.09018166       -0.025890300 0.02222222
+#>  2014.25 -0.05516412        -0.09069356       -0.019634680 0.02222222
+#>  2014.50 -0.04148561        -0.08039881       -0.005956177 0.03333333
+#>  2014.75 -0.02923219        -0.06814538        0.006297248 0.05555556
+#>  2015.00 -0.04004239        -0.08233934        0.000000000 0.05555556
+#>  2015.25 -0.03045080        -0.06598023        0.001694886 0.05555556
+#>  2015.50 -0.03269061        -0.07160380        0.002838827 0.05555556
+#>  2015.75 -0.02895347        -0.07125042        0.009959725 0.05555556
+#>  2016.00 -0.03829085        -0.08735531        0.004006102 0.05555556
 ```
 
 <img src="figure/fig_asyn-1.png" title="plot of chunk fig_asyn" alt="plot of chunk fig_asyn" style="display: block; margin: auto;" />
 
-There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`; by default this will average the auxiliary covariates over the pre-intervention period, dropping `NA` values and regress out the auxiliary covariates.
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
 
 
 ```r
-covsyn <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
+covsyn <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) +
+                                           log(revlocalcapita) + log(avgwklywagecapita) +
+                                           estabscapita + emplvlcapita,
                    fips, year_qtr, kansas,
-                   progfunc="None", scm=T)
+                   progfunc = "ridge", scm = T)
 ```
 
 Again we can look at the summary and plot the results.
@@ -162,31 +182,36 @@ summary(covsyn)
 #> 
 #> Call:
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
-#>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
+#>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (Std. Error): -0.049  (0.034)
-#> L2 Imbalance: 0.084
-#> Scaled L2 Imbalance: 0.208
-#> Percent improvement from uniform weights: 79.2%
-#> Avg Estimated Bias: NA
+#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.13 )
+#> L2 Imbalance: 0.054
+#> Percent improvement from uniform weights: 86.6%
 #> 
-#>     Time    Estimate  Std.Error
-#>  2012.25 -0.02341704 0.02405627
-#>  2012.50 -0.04839027 0.02750598
-#>  2012.75 -0.04001962 0.02832399
-#>  2013.00 -0.04032730 0.02828520
-#>  2013.25 -0.04554317 0.02859360
-#>  2013.50 -0.06155255 0.03103318
-#>  2013.75 -0.04385562 0.02897305
-#>  2014.00 -0.06145512 0.03411363
-#>  2014.25 -0.05834086 0.03682230
-#>  2014.50 -0.04452862 0.03893624
-#>  2014.75 -0.03782162 0.04074715
-#>  2015.00 -0.05702779 0.04134751
-#>  2015.25 -0.04549817 0.03815470
-#>  2015.50 -0.05448923 0.04309193
-#>  2015.75 -0.05459346 0.04578215
-#>  2016.00 -0.07126466 0.04855713
+#> Covariate L2 Imbalance: 0.005
+#> Percent improvement from uniform weights: 97.7%
+#> 
+#> Avg Estimated Bias: 0.000
+#> 
+#> Inference type: Conformal inference
+#> 
+#>     Time    Estimate 95% CI Lower Bound 95% CI Upper Bound    p Value
+#>  2012.25 -0.02122181        -0.04426538        0.001821765 0.06666667
+#>  2012.50 -0.04738718        -0.07555155       -0.014102025 0.03333333
+#>  2012.75 -0.05010828        -0.08339344       -0.006581536 0.03333333
+#>  2013.00 -0.04536410        -0.07352846       -0.012078937 0.03333333
+#>  2013.25 -0.05507918        -0.08836434       -0.021794026 0.02222222
+#>  2013.50 -0.07128399        -0.10456915       -0.032878035 0.02222222
+#>  2013.75 -0.05791368        -0.09119884       -0.024628522 0.02222222
+#>  2014.00 -0.08098791        -0.11939386       -0.037461166 0.02222222
+#>  2014.25 -0.07794667        -0.12147342       -0.034419927 0.02222222
+#>  2014.50 -0.06491981        -0.11356735       -0.021393066 0.03333333
+#>  2014.75 -0.05655804        -0.11032637       -0.007910500 0.04444444
+#>  2015.00 -0.07529028        -0.12393781       -0.021521943 0.03333333
+#>  2015.25 -0.06264739        -0.10617414       -0.013999852 0.03333333
+#>  2015.50 -0.06715143        -0.10555738       -0.018503886 0.02222222
+#>  2015.75 -0.06292093        -0.10132689       -0.009152601 0.02222222
+#>  2016.00 -0.07820946        -0.12173621       -0.019320335 0.02222222
 ```
 
 <img src="figure/fig_covsyn-1.png" title="plot of chunk fig_covsyn" alt="plot of chunk fig_covsyn" style="display: block; margin: auto;" />
@@ -194,111 +219,109 @@ summary(covsyn)
 Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
 
 ```r
-covsyn_aug <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) + log(revlocalcapita) + log(avgwklywagecapita)+ estabscapita + emplvlcapita,
+
+covsyn_resid <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) +
+                                           log(revlocalcapita) + log(avgwklywagecapita) +
+                                           estabscapita + emplvlcapita,
                    fips, year_qtr, kansas,
-                   progfunc="Ridge", scm=T, lambda_min_ratio=1e-5)
+                   progfunc = "ridge", scm = T, lambda = asyn$lambda,
+                   residualize = T)
 ```
 
 
 ```r
-summary(covsyn_aug)
+summary(covsyn_resid)
 #> 
 #> Call:
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
-#>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2, 
-#>     lambda_min_ratio = 1e-05)
+#>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2, 
+#>     lambda = ..3, residualize = ..4)
 #> 
-#> Average ATT Estimate (Std. Error): -0.059  (0.016)
-#> L2 Imbalance: 0.041
-#> Scaled L2 Imbalance: 0.102
-#> Percent improvement from uniform weights: 89.8%
-#> Avg Estimated Bias: -0.015
+#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.234 )
+#> L2 Imbalance: 0.067
+#> Percent improvement from uniform weights: 83.4%
 #> 
-#>     Time    Estimate   Std.Error
-#>  2012.25 -0.01958348 0.006713539
-#>  2012.50 -0.03959612 0.012905898
-#>  2012.75 -0.04541429 0.020531362
-#>  2013.00 -0.04674158 0.016220482
-#>  2013.25 -0.05601212 0.017558693
-#>  2013.50 -0.07088784 0.018233158
-#>  2013.75 -0.06054975 0.016696615
-#>  2014.00 -0.07935354 0.021656417
-#>  2014.25 -0.07492268 0.022045868
-#>  2014.50 -0.06022028 0.023887764
-#>  2014.75 -0.05110227 0.024712744
-#>  2015.00 -0.06892611 0.022686422
-#>  2015.25 -0.05835650 0.022404527
-#>  2015.50 -0.06855496 0.018867981
-#>  2015.75 -0.06438172 0.018669299
-#>  2016.00 -0.07763690 0.019838542
+#> Covariate L2 Imbalance: 0.000
+#> Percent improvement from uniform weights: 100%
+#> 
+#> Avg Estimated Bias: 0.000
+#> 
+#> Inference type: Conformal inference
+#> 
+#>     Time    Estimate 95% CI Lower Bound 95% CI Upper Bound    p Value
+#>  2012.25 -0.02525882        -0.04586063       -0.004657013 0.04444444
+#>  2012.50 -0.05117098        -0.07635097       -0.025990996 0.01111111
+#>  2012.75 -0.04510912        -0.07028911       -0.019929129 0.01111111
+#>  2013.00 -0.04426158        -0.06944157       -0.019081590 0.01111111
+#>  2013.25 -0.05141523        -0.07659522       -0.026235237 0.01111111
+#>  2013.50 -0.06877787        -0.09395786       -0.043597885 0.01111111
+#>  2013.75 -0.05146447        -0.07664446       -0.026284478 0.01111111
+#>  2014.00 -0.06947218        -0.09465217       -0.039714008 0.01111111
+#>  2014.25 -0.06687073        -0.09662890       -0.037112564 0.01111111
+#>  2014.50 -0.05345641        -0.08321457       -0.023698236 0.01111111
+#>  2014.75 -0.04511139        -0.07486956       -0.015353223 0.02222222
+#>  2015.00 -0.06350431        -0.09326248       -0.033746138 0.01111111
+#>  2015.25 -0.05114785        -0.07632783       -0.025967857 0.01111111
+#>  2015.50 -0.05904546        -0.08880363       -0.033865473 0.01111111
+#>  2015.75 -0.05761259        -0.08737076       -0.027854422 0.01111111
+#>  2016.00 -0.07352702        -0.10328519       -0.043768854 0.01111111
 ```
 
 
-<img src="figure/fig_covsyn_aug-1.png" title="plot of chunk fig_covsyn_aug" alt="plot of chunk fig_covsyn_aug" style="display: block; margin: auto;" />
+<img src="figure/fig_covsyn_resid-1.png" title="plot of chunk fig_covsyn_resid" alt="plot of chunk fig_covsyn_resid" style="display: block; margin: auto;" />
 
 
-Finally, we can augment synth with many different outcome models, this is as easy as changing the `progfunc`. For instance, we can augment synth with the generalized synthetic control method `gsynth`.
-
+Finally, we can augment synth with many different outcome models. The simplest outcome model is a unit fixed effect model, which we can include by setting `fixedeff = T`.
 
 ```r
-gsyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
-                   progfunc="GSYN", scm=T)
-#> Cross-validating ... 
-#>  r = 0; sigma2 = 0.00350; IC = -5.65462; MSPE = 0.00038
-#>  r = 1; sigma2 = 0.00133; IC = -6.37101; MSPE = 0.00032
-#>  r = 2; sigma2 = 0.00069; IC = -6.77498; MSPE = 0.00032
-#>  r = 3; sigma2 = 0.00041; IC = -7.04971; MSPE = 0.00023*
-#>  r = 4; sigma2 = 0.00030; IC = -7.12819; MSPE = 0.00023
-#>  r = 5; sigma2 = 0.00022; IC = -7.19026; MSPE = 0.00022
-#> 
-#>  r* = 5
+
+desyn <- augsynth(lngdpcapita ~ treated,
+                   fips, year_qtr, kansas,
+                   progfunc = "none", scm = T,
+                   fixedeff = T)
 ```
 
-For the other outcome models we do not (yet) supply standard error estimates.
+
 
 ```r
-gsyn_summ <- summary(gsyn)
-```
-
-```r
-gsyn_summ
+summary(desyn)
 #> 
 #> Call:
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
-#>     t_int = t_int, data = data, progfunc = "GSYN", scm = ..2)
+#>     t_int = t_int, data = data, progfunc = "none", scm = ..2, 
+#>     fixedeff = ..3)
 #> 
-#> Average ATT Estimate (Std. Error): -0.143  (0.1)
-#> L2 Imbalance: 0.083
-#> Scaled L2 Imbalance: 0.207
-#> Percent improvement from uniform weights: 79.3%
-#> Avg Estimated Bias: 0.018
+#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.315 )
+#> L2 Imbalance: 0.082
+#> Percent improvement from uniform weights: 55.1%
 #> 
-#>     Time   Estimate  Std.Error
-#>  2012.25 -0.1226145 0.09192258
-#>  2012.50 -0.1539783 0.10203138
-#>  2012.75 -0.1512876 0.10131213
-#>  2013.00 -0.1309587 0.09021442
-#>  2013.25 -0.1426247 0.09119418
-#>  2013.50 -0.1595319 0.09466795
-#>  2013.75 -0.1441823 0.09340777
-#>  2014.00 -0.1586302 0.09509457
-#>  2014.25 -0.1605591 0.09931237
-#>  2014.50 -0.1500174 0.10427832
-#>  2014.75 -0.1386698 0.10694589
-#>  2015.00 -0.1441464 0.10840997
-#>  2015.25 -0.1325211 0.10343133
-#>  2015.50 -0.1340250 0.10525729
-#>  2015.75 -0.1282863 0.10653579
-#>  2016.00 -0.1356650 0.11115633
+#> Avg Estimated Bias: -0.016
+#> 
+#> Inference type: Conformal inference
+#> 
+#>     Time    Estimate 95% CI Lower Bound 95% CI Upper Bound    p Value
+#>  2012.25 -0.02151900        -0.04572669        0.005536651 0.07777778
+#>  2012.50 -0.04567748        -0.06988516       -0.012925895 0.02222222
+#>  2012.75 -0.03790080        -0.06210849       -0.005149216 0.04444444
+#>  2013.00 -0.02357984        -0.04778753        0.003475817 0.07777778
+#>  2013.25 -0.03260995        -0.05681764       -0.005554297 0.04444444
+#>  2013.50 -0.05007896        -0.07428665       -0.023023308 0.02222222
+#>  2013.75 -0.03457474        -0.05593447       -0.010367055 0.02222222
+#>  2014.00 -0.04876841        -0.07297610       -0.018864793 0.02222222
+#>  2014.25 -0.04661719        -0.07082488       -0.013865611 0.02222222
+#>  2014.50 -0.03321017        -0.05741786        0.000000000 0.05555556
+#>  2014.75 -0.02265951        -0.04686720        0.010092066 0.12222222
+#>  2015.00 -0.03425329        -0.06130895        0.004194214 0.07777778
+#>  2015.25 -0.02292051        -0.04712820        0.006983109 0.10000000
+#>  2015.50 -0.02572370        -0.05277935        0.007027882 0.10000000
+#>  2015.75 -0.02320911        -0.05026476        0.012390434 0.14444444
+#>  2016.00 -0.03314605        -0.06589763        0.008149422 0.08888889
 ```
 
 
-```r
-plot(gsyn)
-```
+<img src="figure/fig_desyn-1.png" title="plot of chunk fig_desyn" alt="plot of chunk fig_desyn" style="display: block; margin: auto;" />
 
-<img src="figure/fig_mcpsyn-1.png" title="plot of chunk fig_mcpsyn" alt="plot of chunk fig_mcpsyn" style="display: block; margin: auto;" />
-
-Several other outcome models are available, including general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details.
+We can incorproate other outcome models by changing the `progfunc`.
+Several outcome models are available, including, fitting the factor model directly with `gsynth`, general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details.
 
 
