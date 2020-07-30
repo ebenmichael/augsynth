@@ -10,8 +10,7 @@ single_augsynth(
   time,
   t_int,
   data,
-  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact",
-    "seq2seq"),
+  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact"),
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
@@ -30,12 +29,12 @@ single_augsynth(
 \item{data}{Panel data as dataframe}
 
 \item{progfunc}{What function to use to impute control outcomes
-Ridge=Ridge regression (allows for standard errors),
-None=No outcome model,
-EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-MCP=MCPanel, CITS=CITS
-CausalImpact=Bayesian structural time series with CausalImpact
-seq2seq=Sequence to sequence learning with feedforward nets}
+ridge=Ridge regression (allows for standard errors),
+none=No outcome model,
+en=Elastic Net, RF=Random Forest, GSYN=gSynth,
+mcp=MCPanel, 
+cits=Comparitive Interuppted Time Series
+causalimpact=Bayesian structural time series with CausalImpact}
 
 \item{scm}{Whether the SCM weighting function is used}
 

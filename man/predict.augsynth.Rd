@@ -4,10 +4,12 @@
 \alias{predict.augsynth}
 \title{Get prediction of ATT or average outcome under control}
 \usage{
-\method{predict}{augsynth}(object, ...)
+\method{predict}{augsynth}(object, att = F, ...)
 }
 \arguments{
 \item{object}{augsynth object}
+
+\item{att}{If TRUE, return the ATT, if FALSE, return imputed counterfactual}
 
 \item{...}{Optional arguments}
 }

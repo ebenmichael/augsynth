@@ -77,7 +77,7 @@ summary(syn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.325 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.331 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -122,7 +122,9 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
 ```
 
 We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = T` in the `plot` function:
+
 <img src="figure/fig_asyn_cv-1.png" title="plot of chunk fig_asyn_cv" alt="plot of chunk fig_asyn_cv" style="display: block; margin: auto;" />
+
 By default, the CV procedure chooses the maximal value of `lambda` with MSE within one standard deviation of the minimal MSE. To instead choose the `lambda` that minizes the cross validation MSE, set `min_1se = FALSE`.
 
 
@@ -135,7 +137,7 @@ summary(asyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.06 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.074 )
 #> L2 Imbalance: 0.062
 #> Percent improvement from uniform weights: 84.7%
 #> 
@@ -184,7 +186,7 @@ summary(covsyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.13 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.14 )
 #> L2 Imbalance: 0.054
 #> Percent improvement from uniform weights: 86.6%
 #> 
@@ -237,7 +239,7 @@ summary(covsyn_resid)
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2, 
 #>     lambda = ..3, residualize = ..4)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.234 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.257 )
 #> L2 Imbalance: 0.067
 #> Percent improvement from uniform weights: 83.4%
 #> 
@@ -291,7 +293,7 @@ summary(desyn)
 #>     t_int = t_int, data = data, progfunc = "none", scm = ..2, 
 #>     fixedeff = ..3)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.315 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.328 )
 #> L2 Imbalance: 0.082
 #> Percent improvement from uniform weights: 55.1%
 #> 

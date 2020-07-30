@@ -4,10 +4,14 @@
 \alias{plot.summary.multisynth}
 \title{Plot function for summary function for multisynth}
 \usage{
-\method{plot}{summary.multisynth}(x, ...)
+\method{plot}{summary.multisynth}(x, se = T, levels = NULL, ...)
 }
 \arguments{
 \item{x}{summary object}
+
+\item{se}{Whether to plot standard errors}
+
+\item{levels}{Which units/groups to plot, default is every group}
 
 \item{...}{Optional arguments}
 }

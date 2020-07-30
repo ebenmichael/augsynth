@@ -320,23 +320,15 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
 #' Get prediction of average outcome under control or ATT
 #' @param object Fit multisynth object
+#' @param att If TRUE, return the ATT, if FALSE, return imputed counterfactual
 #' @param ... Optional arguments
 #'
 #' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
-predict.multisynth <- function(object, ...) {
-    if ("relative" %in% names(list(...))) {
-        relative <- list(...)$relative
-    } else {
-        relative <- NULL
-    }
-    if ("att" %in% names(list(...))) {
-        att <- list(...)$att
-    } else {
-        att <- F
-    }
+predict.multisynth <- function(object, att = F, ...) {
+
     multisynth <- object
-    
+    relative <- T
     
     time_cohort <- multisynth$time_cohort
     if(is.null(relative)) {
@@ -510,27 +502,15 @@ print.multisynth <- function(x, ...) {
 #' Plot function for multisynth
 #' @importFrom graphics plot
 #' @param x Augsynth object to be plotted
+#' @param se Whether to compute and plot standard errors
+#' @param levels Which units/groups to plot, default is every group
 #' @param ... Optional arguments
 #' @export
-plot.multisynth <- function(x, ...) {
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
-    } else {
-        se <- T
-    }
-    if ("levels" %in% names(list(...))) {
-        levels <- list(...)$levels
-    } else {
-        levels <- NULL
-    }
-    if ("jackknife" %in% names(list(...))) {
-        jackknife <- list(...)$jackknife
-    } else {
-        jackknife <- T
-    }
+plot.multisynth <- function(x, se = T, levels = NULL, ...) {
+
     multisynth <- x
-    
-    plot(summary(multisynth, jackknife=jackknife), levels, se)
+
+    plot(summary(multisynth, jackknife = se), levels, se)
 }
 
 compute_se <- function(multisynth, relative=NULL) {
@@ -631,6 +611,7 @@ compute_se <- function(multisynth, relative=NULL) {
 
 #' Summary function for multisynth
 #' @param object multisynth object
+#' @param jackknife Whether to compute jackknife standard errors
 #' @param ... Optional arguments
 #' 
 #' @return summary.multisynth object that contains:
@@ -643,12 +624,8 @@ compute_se <- function(multisynth, relative=NULL) {
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
 #'         }
 #' @export
-summary.multisynth <- function(object, ...) {
-    if ("jackknife" %in% names(list(...))) {
-        jackknife <- list(...)$jackknife
-    } else {
-        jackknife <- T
-    }
+summary.multisynth <- function(object, jackknife = T, ...) {
+
     multisynth <- object
     
     relative <- T
@@ -739,14 +716,11 @@ summary.multisynth <- function(object, ...) {
 
 #' Print function for summary function for multisynth
 #' @param x summary object
+#' @param level Which unit/group to print results for, default is the overall average
 #' @param ... Optional arguments
 #' @export
-print.summary.multisynth <- function(x, ...) {
-    if ("level" %in% names(list(...))) {
-        level <- list(...)$level
-    } else {
-        level <- "Average"
-    }
+print.summary.multisynth <- function(x, level = "average", ...) {
+
     summ <- x
     
     ## straight from lm
@@ -759,7 +733,7 @@ print.summary.multisynth <- function(x, ...) {
         summ$att %>%
             filter(Time >= 0, Level==level) %>%
             rename("Time Since Treatment"=Time) -> att_est
-    } else if(level == "Average") {
+    } else if(level == "average") {
         summ$att %>% filter(Time > first_lvl, Level=="Average") -> att_est
     } else {
         summ$att %>% filter(Time > level, Level==level) -> att_est
@@ -801,19 +775,12 @@ print.summary.multisynth <- function(x, ...) {
 #' @importFrom ggplot2 aes
 #' 
 #' @param x summary object
+#' @param se Whether to plot standard errors
+#' @param levels Which units/groups to plot, default is every group
 #' @param ... Optional arguments
 #' @export
-plot.summary.multisynth <- function(x, ...) {
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
-    } else {
-        se <- T
-    }
-    if ("levels" %in% names(list(...))) {
-        levels <- list(...)$levels
-    } else {
-        levels <- NULL
-    }
+plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
+
     summ <- x
     
     ## get the last time period for each level
@@ -822,31 +789,31 @@ plot.summary.multisynth <- function(x, ...) {
                Time >= -summ$n_lags,
                Time <= summ$n_leads) %>%
         group_by(Level) %>%
-        summarise(last_time=max(Time)) -> last_times
+        summarise(last_time = max(Time)) -> last_times
 
     if(is.null(levels)) levels <- unique(summ$att$Level)
 
     summ$att %>% inner_join(last_times) %>%
         filter(Level %in% levels) %>%
-        mutate(label=ifelse(Time == last_time, Level, NA),
+        mutate(label = ifelse(Time == last_time, Level, NA),
                is_avg = ifelse(("Average" %in% levels) * (Level == "Average"),
                                "A", "B")) %>%
-        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate,
-                                     group=Level,
-                                     color=is_avg,
-                                     alpha=is_avg)) +
-            ggplot2::geom_line(size=1) +
-            ggplot2::geom_point(size=1) + 
-            ggrepel::geom_label_repel(ggplot2::aes(label=label),
-                                      nudge_x=1, na.rm=T) + 
-            ggplot2::geom_hline(yintercept=0, lty=2) -> p
+        ggplot2::ggplot(ggplot2::aes(x = Time, y = Estimate,
+                                     group = Level,
+                                     color = is_avg,
+                                     alpha = is_avg)) +
+            ggplot2::geom_line(size = 1) +
+            ggplot2::geom_point(size = 1) + 
+            ggrepel::geom_label_repel(ggplot2::aes(label = label),
+                                      nudge_x = 1, na.rm = T) + 
+            ggplot2::geom_hline(yintercept = 0, lty = 2) -> p
 
     if(summ$relative) {
-        p <- p + ggplot2::geom_vline(xintercept=0, lty=2) +
+        p <- p + ggplot2::geom_vline(xintercept = 0, lty = 2) +
             ggplot2::xlab("Time Relative to Treatment")
     } else {
-        p <- p + ggplot2::geom_vline(aes(xintercept=as.numeric(Level)),
-                                     lty=2, alpha=0.5,
+        p <- p + ggplot2::geom_vline(aes(xintercept = as.numeric(Level)),
+                                     lty = 2, alpha = 0.5,
                                      summ$att %>% filter(Level != "Average"))
     }
 

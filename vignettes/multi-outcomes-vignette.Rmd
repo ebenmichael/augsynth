@@ -116,7 +116,8 @@ plot(asyn_estabscapita)
 #### Multiple outcomes
 Now we will combine our outcome variables into one study. To add more outcome variables, we add them to the LHS of the formula. 
 ```{r multi_outcome_asyn}
-asyn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, fips, year_qtr, kansas, progfunc="Ridge", scm=T)
+asyn_multi <- augsynth(lngdpcapita + lntotalwagescapita + estabscapita ~ treated, 
+                       fips, year_qtr, kansas, progfunc="Ridge", scm=T, lambda = 1e-4)
 summary(asyn_multi)
 ```
 

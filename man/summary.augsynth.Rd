@@ -4,12 +4,26 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(object, ...)
+\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", ...)
 }
 \arguments{
 \item{object}{augsynth object}
 
-\item{...}{Optional arguments}
+\item{inf}{Boolean, whether to get confidence intervals around the point estimates}
+
+\item{inf_type}{Type of inference algorithm. Options are
+\itemize{
+ \item{"conformal"}{Conformal inference (default)}
+ \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+ \item{"jackknife"}{Jackknife over units}
+}}
+
+\item{...}{Optional arguments for inference, for more details for each `inf_type` see
+\itemize{
+ \item{"conformal"}{`conformal_inf`}
+ \item{"jackknife+"}{`time_jackknife_plus`}
+ \item{"jackknife"}{`jackknife_se_single`}
+}}
 }
 \description{
 Summary function for augsynth

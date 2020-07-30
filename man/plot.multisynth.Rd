@@ -4,10 +4,14 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(x, ...)
+\method{plot}{multisynth}(x, se = T, levels = NULL, ...)
 }
 \arguments{
 \item{x}{Augsynth object to be plotted}
+
+\item{se}{Whether to compute and plot standard errors}
+
+\item{levels}{Which units/groups to plot, default is every group}
 
 \item{...}{Optional arguments}
 }

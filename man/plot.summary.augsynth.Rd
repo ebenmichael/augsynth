@@ -4,10 +4,12 @@
 \alias{plot.summary.augsynth}
 \title{Plot function for summary function for augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, ...)
+\method{plot}{summary.augsynth}(x, inf = T, ...)
 }
 \arguments{
 \item{x}{Summary object}
+
+\item{inf}{Boolean, whether to plot confidence intervals}
 
 \item{...}{Optional arguments}
 }

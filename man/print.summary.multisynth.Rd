@@ -4,10 +4,12 @@
 \alias{print.summary.multisynth}
 \title{Print function for summary function for multisynth}
 \usage{
-\method{print}{summary.multisynth}(x, ...)
+\method{print}{summary.multisynth}(x, level = "average", ...)
 }
 \arguments{
 \item{x}{summary object}
+
+\item{level}{Which unit/group to print results for, default is the overall average}
 
 \item{...}{Optional arguments}
 }

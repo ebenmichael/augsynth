@@ -3,7 +3,7 @@
 \docType{package}
 \name{augsynth-package}
 \alias{augsynth-package}
-\title{augsynth: A package implementing the Augmented Synthetic Controls Method}
+\title{augsynth}
 \description{
-augsynth: A package implementing the Augmented Synthetic Controls Method
+A package implementing the Augmented Synthetic Controls Method
 }

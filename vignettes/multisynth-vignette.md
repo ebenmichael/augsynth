@@ -390,16 +390,16 @@ wevent_summ
 #> Percent improvement from uniform individual weights: 89.3	
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error
-#>                     0 Average -0.0042423607 0.01851398
-#>                     1 Average -0.0084540832 0.01503877
-#>                     2 Average  0.0049970516 0.01596257
-#>                     3 Average  0.0033221621 0.02082038
-#>                     4 Average -0.0114457271 0.02290687
-#>                     5 Average -0.0139463272 0.02544257
-#>                     6 Average -0.0176520776 0.02711121
-#>                     7 Average -0.0005477864 0.03060550
-#>                     8 Average -0.0168384303 0.03632495
-#>                     9 Average -0.0317446441 0.03316364
+#>                     0 Average -0.0042423607 0.01850490
+#>                     1 Average -0.0084540832 0.01503804
+#>                     2 Average  0.0049970516 0.01588945
+#>                     3 Average  0.0033221621 0.02083404
+#>                     4 Average -0.0114457271 0.02290526
+#>                     5 Average -0.0139463272 0.02543768
+#>                     6 Average -0.0176520776 0.02711052
+#>                     7 Average -0.0005477864 0.03059846
+#>                     8 Average -0.0168384303 0.03632264
+#>                     9 Average -0.0317446441 0.03317117
 ```
 
 
@@ -459,16 +459,16 @@ scm_gsyn_summ
 #> Percent improvement from uniform individual weights: 90.2	
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error
-#>                     0 Average  3.287948e-03 0.01941159
-#>                     1 Average -8.276454e-03 0.01845906
-#>                     2 Average  8.559703e-03 0.03211917
-#>                     3 Average  1.270920e-02 0.02949564
-#>                     4 Average -3.686049e-03 0.03735060
-#>                     5 Average  1.737698e-06 0.04139274
-#>                     6 Average  8.167464e-04 0.04680501
-#>                     7 Average  4.897136e-03 0.05656162
-#>                     8 Average -2.434396e-02 0.06045272
-#>                     9 Average -4.108417e-02 0.05922172
+#>                     0 Average  3.287948e-03 0.01940586
+#>                     1 Average -8.276454e-03 0.01846108
+#>                     2 Average  8.559703e-03 0.03211634
+#>                     3 Average  1.270920e-02 0.02949293
+#>                     4 Average -3.686049e-03 0.03734294
+#>                     5 Average  1.737698e-06 0.04139452
+#>                     6 Average  8.167464e-04 0.04680032
+#>                     7 Average  4.897136e-03 0.05656057
+#>                     8 Average -2.434396e-02 0.06042270
+#>                     9 Average -4.108417e-02 0.05919461
 ```
 
 

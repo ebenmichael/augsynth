@@ -15,7 +15,7 @@
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
-time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
+time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F) {
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
     n <- nrow(wide_data$X)
@@ -65,12 +65,12 @@ time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F, ...) {
 
     # out$se <- rep(NA, 10 + tpost)
     if(conservative) {
-        qerr <- quantile(abs(held_out_errs), 1 - alpha)
+        qerr <- stats::quantile(abs(held_out_errs), 1 - alpha)
         out$lb <- c(rep(NA, t0), apply(jack_dist[4,,], 1, min) - qerr)
         out$ub <- c(rep(NA, t0), apply(jack_dist[4,,], 1, max) + qerr)
     } else {
-        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, quantile, alpha / 2))
-        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, quantile, 1 - alpha / 2))
+        out$lb <- c(rep(NA, t0), apply(jack_dist[2,,], 1, stats::quantile, alpha / 2))
+        out$ub <- c(rep(NA, t0), apply(jack_dist[1,,], 1, stats::quantile, 1 - alpha / 2))
     }
     # shift back to ATT scale
     y1 <- predict(ascm, att = F) + att
@@ -134,7 +134,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
 conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
-                          q = 1, ns = 1000, grid_size = 50, ...) {
+                          q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
   n <- nrow(wide_data$X)

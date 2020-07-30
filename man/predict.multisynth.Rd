@@ -4,10 +4,12 @@
 \alias{predict.multisynth}
 \title{Get prediction of average outcome under control or ATT}
 \usage{
-\method{predict}{multisynth}(object, ...)
+\method{predict}{multisynth}(object, att = F, ...)
 }
 \arguments{
 \item{object}{Fit multisynth object}
+
+\item{att}{If TRUE, return the ATT, if FALSE, return imputed counterfactual}
 
 \item{...}{Optional arguments}
 }

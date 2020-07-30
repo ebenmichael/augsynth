@@ -32,8 +32,8 @@
 #'         }
 #' @export
 single_augsynth <- function(form, unit, time, t_int, data,
-                     progfunc=c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
-                                "CITS", "CausalImpact", "seq2seq"),
+                     progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
+                                  "CITS", "CausalImpact"),
                      scm=T,
                      fixedeff = FALSE,
                      cov_agg=NULL, ...) {
@@ -156,16 +156,17 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
 
 #' Get prediction of ATT or average outcome under control
 #' @param object augsynth object
+#' @param att If TRUE, return the ATT, if FALSE, return imputed counterfactual
 #' @param ... Optional arguments
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
-predict.augsynth <- function(object, ...) {
-    if ("att" %in% names(list(...))) {
-        att <- list(...)$att
-    } else {
-        att <- F
-    }
+predict.augsynth <- function(object, att = F, ...) {
+    # if ("att" %in% names(list(...))) {
+    #     att <- list(...)$att
+    # } else {
+    #     att <- F
+    # }
     augsynth <- object
     
     X <- augsynth$data$X
@@ -211,20 +212,20 @@ print.augsynth <- function(x, ...) {
 #' @importFrom graphics plot
 #' 
 #' @param x Augsynth object to be plotted
+#' @param inf Boolean, whether to get confidence intervals around the point estimates
+#' @param cv If True, plot cross validation MSE against hyper-parameter, otherwise plot effects
 #' @param ... Optional arguments
 #' @export
-plot.augsynth <- function(x, ...) {
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
-    } else {
-        se <- T
-    }
+plot.augsynth <- function(x, inf = T, cv = F, ...) {
+    # if ("se" %in% names(list(...))) {
+    #     se <- list(...)$se
+    # } else {
+    #     se <- T
+    # }
 
     augsynth <- x
     
-    if (length(list(...)) > 0 &&
-        "cv" %in% names(list(...)) &&
-        list(...)$cv == T) {
+    if (cv == T) {
         errors = data.frame(lambdas = augsynth$lambdas,
                             errors = augsynth$lambda_errors,
                             errors_se = augsynth$lambda_errors_se)
@@ -261,7 +262,7 @@ plot.augsynth <- function(x, ...) {
               color = "gold") +
             ggplot2::theme_bw()
     } else {
-        plot(summary(augsynth, ...), se = se)
+        plot(summary(augsynth, ...), inf = inf)
     }
 }
 
@@ -282,18 +283,18 @@ plot.augsynth <- function(x, ...) {
 #'          \item{"jackknife"}{`jackknife_se_single`}
 #'         }
 #' @export
-summary.augsynth <- function(object, ...) {
+summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
     augsynth <- object
-    if ("inf" %in% names(list(...))) {
-        inf <- list(...)$inf
-    } else {
-        inf <- T
-    }
-    if ("inf_type" %in% names(list(...))) {
-        inf_type <- list(...)$inf_type
-    } else {
-        inf_type <- "conformal"
-    }
+    # if ("inf" %in% names(list(...))) {
+    #     inf <- list(...)$inf
+    # } else {
+    #     inf <- T
+    # }
+    # if ("inf_type" %in% names(list(...))) {
+    #     inf_type <- list(...)$inf_type
+    # } else {
+    #     inf_type <- "conformal"
+    # }
     
     
     summ <- list()
@@ -490,13 +491,13 @@ print.summary.augsynth <- function(x, ...) {
 #' @param inf Boolean, whether to plot confidence intervals
 #' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(x, ...) {
+plot.summary.augsynth <- function(x, inf = T, ...) {
     summ <- x
-    if ("inf" %in% names(list(...))) {
-        inf <- list(...)$inf
-    } else {
-        inf <- T
-    }
+    # if ("inf" %in% names(list(...))) {
+    #     inf <- list(...)$inf
+    # } else {
+    #     inf <- T
+    # }
     
     p <- summ$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
@@ -516,12 +517,14 @@ plot.summary.augsynth <- function(x, ...) {
         ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
         ggplot2::geom_hline(yintercept=0, lty=2) + 
         ggplot2::theme_bw()
-    
+
 }
 
 
 
-#' augsynth: A package implementing the Augmented Synthetic Controls Method
+#' augsynth
+#' 
+#' @description A package implementing the Augmented Synthetic Controls Method
 #' @docType package
 #' @name augsynth-package
 #' @importFrom magrittr "%>%"
