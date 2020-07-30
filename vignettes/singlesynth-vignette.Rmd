@@ -70,13 +70,13 @@ summary(syn)
 
 It's easier to see this information visually. Below we plot the difference between Kansas and it's synthetic control. Before the tax cuts (to the left of the dashed line) we expect these to be close, and after the tax cuts we measure the effect (with point-wise confidence intervals).
 
-```{r fig_syn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_syn, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(syn)
 ```
 
 We can also compute point-wise confidence intervals using the [Jackknife+ procedure](https://arxiv.org/abs/1905.02928) by changing the `inf_type` argument, although this requires additional assumptions.
 
-```{r fig_syn_plus, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_syn_plus, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(syn, inf_type = "jackknife+")
 ```
 
@@ -90,7 +90,7 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
 
 We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = T` in the `plot` function:
 
-```{r fig_asyn_cv, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_asyn_cv, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(asyn, cv = T)
 ```
 
@@ -102,7 +102,7 @@ We can look at the summary and plot the results. Now in the summary output we se
 summary(asyn)
 ```
 
-```{r fig_asyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_asyn, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(asyn)
 ```
 
@@ -122,7 +122,7 @@ Again we can look at the summary and plot the results.
 summary(covsyn)
 ```
 
-```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_covsyn, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(covsyn)
 ```
 
@@ -142,7 +142,7 @@ summary(covsyn_resid)
 ```
 
 
-```{r fig_covsyn_resid, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_covsyn_resid, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(covsyn_resid)
 ```
 
@@ -162,7 +162,7 @@ summary(desyn)
 ```
 
 
-```{r fig_desyn, fig.width=8, fig.height=4.5, echo=F, fig.align="center"}
+```{r fig_desyn, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
 plot(desyn)
 ```
 

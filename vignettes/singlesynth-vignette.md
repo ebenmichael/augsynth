@@ -77,7 +77,7 @@ summary(syn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.331 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.334 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -106,9 +106,19 @@ summary(syn)
 
 It's easier to see this information visually. Below we plot the difference between Kansas and it's synthetic control. Before the tax cuts (to the left of the dashed line) we expect these to be close, and after the tax cuts we measure the effect (with point-wise confidence intervals).
 
+
+```r
+plot(syn)
+```
+
 <img src="figure/fig_syn-1.png" title="plot of chunk fig_syn" alt="plot of chunk fig_syn" style="display: block; margin: auto;" />
 
 We can also compute point-wise confidence intervals using the [Jackknife+ procedure](https://arxiv.org/abs/1905.02928) by changing the `inf_type` argument, although this requires additional assumptions.
+
+
+```r
+plot(syn, inf_type = "jackknife+")
+```
 
 <img src="figure/fig_syn_plus-1.png" title="plot of chunk fig_syn_plus" alt="plot of chunk fig_syn_plus" style="display: block; margin: auto;" />
 
@@ -122,6 +132,11 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
 ```
 
 We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = T` in the `plot` function:
+
+
+```r
+plot(asyn, cv = T)
+```
 
 <img src="figure/fig_asyn_cv-1.png" title="plot of chunk fig_asyn_cv" alt="plot of chunk fig_asyn_cv" style="display: block; margin: auto;" />
 
@@ -137,7 +152,7 @@ summary(asyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.074 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.062 )
 #> L2 Imbalance: 0.062
 #> Percent improvement from uniform weights: 84.7%
 #> 
@@ -164,6 +179,11 @@ summary(asyn)
 #>  2016.00 -0.03829085        -0.08735531        0.004006102 0.05555556
 ```
 
+
+```r
+plot(asyn)
+```
+
 <img src="figure/fig_asyn-1.png" title="plot of chunk fig_asyn" alt="plot of chunk fig_asyn" style="display: block; margin: auto;" />
 
 There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
@@ -186,7 +206,7 @@ summary(covsyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.14 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.132 )
 #> L2 Imbalance: 0.054
 #> Percent improvement from uniform weights: 86.6%
 #> 
@@ -216,6 +236,11 @@ summary(covsyn)
 #>  2016.00 -0.07820946        -0.12173621       -0.019320335 0.02222222
 ```
 
+
+```r
+plot(covsyn)
+```
+
 <img src="figure/fig_covsyn-1.png" title="plot of chunk fig_covsyn" alt="plot of chunk fig_covsyn" style="display: block; margin: auto;" />
 
 Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
@@ -239,7 +264,7 @@ summary(covsyn_resid)
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2, 
 #>     lambda = ..3, residualize = ..4)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.257 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.29 )
 #> L2 Imbalance: 0.067
 #> Percent improvement from uniform weights: 83.4%
 #> 
@@ -270,6 +295,11 @@ summary(covsyn_resid)
 ```
 
 
+
+```r
+plot(covsyn_resid)
+```
+
 <img src="figure/fig_covsyn_resid-1.png" title="plot of chunk fig_covsyn_resid" alt="plot of chunk fig_covsyn_resid" style="display: block; margin: auto;" />
 
 
@@ -293,7 +323,7 @@ summary(desyn)
 #>     t_int = t_int, data = data, progfunc = "none", scm = ..2, 
 #>     fixedeff = ..3)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.328 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.324 )
 #> L2 Imbalance: 0.082
 #> Percent improvement from uniform weights: 55.1%
 #> 
@@ -320,6 +350,11 @@ summary(desyn)
 #>  2016.00 -0.03314605        -0.06589763        0.008149422 0.08888889
 ```
 
+
+
+```r
+plot(desyn)
+```
 
 <img src="figure/fig_desyn-1.png" title="plot of chunk fig_desyn" alt="plot of chunk fig_desyn" style="display: block; margin: auto;" />
 
