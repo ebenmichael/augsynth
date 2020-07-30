@@ -11,12 +11,12 @@
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
 #' @param progfunc What function to use to impute control outcomes
-#'                 Ridge=Ridge regression (allows for standard errors),
-#'                 None=No outcome model,
-#'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 MCP=MCPanel, CITS=CITS
-#'                 CausalImpact=Bayesian structural time series with CausalImpact
-#'                 seq2seq=Sequence to sequence learning with feedforward nets
+#'                 ridge=Ridge regression (allows for standard errors),
+#'                 none=No outcome model,
+#'                 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
+#'                 mcp=MCPanel, 
+#'                 cits=Comparitive Interuppted Time Series
+#'                 causalimpact=Bayesian structural time series with CausalImpact
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
@@ -111,25 +111,10 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     ## fit augsynth
     if(progfunc == "ridge") {
         # Ridge ASCM
-        if(is.null(list(...)[["lambda"]])) {
-            lambda_results <- do.call(cv_ridge, list(wide_data = fit_wide, synth_data = fit_synth_data, Z = Z, progfunc = progfunc, 
-                                                     scm = scm, fixedeff = fixedeff, V = V, ...))
-            lambda <- lambda_results$lambda
-            lambdas <- lambda_results$lambdas
-            lambda_errors <- lambda_results$lambda_errors
-            lambda_errors_se <- lambda_results$lambda_errors_se
-        } else {
-            lambdas <- NULL
-            lambda_errors <- NULL
-            lambda_errors_se <- NULL
-        }
         augsynth <- do.call(fit_ridgeaug_formatted,
                             list(wide_data = fit_wide,
                                  synth_data = fit_synth_data,
                                  Z = Z, V = V, scm = scm, ...))
-        augsynth$lambdas <- lambdas
-        augsynth$lambda_errors <- lambda_errors
-        augsynth$lambda_errors_se <- lambda_errors_se
     } else if(progfunc == "none") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
@@ -237,20 +222,44 @@ plot.augsynth <- function(x, ...) {
 
     augsynth <- x
     
-    if (length(list(...)) > 0 && "cv" %in% names(list(...)) && list(...)$cv == T) {
-        errors = data.frame(lambdas=augsynth$lambdas, errors=augsynth$lambda_errors, errors_se=augsynth$lambda_errors_se)
-        p <- ggplot2::ggplot(errors, ggplot2::aes(x=lambdas, y=errors)) + ggplot2::geom_point(size = 2) + 
-            ggplot2::geom_errorbar(ggplot2::aes(ymin=errors, ymax=errors+errors_se), width=0.2, size = 0.5) 
-        p = p + ggplot2::labs(title=bquote("Cross Validation MSE over " ~ lambda), x=expression(lambda), y = "Cross Validation MSE", parse=TRUE)
-        p = p + ggplot2::scale_x_log10()
+    if (length(list(...)) > 0 &&
+        "cv" %in% names(list(...)) &&
+        list(...)$cv == T) {
+        errors = data.frame(lambdas = augsynth$lambdas,
+                            errors = augsynth$lambda_errors,
+                            errors_se = augsynth$lambda_errors_se)
+        p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
+              ggplot2::geom_point(size = 2) + 
+              ggplot2::geom_errorbar(
+                ggplot2::aes(ymin = errors,
+                             ymax = errors + errors_se),
+                width=0.2, size = 0.5) 
+        p <- p + ggplot2::labs(title = bquote("Cross Validation MSE over " ~ lambda),
+                              x = expression(lambda), y = "Cross Validation MSE", 
+                              parse = TRUE)
+        p <- p + ggplot2::scale_x_log10()
         
-        min_lambda = choose_lambda(augsynth$lambdas, augsynth$lambda_errors, augsynth$lambda_errors_se, F)
-        min_1se_lambda = choose_lambda(augsynth$lambdas, augsynth$lambda_errors, augsynth$lambda_errors_se, T)
-        min_lambda_index = which(augsynth$lambdas == min_lambda)
-        min_1se_lambda_index = which(augsynth$lambdas == min_1se_lambda)
-        
-        p = p + ggplot2::geom_point(ggplot2::aes(x=min_lambda, y=augsynth$lambda_errors[min_lambda_index]), color="gold")
-        p + ggplot2::geom_point(ggplot2::aes(x=min_1se_lambda, y=augsynth$lambda_errors[min_1se_lambda_index]), color="gold")
+        # find minimum and min + 1se lambda to plot
+        min_lambda <- choose_lambda(augsynth$lambdas,
+                                   augsynth$lambda_errors,
+                                   augsynth$lambda_errors_se,
+                                   F)
+        min_1se_lambda <- choose_lambda(augsynth$lambdas,
+                                       augsynth$lambda_errors,
+                                       augsynth$lambda_errors_se,
+                                       T)
+        min_lambda_index <- which(augsynth$lambdas == min_lambda)
+        min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
+
+        p <- p + ggplot2::geom_point(
+            ggplot2::aes(x = min_lambda, 
+                         y = augsynth$lambda_errors[min_lambda_index]),
+            color = "gold")
+        p + ggplot2::geom_point(
+              ggplot2::aes(x = min_1se_lambda,
+                           y = augsynth$lambda_errors[min_1se_lambda_index]),
+              color = "gold") +
+            ggplot2::theme_bw()
     } else {
         plot(summary(augsynth, ...), se = se)
     }
@@ -353,7 +362,7 @@ summary.augsynth <- function(object, ...) {
     }
     ## get estimated bias
 
-    if(augsynth$progfunc == "Ridge") {
+    if(tolower(augsynth$progfunc) == "ridge") {
         mhat <- augsynth$ridge_mhat
         w <- augsynth$synw
     } else {
@@ -363,10 +372,13 @@ summary.augsynth <- function(object, ...) {
     trt <- augsynth$data$trt
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
-    summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
-    if(augsynth$progfunc == "None" | (!augsynth$scm)) {
+    if(tolower(augsynth$progfunc) == "none" | (!augsynth$scm)) {
         summ$bias_est <- NA
+    } else {
+      summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
     }
+    
+    
     summ$inf_type <- inf_type
     class(summ) <- "summary.augsynth"
     return(summ)
