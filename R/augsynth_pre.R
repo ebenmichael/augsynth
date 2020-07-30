@@ -59,7 +59,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
       summarise(trt_time = (!!time_quosure)[(!!trt) == 1][1]) %>%
       mutate(trt_time = replace_na(trt_time, Inf))
 
-  num_trt_years <- sum(is.finite(trt_time$trt_time))
+  num_trt_years <- sum(is.finite(unique(trt_time$trt_time)))
 
   if(multi_outcome & num_trt_years > 1) {
     stop("augsynth is not currently implemented for more than one outcome and more than one treated unit")
