@@ -77,7 +77,7 @@ summary(syn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.334 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.342 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -152,7 +152,7 @@ summary(asyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.062 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.079 )
 #> L2 Imbalance: 0.062
 #> Percent improvement from uniform weights: 84.7%
 #> 
@@ -206,7 +206,7 @@ summary(covsyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.132 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.122 )
 #> L2 Imbalance: 0.054
 #> Percent improvement from uniform weights: 86.6%
 #> 
@@ -264,7 +264,7 @@ summary(covsyn_resid)
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2, 
 #>     lambda = ..3, residualize = ..4)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.29 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.263 )
 #> L2 Imbalance: 0.067
 #> Percent improvement from uniform weights: 83.4%
 #> 
@@ -323,7 +323,7 @@ summary(desyn)
 #>     t_int = t_int, data = data, progfunc = "none", scm = ..2, 
 #>     fixedeff = ..3)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.324 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.327 )
 #> L2 Imbalance: 0.082
 #> Percent improvement from uniform weights: 55.1%
 #> 

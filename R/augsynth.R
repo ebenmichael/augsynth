@@ -463,9 +463,8 @@ print.summary.augsynth <- function(x, ...) {
   cat(out_msg)
 
     if(summ$inf_type == "jackknife") {
-      print(summ$att[t_int:t_final,] %>% 
-              select(Time, Estimate, Std.Error),
-            row.names = F)
+      out_att <- summ$att[t_int:t_final,] %>% 
+              select(Time, Estimate, Std.Error)
     } else if(summ$inf_type == "conformal") {
       out_att <- summ$att[t_int:t_final,] %>% 
               select(Time, Estimate, lower_bound, upper_bound, p_val)
@@ -473,15 +472,16 @@ print.summary.augsynth <- function(x, ...) {
                           paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
                           paste0((1 - summ$alpha) * 100, "% CI Upper Bound"),
                           paste0("p Value"))
-      print(out_att, row.names = F)
     } else if(summ$inf_type == "jackknife+") {
       out_att <- summ$att[t_int:t_final,] %>% 
               select(Time, Estimate, lower_bound, upper_bound)
       names(out_att) <- c("Time", "Estimate", 
                           paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
                           paste0((1 - summ$alpha) * 100, "% CI Upper Bound"))
-      print(out_att, row.names = F)
     }
+    out_att %>%
+      mutate_at(vars(-Time), ~ round(., 3)) %>%
+      print(row.names = F)
 
     
 }
