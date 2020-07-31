@@ -510,7 +510,7 @@ plot.multisynth <- function(x, se = T, levels = NULL, ...) {
 
     multisynth <- x
 
-    plot(summary(multisynth, jackknife = se), levels, se)
+    plot(summary(multisynth, jackknife = se), se = se, levels = levels)
 }
 
 compute_se <- function(multisynth, relative=NULL) {
