@@ -4,7 +4,7 @@ Version: 0.2.0
 Authors@R: person("Eli", "Ben-Michael", email = "ebenmichael@berkeley.edu", role = c("aut", "cre"))
 Description: A package implementing the Augmented Synthetic Controls Method.
 Depends:
-    R (>= 3.5.0)
+    R (>= 3.5.3)
 Imports:
     dplyr,
     tidyr,
@@ -19,8 +19,6 @@ Imports:
     osqp,
     rlang,
     purrr,
-Remotes:
-    susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
