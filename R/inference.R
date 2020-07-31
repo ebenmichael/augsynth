@@ -481,6 +481,12 @@ drop_unit_i_multi <- function(msyn, i) {
     drop_i$trt <- msyn$data$trt[-i]
     drop_i$mask <- msyn$data$mask[not_miss_j,, drop = F]
 
+    if(!is.null(msyn$data$Z)) {
+      drop_i$Z <- msyn$data$Z[-i, , drop = F]
+    } else {
+      drop_i$Z <- NULL
+    }
+
     long_df <- msyn$long_df
     unit <- colnames(long_df)[1]
     # make alphabetical, because the ith unit is the index in alphabetical ordering

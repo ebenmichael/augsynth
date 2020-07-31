@@ -46,6 +46,7 @@ multisynth <- function(form, unit, time, data,
                        n_factors=0,
                        scm=T,
                        time_cohort = F,
+                       cov_agg = NULL,
                        eps_abs = 1e-4,
                        eps_rel = 1e-4,
                        verbose = FALSE, ...) {
@@ -60,6 +61,14 @@ multisynth <- function(form, unit, time, data,
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
     force <- if(fixedeff) 3 else 2
+
+    # get covariates
+    if(length(form)[2] == 2) {
+        Z <- extract_covariates(form, unit, time, wide$time[min(wide$trt)], data, cov_agg)
+    } else {
+        Z <- NULL
+    }
+    wide$Z <- Z
 
     # if n_leads is NULL set it to be the largest possible number of leads
     # for the last treated unit
@@ -94,6 +103,9 @@ multisynth <- function(form, unit, time, data,
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
+        # get eligible set of donor units based on covariates
+        donors <- get_eligible_donors(wide$Z, wide$trt, how = "exact")
+
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
                             trt=wide$trt,
@@ -103,6 +115,7 @@ multisynth <- function(form, unit, time, data,
                             relative=T,
                             nu=0, lambda=1e10,
                             time_cohort = time_cohort,
+                            donors = donors,
                             eps_rel = eps_rel, 
                             eps_abs = eps_abs,
                             verbose = verbose)
@@ -235,6 +248,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     
 
     if(scm) {
+
+        # get eligible set of donor units based on covariates
+        donors <- get_eligible_donors(wide$Z, wide$trt, how = "exact")
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
         if(is.null(nu)) {
@@ -247,6 +263,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     relative=relative,
                                     nu=0, lambda=lambda,
                                     time_cohort = time_cohort,
+                                    donors = donors,
                                     eps_rel = eps_rel,
                                     eps_abs = eps_abs,
                                     verbose = verbose)
@@ -265,6 +282,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 relative=relative,
                                 nu=nu, lambda=lambda,
                                 time_cohort = time_cohort,
+                                donors = donors,
                                 eps_rel = eps_rel,
                                 eps_abs = eps_abs,
                                 verbose = verbose)
