@@ -66,29 +66,24 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
-        ## x_t <- lapply(1:J, function(j) colSums(X[[j]][trt ==grps[j], mask[j,]==1, drop=F]))    
         x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[[j]], mask[j,]==1, drop=F]))
-        ## All possible donor units for all treatment groups
+        
+        # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[[j]][trt > n_leads + min(grps), mask[j,]==1, drop=F])
+                 function(j) X[[j]][trt > n_leads + grps[j], mask[j,]==1, drop=F])
     } else {
-        ## x_t <- lapply(1:J, function(j) colSums(X[trt ==grps[j], mask[j,]==1, drop=F]))    
         x_t <- lapply(1:J, function(j) colSums(X[which_t[[j]], mask[j,]==1, drop=F]))        
-        ## All possible donor units for all treatment groups
-        ## Xc <- lapply(1:nrow(mask),
-        ##              function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])
+        
+        # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[trt > n_leads + min(grps), mask[j,]==1, drop=F])        
+                 function(j) X[trt > n_leads + grps[j], mask[j,]==1, drop=F])        
     }
-    
-    
-    # n1 <- sapply(1:J, function(j) 1)
-    
+
     n1tot <- sum(n1)
-    
+
     ## make matrices for QP
-    idxs0  <- trt  > n_leads + min(grps)
-    n0 <- sum(idxs0)    
+
+    n0 <- Reduce(`+`, lapply(Xc, nrow))
     const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d, n1)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
@@ -97,7 +92,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     ## quadratic balance measures
 
     qvec <- make_qvec(Xc, x_t, nu, n_lags, d)
-    
+
     Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
 
     ## Optimize
@@ -107,28 +102,30 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                                eps_abs = eps_abs)))
 
     out <- osqp::solve_osqp(Pmat, qvec, Amat, lvec, uvec, pars = settings)
-    # return(out)
+
     ## get weights
     total_ctrls <- n0 * J
     weights <- matrix(out$x[1:total_ctrls], nrow = n0)
-
+    nj0 <- as.numeric(lapply(Xc, nrow))
+    nj0cumsum <- c(0, cumsum(nj0))
     ## compute imbalance
-    if(relative) {
+    # if(relative) {
         imbalance <- vapply(1:J,
                             function(j) {
                                 dj <- length(x_t[[j]])
                                 ndim <- min(dj, n_lags)
                                 c(numeric(d-ndim),
                                 x_t[[j]][(dj-ndim+1):dj] -
-                                    t(Xc[[j]][,(dj-ndim+1):dj]) %*% weights[,j])
+                                    t(Xc[[j]][,(dj-ndim+1):dj]) %*% 
+                                    out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]])
                             },
                             numeric(d))
-    } else {
-        imbalance <- vapply(1:J,
-                            function(j) c(x_t[[j]] -  t(Xc[[j]]) %*% weights[,j],
-                                          numeric(d-length(x_t[[j]]))),
-                            numeric(d))
-    }
+    # } else {
+    #     imbalance <- vapply(1:J,
+    #                         function(j) c(x_t[[j]] -  t(Xc[[j]]) %*% weights[,j],
+    #                                       numeric(d-length(x_t[[j]]))),
+    #                         numeric(d))
+    # }
 
     avg_imbal <- rowSums(t(t(imbalance)))
 
@@ -136,18 +133,23 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     global_l2 <- sqrt(sum(avg_imbal^2)) #/ sqrt(length(avg_imbal))
     ind_l2 <- sum(apply(imbalance, 2, function(x) sqrt(sum(x^2)))) #/ sqrt(prod(dim(imbalance)))
     ## pad weights with zeros for treated units and divide by number of treated units
-    weights <- matrix(0, nrow=n, ncol=J)
-    weights[idxs0,] <- matrix(out$x[1:total_ctrls], nrow=n0)
-    weights <- t(t(weights) / n1
-                 )
 
-    output <- list(weights=weights,
-                   imbalance=cbind(avg_imbal, imbalance),
-                   global_l2=global_l2,
-                   ind_l2=ind_l2)
-    
+    vapply(1:J,
+           function(j) {
+             weightj <-  numeric(n)
+             weightj[trt > n_leads + grps[j]] <- out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]]
+             weightj
+           },
+           numeric(n)) -> weights
+
+    weights <- t(t(weights) / n1)
+
+    output <- list(weights = weights,
+                   imbalance = cbind(avg_imbal, imbalance),
+                   global_l2 = global_l2,
+                   ind_l2 = ind_l2)
+
     return(output)
-    
 }
 
 
@@ -175,21 +177,10 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 
     ## sum to n1 constraint
     A1 <- do.call(Matrix::bdiag, lapply(1:(J), function(x) rep(1, n0)))
-
+    A1 <- Matrix::bdiag(lapply(1:J, function(j) rep(1, nrow(Xc[[j]]))))
+    
     Amat <- as.matrix(Matrix::t(A1))
     Amat <- Matrix::rbind2(Matrix::t(A1), Matrix::Diagonal(nrow(A1)))
-
-    ## zero out weights for inelligible units
-    A3 <- do.call(Matrix::bdiag,
-                  c(lapply(1:J,
-                           function(j) {
-                               z <- numeric(n0)
-                               z[trt[idxs0] <= grps[j] + n_leads] <- 1
-                               z
-                           })))
-    
-
-    Amat <- Matrix::rbind2(Amat, Matrix::t(A3))
 
 
     # constraints for transformed weights
@@ -204,7 +195,7 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
                             zero_mat <- Matrix::Matrix(0, n0, max_dim - ndim)
                             Matrix::t(cbind(zero_mat, mat))
                        }))
-    sum_tj <- nrow(A_trans1) # sum of total number of pre-periods
+    # sum of total number of pre-periods
     sum_tj <- min(d, n_lags) * J
     A_trans2 <- - Matrix::Diagonal(sum_tj)
     A_trans <- Matrix::cbind2(A_trans1, A_trans2)
@@ -218,13 +209,11 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 
     lvec <- c(n1, # sum to n1 constraint
               numeric(nrow(A1)), # lower bound by zero
-              numeric(J), # zero out weights for impossible donors
               numeric(sum_tj) # constrain transformed weights
              ) 
     
     uvec <- c(n1, #sum to n1 constraint
               rep(Inf, nrow(A1)),
-              numeric(J), # zero out weights for impossible donors
               numeric(sum_tj) # constrain transformed weights
               )
 
