@@ -32,6 +32,7 @@
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                           relative=T, nu=0, lambda=0, time_cohort = FALSE,
+                          eligible_donors = NULL,
                           verbose = FALSE, 
                           eps_rel=1e-4, eps_abs=1e-4) {
 
@@ -64,22 +65,30 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     J <- length(grps)
     n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
+    # only allow weights on eligible donors
+    # if null, then all donors treated after n_lags are eligible 
+    if(is.null(eligible_donors)) {
+      eligible_donors <- lapply(1:J, function(j) trt > n_leads + grps[j])
+    } else {
+      eligible_donors <- lapply(1:J, 
+                function(j) (trt > n_leads + grps[j]) & eligible_donors[[j]]
+            )
+    }
+
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
         x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[[j]], mask[j,]==1, drop=F]))
         
         # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[[j]][trt > n_leads + grps[j], mask[j,]==1, drop=F])
+                 function(j) X[[j]][eligible_donors[[j]], mask[j,]==1, drop=F])
     } else {
         x_t <- lapply(1:J, function(j) colSums(X[which_t[[j]], mask[j,]==1, drop=F]))        
         
         # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
-                 function(j) X[trt > n_leads + grps[j], mask[j,]==1, drop=F])        
+                 function(j) X[eligible_donors[[j]], mask[j,]==1, drop=F])        
     }
-
-    n1tot <- sum(n1)
 
     ## make matrices for QP
 
@@ -137,7 +146,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     vapply(1:J,
            function(j) {
              weightj <-  numeric(n)
-             weightj[trt > n_leads + grps[j]] <- out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]]
+             weightj[eligible_donors[[j]]] <- out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]]
              weightj
            },
            numeric(n)) -> weights
