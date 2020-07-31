@@ -719,7 +719,7 @@ summary.multisynth <- function(object, jackknife = T, ...) {
 #' @param level Which unit/group to print results for, default is the overall average
 #' @param ... Optional arguments
 #' @export
-print.summary.multisynth <- function(x, level = "average", ...) {
+print.summary.multisynth <- function(x, level = "Average", ...) {
 
     summ <- x
     
