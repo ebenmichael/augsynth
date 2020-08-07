@@ -502,7 +502,8 @@ drop_unit_i_multi <- function(msyn, i) {
                       scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
                       fit_resids = msyn$fit_resids,
-                      time_cohort = msyn$time_cohort, long_df = long_df)
+                      time_cohort = msyn$time_cohort, long_df = long_df,
+                      how_match = msyn$how_match)
     msyn_i <- do.call(multisynth_formatted, c(args_list, msyn$extra_pars))
 
     # check for dropped treated units/time periods

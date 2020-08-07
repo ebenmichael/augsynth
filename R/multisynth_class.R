@@ -46,6 +46,7 @@ multisynth <- function(form, unit, time, data,
                        n_factors=0,
                        scm=T,
                        time_cohort = F,
+                       how_match = "knn",
                        cov_agg = NULL,
                        eps_abs = 1e-4,
                        eps_rel = 1e-4,
@@ -94,7 +95,8 @@ multisynth <- function(form, unit, time, data,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
-                                eps_rel = eps_rel, verbose = verbose, long_df = long_df, ...)
+                                eps_rel = eps_rel, verbose = verbose, long_df = long_df, 
+                                how_match = how_match, ...)
     
    
     units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
@@ -104,7 +106,7 @@ multisynth <- function(form, unit, time, data,
     if(scm) {
         ## Get imbalance for uniform weights on raw data
         # get eligible set of donor units based on covariates
-        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = "exact")
+        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = how_match, ...)
 
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
@@ -164,7 +166,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        time_w, lambda_t,
                        fit_resids,
                        eps_abs, eps_rel,
-                       verbose, long_df, ...) {
+                       verbose, long_df, 
+                       how_match, ...) {
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
     if(time_cohort) {
@@ -250,7 +253,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     if(scm) {
 
         # get eligible set of donor units based on covariates
-        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = "exact")
+        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = how_match, ...)
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
         if(is.null(nu)) {
@@ -326,6 +329,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                            list(...))
     msynth$long_df <- long_df
 
+    msynth$how_match <- how_match
     ##format output
     class(msynth) <- "multisynth"
     return(msynth)
