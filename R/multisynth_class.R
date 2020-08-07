@@ -104,7 +104,7 @@ multisynth <- function(form, unit, time, data,
     if(scm) {
         ## Get imbalance for uniform weights on raw data
         # get eligible set of donor units based on covariates
-        donors <- get_eligible_donors(wide$Z, wide$trt, how = "exact")
+        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = "exact")
 
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
@@ -250,7 +250,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     if(scm) {
 
         # get eligible set of donor units based on covariates
-        donors <- get_eligible_donors(wide$Z, wide$trt, how = "exact")
+        donors <- get_donors(wide$trt, wide$Z, time_cohort, n_leads, how = "exact")
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
         if(is.null(nu)) {

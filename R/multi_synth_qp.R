@@ -65,16 +65,10 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     J <- length(grps)
     n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
-    # only allow weights on eligible donors
-    # if null, then all donors treated after n_lags are eligible 
+    # if no specific donors passed in, 
+    # then all donors treated after n_lags are eligible 
     if(is.null(donors)) {
-      donors <- lapply(1:J, function(j) trt > n_leads + grps[j])
-    } else {
-      donors <- lapply(1:J,
-                function(j) {
-                  (trt > n_leads + grps[j]) & donors[[j]]
-                }
-            )
+      donors <- get_eligible_donors(trt, time_cohort, n_leads)
     }
 
     ## handle X differently if it is a list
