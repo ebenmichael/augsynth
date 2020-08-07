@@ -10,7 +10,7 @@ get_eligible_donors <- function(Z, trt, how = "exact") {
     if(is.null(Z)) {
     return(lapply(1:J, function(j) rep(TRUE, length(trt))))
   } else {
-    return(lapply(1:J, function(j) c(Z == Z[trt_idx[j]])))
+    return(lapply(1:J, function(j) apply(Z == Z[trt_idx[j]], 1, all)))
   }
   }
 }

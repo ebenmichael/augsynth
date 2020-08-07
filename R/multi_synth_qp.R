@@ -92,8 +92,12 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                  function(j) X[donors[[j]], mask[j,]==1, drop=F])
     }
     ## make matrices for QP
+    n0s <- sapply(Xc, nrow)
+    if(any(n0s == 0)) {
+      stop("Some treated units have no possible donor units!")
+    }
+    n0 <- sum(n0s)
 
-    n0 <- Reduce(`+`, lapply(Xc, nrow))
     const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d, n1)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
