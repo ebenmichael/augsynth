@@ -25,7 +25,7 @@ test_that("Getting eligible donor units by exact matching works", {
                by = "regionno") -> basque2
 
   msyn <- multisynth(gdpcap ~ trt | Z, regionno, year, basque2, nu = 0,
-                     scm = T)
+                     scm = T, how_match = "exact")
 
   # check that there is actually no weight on donors with different Z
   expect_equal(sum(msyn$weights[fake_bin == 1, 1]), 1, tolerance = 1e-6)
@@ -36,10 +36,66 @@ test_that("Getting eligible donor units by exact matching works", {
 
   # again with fixed effect
   msyn <- multisynth(gdpcap ~ trt | Z, regionno, year, basque2, nu = 0,
-                     scm = T, fixedeff = T)
+                     scm = T, fixedeff = T, how_match = "exact")
   # check that there is actually no weight on donors with different Z
   expect_equal(sum(msyn$weights[fake_bin == 1, 1]), 1, tolerance = 1e-6)
   expect_equal(sum(msyn$weights[fake_bin == 0, 1]), 0, tolerance = 1e-6)
   expect_equal(sum(msyn$weights[fake_bin == 1, 2]), 0, tolerance = 1e-6)
   expect_equal(sum(msyn$weights[fake_bin == 0, 2]), 1, tolerance = 1e-6)
+})
+
+
+
+test_that("Getting eligible donor units by knn matching works", {
+
+  # variables to match on
+  Z <- matrix(rnorm(length(regions) * 3), ncol = 3)
+  basque %>%
+    inner_join(
+      data.frame(regionno = regions,
+                 Z1 = Z[, 1], Z2 = Z[, 2], Z3 = Z[, 3]),
+      by = "regionno") -> basque2
+
+  # error if no k is supplied
+  expect_error(multisynth(gdpcap ~ trt | Z1 + Z2 + Z3, regionno, 
+                          year, basque2,
+                          scm = T, how_match = "knn"),
+              "Number of neighbors for knn not selected, please choose k.")
+
+  k <- 5
+  msyn <- multisynth(gdpcap ~ trt | Z1 + Z2 + Z3, regionno, year, 
+                     basque2, scm = T, how_match = "knn", k = k)
+
+  # check that all but k units recieve exactly 0 weight
+  expect_equal(sum(msyn$weights[, 1] != 0), k, tolerance = 1e-12)
+  expect_equal(sum(msyn$weights[, 2] != 0), k, tolerance = 1e-12) 
+
+  
+
+  # again with fixed effect
+    msyn <- multisynth(gdpcap ~ trt | Z1 + Z2 + Z3, regionno, year,
+                       basque2, scm = T, fixedeff = T, how_match = "knn", k = k)
+  # check that all but k units recieve exactly 0 weight
+  expect_equal(sum(msyn$weights[, 1] != 0), k, tolerance = 1e-12)
+  expect_equal(sum(msyn$weights[, 2] != 0), k, tolerance = 1e-12) 
+
+  # without synth weights, weights are uniform
+  k <- 2
+  unimatch <- multisynth(gdpcap ~ trt | Z1 + Z2 + Z3, regionno, year, basque2,
+                     scm = T, how_match = "knn", k = k, lambda = 1e10)
+
+  expect_equal(unimatch$weights[unimatch$weights != 0 ], rep(1 / k, 2 * k))
+
+  # matching with more neighbors is worse
+  unimatch2 <- multisynth(gdpcap ~ trt | Z1 + Z2 + Z3, regionno, year, basque2,
+                     scm = T, how_match = "knn", k = 2 * k, lambda = 1e10)
+
+  trtZ <- Z[regions %in% c(16, 17),]
+  imbal1 <- sqrt(sum(sapply(1:2, 
+                function(i) sum(unimatch$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
+  imbal2 <- sqrt(sum(sapply(1:2, 
+                function(i) sum(unimatch2$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
+
+  expect_lt(imbal1, imbal2)
+
 })
