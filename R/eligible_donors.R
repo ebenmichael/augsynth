@@ -33,6 +33,39 @@ get_eligible_donors <- function(trt, time_cohort, n_leads) {
     return(donors)
 }
 
+#' Get donors that don't have missing outcomes where treated units have outcomes
+get_nona_donors <- function(X, trt, mask, time_cohort) {
+
+  n <- length(trt)
+  # treatment times
+  if(time_cohort) {
+      grps <- unique(trt[is.finite(trt)])
+      which_t <- lapply(grps, function(tj) (1:n)[trt == tj])
+      # if doing a time cohort, convert the boolean mask
+      mask <- unique(mask)
+  } else {
+      grps <- trt[is.finite(trt)]
+      which_t <- (1:n)[is.finite(trt)]
+  }
+
+
+  J <- length(grps)
+  # handle  X differently if it is a list
+  if(typeof(X) == "list") {
+      lapply(1:J,
+             function(j) {
+               isna_j <- is.na(mask[j, ])
+               apply(X[[j]], 1, function(x) all(!is.na(x)[!isna_j]))
+             }) -> donors
+  } else {
+    lapply(1:J,
+             function(j) {
+               isna_j <- is.na(mask[j, ])
+               apply(X, 1, function(x) all(!is.na(x)[!isna_j]))
+             }) -> donors
+  }
+  return(donors)
+}
 
 get_matched_donors <- function(trt, Z, donors, how, k = NULL, ...) {
 

@@ -212,7 +212,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         # control averages at each time point
         # time fixed effects from pure controls
         pure_ctrl <- cbind(wide$X, wide$y)[!is.finite(wide$trt), , drop = F]
-        y0hat <- matrix(colMeans(pure_ctrl),
+        y0hat <- matrix(colMeans(pure_ctrl, na.rm = TRUE),
                           nrow = nrow(wide$X), ncol = ncol(pure_ctrl), 
                           byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
@@ -393,10 +393,11 @@ predict.multisynth <- function(object, att = F, ...) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[[j]][which_t[[j]],
                                                                   , drop=FALSE])
+                            weightsj <- multisynth$weights[,j]
+                            resj <- multisynth$residuals[[j]][weightsj != 0,, drop = F]
                             if(!all(multisynth$weights == 0)) {
-                                y0hat + t(multisynth$residuals[[j]]) %*%
-                                    multisynth$weights[,j] / 
-                                    sum(multisynth$weights[,j])
+                                y0hat + t(resj) %*% weightsj[weightsj != 0] / 
+                                  sum(weightsj)
                             } else {
                                 y0hat
                             }
@@ -408,10 +409,11 @@ predict.multisynth <- function(object, att = F, ...) {
                         function(j) {
                             y0hat <- colMeans(multisynth$y0hat[which_t[[j]],
                                                                   , drop=FALSE])
+                            weightsj <- multisynth$weights[,j]
+                            resj <- multisynth$residuals[weightsj != 0,, drop = F]
                             if(!all(multisynth$weights == 0)) {
-                                y0hat + t(multisynth$residuals) %*%
-                                    multisynth$weights[,j] / 
-                                    sum(multisynth$weights[,j])
+                                y0hat + t(resj) %*% weightsj[weightsj != 0] / 
+                                  sum(weightsj)
                             } else {
                                 y0hat
                             }
@@ -535,98 +537,6 @@ plot.multisynth <- function(x, se = T, levels = NULL, ...) {
     plot(summary(multisynth, jackknife = se), se = se, levels = levels)
 }
 
-compute_se <- function(multisynth, relative=NULL) {
-
-
-    ## get info from the multisynth object
-    if(is.null(relative)) {
-        relative <- multisynth$relative
-    }
-    n_leads <- multisynth$n_leads
-    d <- ncol(multisynth$data$X)
-    fulldat <- cbind(multisynth$data$X, multisynth$data$y)
-    ttot <- ncol(fulldat)
-    J <- length(multisynth$grps)
-    n1 <- multisynth$data$trt[is.finite(multisynth$data$trt)] %>%
-        table() %>% as.numeric()
-    grps <- multisynth$grps
-    fullmask <- cbind(multisynth$data$mask, matrix(0, nrow=J, ncol=(ttot-d)))
-    
-    
-
-    ## use weighted control residuals to estimate variance for treated units
-    if(typeof(multisynth$residuals) == "list") {
-        trt_var <- vapply(1:J,
-                          function(j) {
-                              colSums(multisynth$residuals[[j]]^2 * multisynth$weights[,j]) / n1[j]
-                          },
-                          numeric(ttot))
-
-        ## standard error estimate of imputed counterfactual mean
-        ## from control residuals and weights
-        ctrl_var <- vapply(1:J,
-                           function(j) colSums(multisynth$residuals[[j]]^2 * multisynth$weights[,j]^2),
-                           numeric(ttot))
-
-    } else {
-        trt_var <- vapply(1:J,
-                          function(j) {
-                              colSums(multisynth$residuals^2 * multisynth$weights[,j]) / n1[j]
-                          },
-                          numeric(ttot))
-
-        ## standard error estimate of imputed counterfactual mean
-        ## from control residuals and weights
-        ctrl_var <- vapply(1:J,
-                           function(j) colSums(multisynth$residuals^2 * multisynth$weights[,j]^2),
-                           numeric(ttot))
-        
-    }
-    
-    
-
-    ## standard error
-    se <- sqrt(trt_var + ctrl_var)
-
-    ## re-index time if relative to treatment
-    if(relative) {
-        total_len <- min(d + n_leads, ttot + d - min(grps)) ## total length of predictions
-        
-        se <- vapply(1:J,
-                     function(j) {
-                         vec <- c(rep(NA, d-grps[j]),
-                                  se[1:grps[j],j],
-                                  se[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j])
-                         c(vec, rep(NA, total_len - length(vec)))
-                         },
-                         numeric(total_len))
-        ## get the overall standard error estimate
-        avg_se <- apply(se, 1, function(z) sqrt(sum(n1^2 * z^2, na.rm=T)) / sum(n1 * !is.na(z)))
-        se <- cbind(avg_se, se)
-        
-    } else {
-
-        ## remove all estimates for t > T_j + n_leads
-        vapply(1:J,
-               function(j) c(se[1:min(grps[j]+n_leads, ttot),j],
-                             rep(NA, max(0, ttot-(grps[j] + n_leads)))),
-               numeric(ttot)) -> tauhat
-
-        
-        ## only average currently treated units
-        avg1 <- sqrt(rowSums(t(fullmask) *  se^2 * n1^2)) /
-                rowSums(t(fullmask) *  n1)
-        avg2 <- sqrt(rowSums(t(1-fullmask) *  se^2 * n1^2)) /
-            rowSums(t(1-fullmask) *  n1)
-        avg_se <- replace_na(avg1, 0) * apply(fullmask, 2, min) +
-            replace_na(avg2,0) * apply(1-fullmask, 2, max)
-        se <- cbind(avg_se, se)
-
-    }
-    
-    
-    return(se)
-}
 
 
 

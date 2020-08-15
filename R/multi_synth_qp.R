@@ -65,12 +65,16 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     J <- length(grps)
     n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
-    # if no specific donors passed in, 
-    # then all donors treated after n_lags are eligible 
+    # if no specific donors passed in,
+    # then all donors treated after n_lags are eligible
     if(is.null(donors)) {
       donors <- get_eligible_donors(trt, time_cohort, n_leads)
     }
 
+    # check for NA values in donors
+    nona_donors <- get_nona_donors(X, trt, mask, time_cohort)
+    donors <- lapply(1:length(donors), 
+                     function(j) donors[[j]] & nona_donors[[j]])
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
         x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[[j]], mask[j,]==1, drop=F]))
@@ -85,6 +89,11 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
         Xc <- lapply(1:nrow(mask),
                  function(j) X[donors[[j]], mask[j,]==1, drop=F])
     }
+
+    # replace NA values with zero
+    x_t <- lapply(x_t, function(xtk) dplyr::coalesce(xtk, 0))
+    Xc <- lapply(Xc, function(xck) dplyr::coalesce(xck, 0))
+    # return(list(x_t, Xc))
     ## make matrices for QP
     n0s <- sapply(Xc, nrow)
     if(any(n0s == 0)) {
