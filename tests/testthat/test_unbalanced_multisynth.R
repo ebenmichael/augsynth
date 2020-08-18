@@ -85,3 +85,17 @@ test_that("Multisynth with unbalanced panels runs", {
 
   expect_error(summary(msyn), NA)
 })
+
+
+
+test_that("Multisynth with unbalanced panels runs", {
+
+  # drop a time period for unit 17
+  basque %>%
+    filter(!regionno %in% c(15) | year != 1985) -> basque_mis
+
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+                     scm=T, eps_rel=1e-8, eps_abs=1e-8)
+
+  expect_error(summary(msyn), NA)
+})
