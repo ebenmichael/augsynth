@@ -66,15 +66,20 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
     # fit augmented SCM
     augsynth <- fit_augsynth_multiout_internal(wide_list, combine_method, Z,
                                                progfunc, scm,
-                                               fixedeff, ...)
+                                               fixedeff, outcomes_str, ...)
 
     # add some extra data
-    augsynth$data_list <- wide_list
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     augsynth$call <- call_name
     augsynth$t_int <- t_int 
-    augsynth$outcomes <- outcomes_str
     augsynth$combine_method <- combine_method
+
+    treated_units <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
+    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>% 
+                        distinct(!!unit) %>% pull(!!unit)
+    augsynth$weights <- matrix(augsynth$weights)
+    rownames(augsynth$weights) <- control_units
+
     return(augsynth)
 }
 
@@ -89,7 +94,8 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
 #' @param ... Extra args for outcome model
 #' @noRd
 fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
-                                           progfunc, scm, fixedeff, ...) {
+                                           progfunc, scm, fixedeff, 
+                                           outcomes_str, ...) {
 
 
     # combine into a matrix for fitting and balancing
@@ -114,6 +120,8 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
     augsynth$mhat <- mhat + augsynth$mhat
 
     augsynth$data = list(X = X, trt = trt, y = y)
+    augsynth$data_list <- wide_list
+    augsynth$outcomes <- outcomes_str
     ##format output
     class(augsynth) <- c("augsynth_multiout", "augsynth")
     return(augsynth)
@@ -227,29 +235,36 @@ predict.augsynth_multiout <- function(object, ...) {
     }
     pred <- c(pred)
     names(pred) <- pred_names
-
     # separate out by outcome
-    n_outs <- length(object$outcomes)
+    n_outs <- length(object$data_list$X)
+    max_t <- max(sapply(1:n_outs, 
+      function(k) ncol(object$data_list$X[[k]]) + ncol(object$data_list$y[[k]])))
     pred_reshape <- matrix(NA, ncol = n_outs, 
-                               nrow = length(object$data$time))
-    rownames(pred_reshape) <- object$data$time
+                               nrow = max_t)
+    colnames <- lapply(1:n_outs, 
+      function(k) colnames(cbind(object$data_list$X[[k]], 
+                                 object$data_list$y[[k]])))
+    rownames(pred_reshape) <- colnames[[which.max(sapply(colnames, length))]]
     colnames(pred_reshape) <- object$outcomes
     # get outcome names for predictions
+
     pre_outs <- do.call(c, 
                         sapply(1:n_outs, 
                                function(j) {
                                    rep(object$outcomes[j],
                                        ncol(object$data_list$X[[j]]))
                                }, simplify = FALSE))
-
+    
     post_outs <- do.call(c,
                          sapply(1:n_outs, 
                                 function(j) {
                                     rep(object$outcomes[j],
                                         ncol(object$data_list$y[[j]]))
                                }, simplify = FALSE))
+    # print(pred)
+    # print(cbind(names(pred), c(pre_outs, post_outs)))
+    
     pred_reshape[cbind(names(pred), c(pre_outs, post_outs))] <- pred
-
     return(pred_reshape)
 }
 
@@ -276,16 +291,22 @@ print.augsynth_multiout <- function(x, ...) {
 #' @param object augsynth_multiout object
 #' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' @export
-summary.augsynth_multiout <- function(object, ...) {
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
-    } else {
-        se <- T
-    }
+summary.augsynth_multiout <- function(object, inf = T, inf_type = "jackknife", ...) {
+    
+
     summ <- list()
 
-    if(se) {
-        att_se <- jackknife_se_multiout(object)
+    if(inf) {
+        if(inf_type == "jackknife") {
+            att_se <- jackknife_se_multiout(object)
+        } else if(inf_type == "jackknife+") {
+          att_se <- time_jackknife_plus_multiout(object, ...)
+        } else if(inf_type == "conformal") {
+          att_se <- conformal_inf_multiout(object, ...)
+        } else {
+            stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
+        }
+
         t_final <- nrow(att_se$att)
 
         att_df <- data.frame(att_se$att[1:(t_final - 1),, drop=F])
@@ -293,21 +314,70 @@ summary.augsynth_multiout <- function(object, ...) {
         att_df$Time <- object$data$time
         att_df <- att_df %>% gather(Outcome, Estimate, -Time)
 
-        se_df <- data.frame(att_se$se[1:(t_final - 1),, drop=F])
-        names(se_df) <- object$outcomes
-        se_df$Time <- object$data$time
-        se_df <- se_df %>% gather(Outcome, Std.Error, -Time)
+        if(inf_type == "jackknife") {
+          se_df <- data.frame(att_se$se[1:(t_final - 1),, drop=F])
+          names(se_df) <- object$outcomes
+          se_df$Time <- object$data$time
+          se_df <- se_df %>% gather(Outcome, Std.Error, -Time)
 
-        att <- inner_join(att_df, se_df, by = c("Time", "Outcome"))
+          att <- inner_join(att_df, se_df, by = c("Time", "Outcome"))
+        } else if(inf_type %in% c("conformal", "jackknife+")) {
+          
+          lb_df <- data.frame(att_se$lb[1:(t_final - 1),, drop=F])
+          names(lb_df) <- object$outcomes
+          lb_df$Time <- object$data$time
+          lb_df <- lb_df %>% gather(Outcome, lower_bound, -Time)
 
+          ub_df <- data.frame(att_se$ub[1:(t_final - 1),, drop=F])
+          names(ub_df) <- object$outcomes
+          ub_df$Time <- object$data$time
+          ub_df <- ub_df %>% gather(Outcome, upper_bound, -Time)
+
+          att <- inner_join(att_df, lb_df, by = c("Time", "Outcome")) %>%
+              inner_join(ub_df, by = c("Time", "Outcome")) 
+          if(inf_type == "conformal") {
+
+            pval_df <- data.frame(att_se$p_val[1:(t_final - 1),, drop=F])
+            names(pval_df) <- object$outcomes
+            pval_df$Time <- object$data$time
+            pval_df <- pval_df %>% gather(Outcome, p_val, -Time)
+            att <- inner_join(att, pval_df, by = c("Time", "Outcome")) 
+          }
+        }
 
         att_avg <- data.frame(att_se$att[t_final,, drop = F])
         names(att_avg) <- object$outcomes
         att_avg <- gather(att_avg, Outcome, Estimate)
-        att_avg_se <- data.frame(att_se$se[t_final,, drop = F])
-        names(att_avg_se) <- object$outcomes
-        att_avg_se <- gather(att_avg_se, Outcome, Std.Error)
-        average_att <- inner_join(att_avg, att_avg_se, by="Outcome")
+
+        if(inf_type == "jackknife") {
+          att_avg_se <- data.frame(att_se$se[t_final,, drop = F])
+          names(att_avg_se) <- object$outcomes
+          att_avg_se <- gather(att_avg_se, Outcome, Std.Error)
+          average_att <- inner_join(att_avg, att_avg_se, by="Outcome")
+        } else if(inf_type %in% c("conformal", "jackknife+")){
+          att_avg_lb <- data.frame(att_se$lb[t_final,, drop = F])
+          names(att_avg_lb) <- object$outcomes
+          att_avg_lb <- gather(att_avg_lb, Outcome, lower_bound)
+
+          att_avg_ub <- data.frame(att_se$ub[t_final,, drop = F])
+          names(att_avg_ub) <- object$outcomes
+          att_avg_ub <- gather(att_avg_ub, Outcome, upper_bound)
+          
+
+          average_att <- inner_join(att_avg, att_avg_lb, by="Outcome") %>%
+              inner_join(att_avg_ub, by = "Outcome")
+          
+          if(inf_type == "conformal") {
+            att_avg_pval <- data.frame(att_se$p_val[t_final,, drop = F])
+            names(att_avg_pval) <- object$outcomes
+            att_avg_pval <- gather(att_avg_pval, Outcome, p_val)
+
+             average_att <- inner_join(average_att, att_avg_pval, by = "Outcome")
+          }
+        } else {
+          average_att <- gather(att_avg, Outcome, Estimate)
+        }
+        
 
     } else {
         att_est <- predict(object, att = T)
@@ -329,6 +399,7 @@ summary.augsynth_multiout <- function(object, ...) {
     summ$call <- object$call
     summ$l2_imbalance <- object$l2_imbalance
     summ$scaled_l2_imbalance <- object$scaled_l2_imbalance
+    summ$inf_type <- inf_type
     ## get estimated bias
 
     if(object$progfunc == "Ridge") {
@@ -383,23 +454,26 @@ print.summary.augsynth_multiout <- function(x, ...) {
 #' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' 
 #' @export
-plot.summary.augsynth_multiout <- function(x, ...) {
-    if ("se" %in% names(list(...))) {
-        se <- list(...)$se
-    } else {
-        se <- T
-    }
+plot.summary.augsynth_multiout <- function(x, inf = T, ...) {
+
     p <- x$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
-    if(se) {
+    if(inf) {
+      if(x$inf_type == "jackknife") {
         p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
                     alpha=0.2)
+      } else if(x$inf_type %in% c("conformal", "jackknife+")) {
+        p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
+                        ymax=upper_bound),
+                    alpha=0.2)
+      }
+
     }
     p + ggplot2::geom_line() +
         ggplot2::geom_vline(xintercept=x$t_int, lty=2) +
         ggplot2::geom_hline(yintercept=0, lty=2) +
         ggplot2::facet_wrap(~ Outcome, scales = "free_y") +
         ggplot2::theme_bw()
-    
+
 }

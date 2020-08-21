@@ -303,6 +303,381 @@ compute_permute_ci <- function(wide_data, ascm, grid,
 }
 
 
+#' Jackknife+ algorithm over time
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param conservative Whether to use the conservative jackknife+ procedure
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
+time_jackknife_plus_multiout <- function(ascm_multi, alpha = 0.05, conservative = F) {
+    wide_data <- ascm_multi$data
+    data_list <- ascm_multi$data_list
+
+    n <- nrow(wide_data$X)
+    k <- length(data_list$X)
+
+
+    t0 <- min(sapply(data_list$X, ncol))
+    tpost <- max(sapply(data_list$y, ncol))
+    t_final <- t0 + tpost
+    Z <- wide_data$Z
+
+    jack_ests <- lapply(1:t0, 
+        function(tdrop) {
+            # drop unit i
+            new_data_list <- drop_time_t_multiout(data_list, Z, tdrop)
+            # refit
+            new_ascm <- do.call(fit_augsynth_multiout_internal,
+                    c(list(wide_list = new_data_list,
+                            combine_method = ascm_multi$combine_method,
+                            Z = data_list$Z,
+                            progfunc = ascm_multi$progfunc,
+                            scm = ascm_multi$scm,
+                            fixedeff = ascm_multi$fixedeff,
+                            outcomes_str = ascm_multi$outcomes),
+                        ascm_multi$extra_args))
+            # get ATT estimates and held out error for time t
+            # t0 is prediction for held out time
+            est <- predict(new_ascm, att = F)[(t0 +1):t_final, , drop = F]
+            est <- rbind(est, colMeans(est))
+            # err <- c(colMeans(wide_data$X[wide_data$trt == 1,
+            #                              tdrop,
+            #                              drop = F]) -
+            #         predict(new_ascm, att = F)[t0])
+            err <- c(predict(new_ascm, att = T)[t0, , drop = F])
+            list(err, t(t(est) + abs(err)), t(t(est) - abs(err)), t(t(est) + err), est)
+        })
+    # get errors and jackknife distribution
+    held_out_errs <- matrix(vapply(jack_ests, `[[`, numeric(k), 1), nrow = k)
+    jack_dist_high <- vapply(jack_ests, `[[`,
+                        matrix(0, nrow = tpost + 1, ncol = k), 2)
+    jack_dist_low <- vapply(jack_ests, `[[`,
+                        matrix(0, nrow = tpost + 1, ncol = k), 3)
+    jack_dist_cons <- vapply(jack_ests, `[[`,
+                        matrix(0, nrow = tpost + 1, ncol = k), 4)
+
+    out <- list()
+    att <- predict(ascm_multi, att = T)
+    out$att <- rbind(att, 
+                      colMeans(att[(t0 + 1):t_final, , drop = F]))
+    # held out ATT
+
+    out$heldout_att <- rbind(t(held_out_errs), 
+                              att[(t0 + 1):t_final, , drop = F], 
+                              colMeans(att[(t0 + 1):t_final, , drop = F]))
+    if(conservative) {
+        qerr <- apply(abs(held_out_errs), 1, 
+                      stats::quantile, 1 - alpha, type = 1)
+        out$lb <- rbind(matrix(NA, nrow = t0, ncol = k),
+                        t(t(apply(jack_dist_cons, 1:2, min)) - qerr))
+        out$ub <- rbind(matrix(NA, nrow = t0, ncol = k),
+                        t(t(apply(jack_dist_cons, 1:2, max)) + qerr))
+
+    } else {
+        out$lb <- rbind(matrix(NA, nrow = t0, ncol = k),
+                        apply(jack_dist_low, 1:2,
+                              stats::quantile, alpha, type = 1))
+        out$ub <- rbind(matrix(NA, nrow = t0, ncol = k), 
+                        apply(jack_dist_high, 1:2, 
+                              stats::quantile, 1 - alpha, type = 1))
+    }
+    # shift back to ATT scale
+    y1 <- predict(ascm_multi, att = F) + att
+    y1 <-  rbind(y1, colMeans(y1[(t0 + 1):t_final, , drop = F]))
+    shifted_lb <- y1 - out$ub
+    shifted_ub <- y1 - out$lb
+    out$lb <- shifted_lb
+    out$ub <- shifted_ub
+    out$alpha <- alpha
+
+
+    return(out)
+}
+
+#' Drop time period from pre-treatment data
+#' @param wide_data (X, y, trt)
+#' @param Z Covariates matrix
+#' @param t_drop Time to drop
+#' @noRd
+drop_time_t_multiout <- function(data_list, Z, t_drop) {
+
+        new_data_list <- list()
+        new_data_list$trt <- data_list$trt
+        new_data_list$X <- lapply(data_list$X,
+                                  function(x) x[, -t_drop, drop = F])
+        new_data_list$y <- lapply(1:length(data_list$y),
+                                  function(k) {
+                                    cbind(data_list$X[[k]][, t_drop, drop = F], 
+                                          data_list$y[[k]])
+                                  })
+        return(new_data_list)
+}
+
+
+#' Conformal inference procedure to compute p-values and point-wise confidence intervals
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' @param grid_size Number of grid points to use when inverting the hypothesis test
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"p_val"}{p-value for test of no post-treatment effect}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
+conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
+                                    q = 1, ns = 1000, grid_size = 50,
+                                    lin_h0 = NULL) {
+  wide_data <- ascm_multi$data
+  data_list <- ascm_multi$data_list
+
+  n <- nrow(wide_data$X)
+  k <- length(data_list$X)
+
+
+  t0 <- min(sapply(data_list$X, ncol))
+  tpost <- max(sapply(data_list$y, ncol))
+  t_final <- t0 + tpost
+
+  # grid of nulls
+  att <- predict(ascm_multi, att = T)
+  post_att <- att[(t0 +1):t_final,, drop = F]
+  post_sd <- apply(post_att, 2, function(x) sqrt(mean(x ^ 2, na.rm = T)))
+  # iterate over post-treatment periods to get pointwise CIs
+  vapply(1:tpost,
+         function(j) {
+          # fit using t0 + j as a pre-treatment period and get reisduals
+          new_data_list <- data_list
+          new_data_list$X <- lapply(1:k,
+              function(i) {
+                Xi <- cbind(data_list$X[[i]], data_list$y[[i]][, j, drop = TRUE])
+                colnames(Xi) <- c(colnames(data_list$X[[i]]),
+                                  colnames(data_list$y[[i]])[j])
+                Xi
+          })
+          
+          
+          if(tpost > 1) {
+            new_data_list$y <- lapply(1:k,
+              function(i) {
+                data_list$y[[i]][, -j, drop = FALSE]
+            })
+          } else {
+            # set the post period has to be *something*
+            new_data_list$y <- lapply(1:k,
+              function(i) {
+                matrix(1, nrow = n, ncol = 1)
+            })
+          }
+
+
+          # make a grid around the estimated ATT
+          if(is.null(lin_h0)) {
+            grid <- lapply(1:k, 
+            function(i) {
+              seq(att[t0 + j, i] - 2 * post_sd[i], att[t0 + j, i] + 2 * post_sd[i],
+                    length.out = grid_size)
+            })
+          } else {
+            grid <- seq(min(att[t0 + j, ]) - 2 * max(post_sd),
+                max(att[t0 + j, ]) + 2 * max(post_sd),
+                length.out = grid_size)
+          }
+          compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1, 
+                                    alpha, "block", q, ns, lin_h0)
+         },
+         matrix(0, ncol = k, nrow=3)) -> cis
+  # # test a null post-treatment effect
+
+  new_data_list <- data_list
+  new_data_list$X <- lapply(1:k,
+      function(i) {
+        Xi <- cbind(data_list$X[[i]], data_list$y[[i]])
+        colnames(Xi) <- c(colnames(data_list$X[[i]]),
+                          colnames(data_list$y[[i]]))
+        Xi
+      })
+  # set post treatment to be *something*
+  new_data_list$y <- lapply(1:k,
+      function(i) {
+        data_list$y[[i]][, 1, drop = FALSE]
+    })
+  grid <- list(seq(min(att[t0 + 1, ]) - 3 * max(post_sd),
+                max(att[t0 + 1, ]) + 3 * max(post_sd),
+                length.out = grid_size))
+  null_p <- compute_permute_pval_multiout(new_data_list, ascm_multi,
+                                          numeric(k), 
+                                          tpost, type, q, ns)
+  null_ci <- compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 
+                                          tpost, alpha, type, q, ns)
+  out <- list()
+  att <- predict(ascm_multi, att = T)
+  out$att <- rbind(att, apply(att[(t0 + 1):t_final, , drop = F], 2, mean))
+  out$lb <- rbind(matrix(NA, nrow = t0, ncol = k),
+                  t(matrix(cis[1, ,], nrow = k)),
+                  rep(NA, k))
+  colnames(out$lb) <- ascm_multi$outcomes
+  out$ub <- rbind(matrix(NA, nrow = t0, ncol = k),
+                  t(matrix(cis[2, ,], nrow = k)),
+                  rep(NA, k))
+  colnames(out$ub) <- ascm_multi$outcomes
+  out$p_val <- rbind(matrix(NA, nrow = t0, ncol = k),
+                  t(matrix(cis[3, ,], nrow = k)),
+                  rep(null_p, k))
+  colnames(out$p_val) <- ascm_multi$outcomes
+  out$alpha <- alpha
+  return(out)
+}
+
+
+
+#' Compute conformal test statistics
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"resids"}{Residuals after enforcing the null}
+#'          \item{"test_stats"}{Permutation distribution of test statistics}
+#'          \item{"stat_func"}{Test statistic function}
+#'         }
+#' @noRd
+compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
+                                              post_length, type,
+                                              q, ns) {
+  # format data
+  new_data_list <- data_list
+  t0 <- ncol(data_list$X[[1]]) - post_length
+  tpost <- t0 + post_length
+  k <- length(data_list$X)
+  # adjust outcomes for null
+  for(i in 1:k) {
+    new_data_list$X[[k]][data_list$trt == 1,(t0 + 1):tpost ] <- new_data_list$X[[k]][data_list$trt == 1,(t0 + 1):tpost] - h0[i]
+  }
+  # fit synth with adjusted data and get residuals
+  new_ascm <- do.call(fit_augsynth_multiout_internal,
+                    c(list(wide_list = new_data_list,
+                            combine_method = ascm_multi$combine_method,
+                            Z = data_list$Z,
+                            progfunc = ascm_multi$progfunc,
+                            scm = ascm_multi$scm,
+                            fixedeff = ascm_multi$fixedeff,
+                            outcomes_str = ascm_multi$outcomes),
+                        ascm_multi$extra_args))
+
+  resids <- predict(new_ascm, att = T)[1:tpost, , drop = F]
+
+  # permute residuals and compute test statistic
+  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  if(type == "iid") {
+    test_stats <- sapply(1:ns, 
+                        function(x) {
+                          idxs <- sample(1:nrow(resids))
+                          reorder <- resids[idxs, , drop = F]
+                          apply(reorder[(t0 + 1):tpost, ,drop = F], 2, stat_func)
+                        })
+  } else {
+    ## increment time by one step and wrap
+    test_stats <- sapply(0:(tpost - 1),
+                        function(j) {
+                          reorder <- resids[(0:(tpost -1) + j) %% tpost + 1, ,drop = F]
+                          if(dim(reorder) != dim(resids)) {
+                            stop("Error in block resampling")
+                          }
+                          apply(reorder[(t0 + 1):tpost, , drop = F], 2, stat_func)
+                        })
+  }
+  
+  return(list(resids = resids,
+              test_stats = matrix(test_stats, nrow = k),
+              stat_func = stat_func))
+}
+
+
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param h0 Null hypothesis to test
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return Computed p-value
+#' @noRd
+compute_permute_pval_multiout <- function(data_list, ascm_multi, h0,
+                                        post_length, type,
+                                        q, ns) {
+  t0 <- ncol(data_list$X[[1]]) - post_length
+  tpost <- t0 + post_length
+
+  out <- compute_permute_test_stats_multiout(data_list, ascm_multi, h0,
+                                          post_length, type, q, ns)
+  k <- length(data_list$X)
+
+  comb_stat <- mean(apply(out$resids[(t0 + 1):tpost, , drop = F], 2, out$stat_func))
+  comb_test_stats <- apply(out$test_stats, 2, mean)
+  1 - mean(comb_stat > comb_test_stats)
+}
+
+#' Compute conformal p-value
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param grid Set of null hypothesis to test for inversion
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' 
+#' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
+#' @noRd
+compute_permute_ci_multiout <- function(data_list, ascm_multi, grid,
+                                      post_length, alpha, type,
+                                      q, ns, lin_h0 = NULL) {
+  # make sure 0 is in the grid
+  if(is.null(lin_h0)) {
+    grid <- lapply(grid, function(x) c(x, 0))
+    k <- length(grid)
+    # get all combinations of grid
+    grid <- expand.grid(grid)
+  } else {
+    k <- length(lin_h0)
+    # keep track of low dimensional grid
+    grid_low <- c(grid, 0)
+    # transform into high dimensional grid with linear hypothesis
+    grid <- sapply(lin_h0, function(x) x * grid_low)
+  }
+  ps <- apply(grid, 1,
+              function(x) {
+                compute_permute_pval_multiout(data_list, ascm_multi, x, 
+                                     post_length, type, q, ns)
+              })
+  sapply(1:k, 
+    function(i) c(min(grid[ps >= alpha, i]), 
+                  max(grid[ps >= alpha, i]), 
+                  ps[apply(grid == 0, 1, all)]))
+}
+
+
+
 
 #' Drop unit i from data
 #' @param wide_data (X, y, trt)
@@ -539,7 +914,8 @@ jackknife_se_multiout <- function(ascm) {
                                        Z = new_data$Z,
                                        progfunc = ascm$progfunc,
                                        scm = ascm$scm,
-                                       fixedeff = ascm$fixedeff),
+                                       fixedeff = ascm$fixedeff,
+                                       outcomes_str = ascm$outcomes),
                                   ascm$extra_args))
                         new_ascm$outcomes <- ascm$outcomes
                         new_ascm$data_list <- ascm$data_list
