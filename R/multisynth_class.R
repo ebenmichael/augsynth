@@ -65,7 +65,7 @@ multisynth <- function(form, unit, time, data,
 
     # get covariates
     if(length(form)[2] == 2) {
-        Z <- extract_covariates(form, unit, time, wide$time[min(wide$trt)], data, cov_agg)
+        Z <- extract_covariates(form, unit, time, wide$time[min(wide$trt) + 1], data, cov_agg)
     } else {
         Z <- NULL
     }
