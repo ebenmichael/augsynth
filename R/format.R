@@ -258,8 +258,17 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
         data.frame() %>%
         mutate(unit=pull(pre_data, !!unit)) %>%
         group_by(unit) %>%
-        summarise_all(cov_agg) %>%
-        select(-unit) %>%
-        as.matrix() -> Z
+        summarise_all(cov_agg) -> Z
+
+    # recombine with any missing units and convert to matrix
+    data %>% distinct(!!unit) %>%
+      rename(unit = !!unit) %>%
+      left_join(Z, by = "unit") %>%
+      select(-unit) %>%
+      as.matrix() -> Z
+    
+    if(nrow(distinct(data, !!unit))  != nrow(Z)) {
+      stop("Some units missing all covariate data")
+    }
     return(Z)
 }
