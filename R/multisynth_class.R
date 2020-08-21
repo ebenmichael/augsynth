@@ -530,13 +530,15 @@ print.multisynth <- function(x, ...) {
 #' @param x Augsynth object to be plotted
 #' @param se Whether to compute and plot standard errors
 #' @param levels Which units/groups to plot, default is every group
+#' @param label Whether to label the individual levels
 #' @param ... Optional arguments
 #' @export
-plot.multisynth <- function(x, se = T, levels = NULL, ...) {
+plot.multisynth <- function(x, se = T, levels = NULL, label = T, ...) {
 
     multisynth <- x
 
-    plot(summary(multisynth, jackknife = se), se = se, levels = levels)
+    plot(summary(multisynth, jackknife = se),
+         se = se, levels = levels, label = label)
 }
 
 
@@ -711,9 +713,10 @@ print.summary.multisynth <- function(x, level = "Average", ...) {
 #' @param x summary object
 #' @param se Whether to plot standard errors
 #' @param levels Which units/groups to plot, default is every group
+#' @param label Whether to label the individual levels
 #' @param ... Optional arguments
 #' @export
-plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
+plot.summary.multisynth <- function(x, se = T, levels = NULL, label = T, ...) {
 
     summ <- x
     
@@ -737,10 +740,13 @@ plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
                                      color = is_avg,
                                      alpha = is_avg)) +
             ggplot2::geom_line(size = 1) +
-            ggplot2::geom_point(size = 1) + 
-            ggrepel::geom_label_repel(ggplot2::aes(label = label),
-                                      nudge_x = 1, na.rm = T) + 
-            ggplot2::geom_hline(yintercept = 0, lty = 2) -> p
+            ggplot2::geom_point(size = 1) -> p
+            
+        if(label) {
+          p <- p + ggrepel::geom_label_repel(ggplot2::aes(label = label),
+                                      nudge_x = 1, na.rm = T)
+        } 
+        p <- p + ggplot2::geom_hline(yintercept = 0, lty = 2)
 
     if(summ$relative) {
         p <- p + ggplot2::geom_vline(xintercept = 0, lty = 2) +
