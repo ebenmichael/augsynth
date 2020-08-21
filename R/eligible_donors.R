@@ -2,7 +2,8 @@
 ## Code to get eligible donor units based on covariates
 ##############################################################################
 
-get_donors <- function(trt, Z, time_cohort, n_leads, how = "knn", ...) {
+get_donors <- function(X, y, trt, Z, time_cohort,
+                       n_leads, how = "knn", ...) {
 
   # first get eligible donors by treatment time
   donors <- get_eligible_donors(trt, time_cohort, n_leads)
@@ -11,6 +12,12 @@ get_donors <- function(trt, Z, time_cohort, n_leads, how = "knn", ...) {
   if(!is.null(Z)) {
     donors <- get_matched_donors(trt, Z, donors, how, ...)
   }
+
+  # get donors with no NA values
+  nona_donors <- get_nona_donors(X, y, trt, time_cohort)
+
+  donors <- lapply(1:length(donors), 
+                     function(j) donors[[j]] & nona_donors[[j]])
 
   return(donors)
 }
@@ -34,36 +41,28 @@ get_eligible_donors <- function(trt, time_cohort, n_leads) {
 }
 
 #' Get donors that don't have missing outcomes where treated units have outcomes
-get_nona_donors <- function(X, trt, mask, time_cohort) {
+get_nona_donors <- function(X, y, trt, time_cohort) {
 
   n <- length(trt)
-  # treatment times
+  # find na treatment times
+  is_na <- is.na(cbind(X, y)[is.finite(trt), , drop = F])
+    
+  # aggregate by time cohort
   if(time_cohort) {
-      grps <- unique(trt[is.finite(trt)])
-      which_t <- lapply(grps, function(tj) (1:n)[trt == tj])
-      # if doing a time cohort, convert the boolean mask
-      mask <- unique(mask)
+    grps <- unique(trt[is.finite(trt)])
+    # if doing a time cohort, convert the boolean mask
+    is_na <- sapply(grps, function(tj) apply(is_na[trt == tj], 2, all))
   } else {
       grps <- trt[is.finite(trt)]
-      which_t <- (1:n)[is.finite(trt)]
   }
-
 
   J <- length(grps)
-  # handle  X differently if it is a list
-  if(typeof(X) == "list") {
-      lapply(1:J,
+  lapply(1:J,
              function(j) {
-               isna_j <- is.na(mask[j, ])
-               apply(X[[j]], 1, function(x) all(!is.na(x)[!isna_j]))
-             }) -> donors
-  } else {
-    lapply(1:J,
-             function(j) {
-               isna_j <- is.na(mask[j, ])
-               apply(X, 1, function(x) all(!is.na(x)[!isna_j]))
-             }) -> donors
-  }
+               isna_j <- is_na[j, ]
+               apply(cbind(X, y), 1, function(x) all(!is.na(x)[!isna_j]))
+        }) -> donors
+
   return(donors)
 }
 

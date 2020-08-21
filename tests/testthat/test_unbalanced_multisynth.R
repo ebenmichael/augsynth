@@ -24,7 +24,7 @@ test_that("Data formatting creates NAs correctly", {
 })
 
 
-test_that("Non-NA donors are chosen correctly", {
+test_that("Non-NA donors are chosen correctly with missing pre-treatment", {
 
   # drop a time period for unit 17
   basque %>%
@@ -32,7 +32,38 @@ test_that("Non-NA donors are chosen correctly", {
 
   dat_format <- format_data_stag(quo(gdpcap), quo(trt),
                                   quo(regionno), quo(year), basque_mis)
-  donors <- get_nona_donors(dat_format$X, dat_format$trt, dat_format$mask, F)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
+
+  expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
+  expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
+  expect_true(all(donors[[2]]))
+})
+
+test_that("Non-NA donors are chosen correctly with missing post-treatment", {
+
+  # drop a time period for unit 17
+  basque %>%
+    filter(!regionno %in% c(15, 17, 18) | !year %in% c(1990)) -> basque_mis
+
+  dat_format <- format_data_stag(quo(gdpcap), quo(trt),
+                                  quo(regionno), quo(year), basque_mis)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
+
+  expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
+  expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
+  expect_true(all(donors[[2]]))
+})
+
+
+test_that("Non-NA donors are chosen correctly with missing pre- and post-treatment", {
+
+  # drop a time period for unit 17
+  basque %>%
+    filter(!regionno %in% c(15, 17, 18) | !year %in% c(1970, 1990)) -> basque_mis
+
+  dat_format <- format_data_stag(quo(gdpcap), quo(trt),
+                                  quo(regionno), quo(year), basque_mis)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
 
   expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
   expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
@@ -79,6 +110,19 @@ test_that("Multisynth with unbalanced panels runs", {
   # drop a time period for unit 17
   basque %>%
     filter(!regionno %in% c(15, 17) | year != 1970) -> basque_mis
+
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+                     scm=T, eps_rel=1e-8, eps_abs=1e-8)
+
+  expect_error(summary(msyn), NA)
+})
+
+
+test_that("Multisynth with unbalanced panels runs with missing post-treatment", {
+
+  # drop a time period for unit 17
+  basque %>%
+    filter(!regionno %in% c(15, 17) | year != 1990) -> basque_mis
 
   msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
                      scm=T, eps_rel=1e-8, eps_abs=1e-8)

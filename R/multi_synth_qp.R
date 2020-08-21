@@ -71,10 +71,6 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
       donors <- get_eligible_donors(trt, time_cohort, n_leads)
     }
 
-    # check for NA values in donors
-    nona_donors <- get_nona_donors(X, trt, mask, time_cohort)
-    donors <- lapply(1:length(donors), 
-                     function(j) donors[[j]] & nona_donors[[j]])
     ## handle X differently if it is a list
     if(typeof(X) == "list") {
         x_t <- lapply(1:J, function(j) colSums(X[[j]][which_t[[j]], mask[j,]==1, drop=F]))
