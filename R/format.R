@@ -125,21 +125,23 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
         select(-trt_time, -!!unit) %>%
         as.matrix()
     
-    ## pre treatment outcomes
-    X <- data %>%
-        filter(!!time < t_int) %>%
+    # outcomes as a matrix
+    Xy <- data %>%
         select(!!unit, !!time, !!outcome) %>%
         spread(!!time, !!outcome) %>%
         select(-!!unit) %>%
         as.matrix()
-    
-    ## post treatment outcomes
-    y <- data %>%
-        filter(!!time >= t_int) %>%
-        select(!!unit, !!time, !!outcome) %>%
-        spread(!!time, !!outcome) %>%
-        select(-!!unit) %>%
-        as.matrix()
+
+    pre_times <- data %>% filter(!!time < t_int) %>%
+        distinct(!!time) %>% pull(!!time)
+    post_times <- data %>% filter(!!time >= t_int) %>%
+        distinct(!!time) %>% pull(!!time)
+    X <- Xy[, as.character(pre_times), drop = F]
+    y <- Xy[, as.character(post_times), drop = F]
+
+    if(nrow(X) != nrow(y)) {
+      stop("There are not the same number of units after the last unit is treated as before the last unit is treated")
+    }
 
     t_vec <- data %>% pull(!!time) %>% unique() %>% sort()
     trt <- sapply(trt_time$trt_time, function(x) which(t_vec == x)-1) %>%
