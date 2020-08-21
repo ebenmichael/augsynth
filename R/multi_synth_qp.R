@@ -87,9 +87,8 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     }
 
     # replace NA values with zero
-    x_t <- lapply(x_t, function(xtk) dplyr::coalesce(xtk, 0))
-    Xc <- lapply(Xc, function(xck) dplyr::coalesce(xck, 0))
-    # return(list(x_t, Xc))
+    x_t <- lapply(x_t, function(xtk) tidyr::replace_na(xtk, 0))
+    Xc <- lapply(Xc, function(xck) tidyr::replace_na(xck, 0))
     ## make matrices for QP
     n0s <- sapply(Xc, nrow)
     if(any(n0s == 0)) {
