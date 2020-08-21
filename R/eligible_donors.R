@@ -46,12 +46,15 @@ get_nona_donors <- function(X, y, trt, time_cohort) {
   n <- length(trt)
   # find na treatment times
   is_na <- is.na(cbind(X, y)[is.finite(trt), , drop = F])
-    
+
   # aggregate by time cohort
   if(time_cohort) {
     grps <- unique(trt[is.finite(trt)])
     # if doing a time cohort, convert the boolean mask
-    is_na <- sapply(grps, function(tj) apply(is_na[trt == tj], 2, all))
+    finite_trt <- trt[is.finite(trt)]
+    is_na <- sapply(grps,
+                    function(tj) apply(is_na[finite_trt == tj, , drop = F],
+                                       2, all))
   } else {
       grps <- trt[is.finite(trt)]
   }
