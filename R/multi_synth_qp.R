@@ -120,24 +120,16 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     weights <- matrix(out$x[1:total_ctrls], nrow = n0)
     nj0 <- as.numeric(lapply(Xc, nrow))
     nj0cumsum <- c(0, cumsum(nj0))
-    ## compute imbalance
-    # if(relative) {
-        imbalance <- vapply(1:J,
-                            function(j) {
-                                dj <- length(x_t[[j]])
-                                ndim <- min(dj, n_lags)
-                                c(numeric(d-ndim),
-                                x_t[[j]][(dj-ndim+1):dj] -
-                                    t(Xc[[j]][,(dj-ndim+1):dj]) %*% 
-                                    out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]])
-                            },
-                            numeric(d))
-    # } else {
-    #     imbalance <- vapply(1:J,
-    #                         function(j) c(x_t[[j]] -  t(Xc[[j]]) %*% weights[,j],
-    #                                       numeric(d-length(x_t[[j]]))),
-    #                         numeric(d))
-    # }
+    imbalance <- vapply(1:J,
+                        function(j) {
+                            dj <- length(x_t[[j]])
+                            ndim <- min(dj, n_lags)
+                            c(numeric(d-ndim),
+                            x_t[[j]][(dj-ndim+1):dj] -
+                                t(Xc[[j]][,(dj-ndim+1):dj, drop = F]) %*% 
+                                out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]])
+                        },
+                        numeric(d))
 
     avg_imbal <- rowSums(t(t(imbalance)))
 
