@@ -386,8 +386,9 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "jackknife", .
         att_df$Time <- object$data$time
         att <- att_df %>% gather(Outcome, Estimate, -Time)
         att$Std.Error <- NA
-        att_avg <- colMeans(
-            att[as.numeric(rownames(att)) >= object$t_int,, drop = F])
+        t_int <- min(sapply(object$data_list$X, ncol))
+        att_avg <- data.frame(colMeans(
+            att_est[as.numeric(rownames(att)) >= t_int,, drop = F]))
         names(att_avg) <- object$outcomes
         average_att <- gather(att_avg, Outcome, Estimate)
         average_att$Std.Error <- NA

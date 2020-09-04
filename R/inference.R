@@ -119,6 +119,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #' Conformal inference procedure to compute p-values and point-wise confidence intervals
 #' @param ascm Fitted `augsynth` object
 #' @param alpha Confidence level
+#' @param stat_func Function to compute test statistic
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
@@ -133,7 +134,8 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
-conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
+conformal_inf <- function(ascm, alpha = 0.05, 
+                          stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
@@ -166,7 +168,8 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
           # make a grid around the estimated ATT
           grid <- seq(att[t0 + j] - 2 * post_sd, att[t0 + j] + 2 * post_sd,
                       length.out = grid_size)
-          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, "block", q, ns)
+          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, "block",
+                             q, ns, stat_func)
          },
          numeric(3)) -> cis
 
@@ -175,7 +178,7 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
   new_wide_data$X <- cbind(wide_data$X, wide_data$y)
   new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
   null_p <- compute_permute_pval(new_wide_data, ascm, 0, ncol(wide_data$y), 
-                                 type, q, ns)
+                                 type, q, ns, stat_func)
   
   out <- list()
   att <- predict(ascm, att = T)
@@ -207,7 +210,7 @@ conformal_inf <- function(ascm, alpha = 0.05, type = "iid",
 #' @noRd
 compute_permute_test_stats <- function(wide_data, ascm, h0,
                                        post_length, type,
-                                       q, ns) {
+                                       q, ns, stat_func) {
   # format data
   new_wide_data <- wide_data
   t0 <- ncol(wide_data$X) - post_length
@@ -235,7 +238,9 @@ compute_permute_test_stats <- function(wide_data, ascm, h0,
                         ascm$extra_args))
   resids <- predict(new_ascm, att = T)[1:tpost]
   # permute residuals and compute test statistic
-  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  if(is.null(stat_func)) {
+    stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  }
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
                         function(x) {
@@ -270,11 +275,11 @@ compute_permute_test_stats <- function(wide_data, ascm, h0,
 #' @noRd
 compute_permute_pval <- function(wide_data, ascm, h0,
                                  post_length, type,
-                                 q, ns) {
+                                 q, ns, stat_func) {
   t0 <- ncol(wide_data$X) - post_length
   tpost <- t0 + post_length
   out <- compute_permute_test_stats(wide_data, ascm, h0,
-                                    post_length, type, q, ns)
+                                    post_length, type, q, ns, stat_func)
   mean(out$stat_func(out$resids[(t0 + 1):tpost]) <= out$test_stats)
 }
 
@@ -291,13 +296,13 @@ compute_permute_pval <- function(wide_data, ascm, h0,
 #' @noRd
 compute_permute_ci <- function(wide_data, ascm, grid,
                                post_length, alpha, type,
-                               q, ns) {
+                               q, ns, stat_func) {
   # make sure 0 is in the grid
   grid <- c(grid, 0)
   ps <-sapply(grid, 
               function(x) {
                 compute_permute_pval(wide_data, ascm, x, 
-                                     post_length, type, q, ns)
+                                     post_length, type, q, ns, stat_func)
               })
   c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
 }
@@ -424,6 +429,7 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 #' Conformal inference procedure to compute p-values and point-wise confidence intervals
 #' @param ascm Fitted `augsynth` object
 #' @param alpha Confidence level
+#' @param stat_func Function to compute test statistic
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
@@ -438,7 +444,8 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
-conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
+conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, 
+                                    stat_func = NULL, type = "iid",
                                     q = 1, ns = 1000, grid_size = 50,
                                     lin_h0 = NULL) {
   wide_data <- ascm_multi$data
@@ -479,7 +486,9 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
             # set the post period has to be *something*
             new_data_list$y <- lapply(1:k,
               function(i) {
-                matrix(1, nrow = n, ncol = 1)
+                x <- matrix(1, nrow = n, ncol = 1)
+                colnames(x) <- max(as.numeric(colnames(data_list$y[[i]]))) + 1
+                x
             })
           }
 
@@ -496,8 +505,8 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
                 max(att[t0 + j, ]) + 2 * max(post_sd),
                 length.out = grid_size)
           }
-          compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1, 
-                                    alpha, "block", q, ns, lin_h0)
+          compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
+                                    alpha, "block", q, ns, lin_h0, stat_func)
          },
          matrix(0, ncol = k, nrow=3)) -> cis
   # # test a null post-treatment effect
@@ -515,28 +524,43 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
       function(i) {
         data_list$y[[i]][, 1, drop = FALSE]
     })
-  grid <- list(seq(min(att[t0 + 1, ]) - 3 * max(post_sd),
-                max(att[t0 + 1, ]) + 3 * max(post_sd),
-                length.out = grid_size))
   null_p <- compute_permute_pval_multiout(new_data_list, ascm_multi,
                                           numeric(k), 
-                                          tpost, type, q, ns)
-  null_ci <- compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 
-                                          tpost, alpha, type, q, ns)
+                                          tpost, type, q, ns, stat_func)
+  if(is.null(lin_h0)) {
+    grid <- lapply(1:k, 
+            function(i) {
+              seq(min(att[(t0 + 1):tpost, i]) - 4 * post_sd[i],
+                  max(att[(t0 + 1):tpost, i]) + 4 * post_sd[i],
+                    length.out = grid_size)
+            })
+  } else {
+    grid <- seq(min(att[t0 + 1, ]) - 3 * max(post_sd),
+                max(att[t0 + 1, ]) + 3 * max(post_sd),
+                length.out = grid_size)
+  }
+  null_ci <- compute_permute_ci_multiout(new_data_list, ascm_multi, grid,
+                                          tpost, alpha, type, q, ns,
+                                          lin_h0, stat_func)
   out <- list()
   att <- predict(ascm_multi, att = T)
   out$att <- rbind(att, apply(att[(t0 + 1):t_final, , drop = F], 2, mean))
   out$lb <- rbind(matrix(NA, nrow = t0, ncol = k),
                   t(matrix(cis[1, ,], nrow = k)),
-                  rep(NA, k))
+                  # rep(NA, k)
+                  null_ci[1,]
+                  )
   colnames(out$lb) <- ascm_multi$outcomes
   out$ub <- rbind(matrix(NA, nrow = t0, ncol = k),
                   t(matrix(cis[2, ,], nrow = k)),
-                  rep(NA, k))
+                  # rep(NA, k)
+                  null_ci[2,]
+                  )
   colnames(out$ub) <- ascm_multi$outcomes
   out$p_val <- rbind(matrix(NA, nrow = t0, ncol = k),
                   t(matrix(cis[3, ,], nrow = k)),
-                  rep(null_p, k))
+                  # rep(null_p, k)
+                  null_ci[3,])
   colnames(out$p_val) <- ascm_multi$outcomes
   out$alpha <- alpha
   return(out)
@@ -562,7 +586,7 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, type = "iid",
 #' @noRd
 compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
                                               post_length, type,
-                                              q, ns) {
+                                              q, ns, stat_func) {
   # format data
   new_data_list <- data_list
   t0 <- ncol(data_list$X[[1]]) - post_length
@@ -586,7 +610,9 @@ compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
   resids <- predict(new_ascm, att = T)[1:tpost, , drop = F]
 
   # permute residuals and compute test statistic
-  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  if(is.null(stat_func)) {
+    stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  }
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
                         function(x) {
@@ -599,7 +625,7 @@ compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
     test_stats <- sapply(0:(tpost - 1),
                         function(j) {
                           reorder <- resids[(0:(tpost -1) + j) %% tpost + 1, ,drop = F]
-                          if(dim(reorder) != dim(resids)) {
+                          if(!all(dim(reorder) == dim(resids))) {
                             stop("Error in block resampling")
                           }
                           apply(reorder[(t0 + 1):tpost, , drop = F], 2, stat_func)
@@ -625,16 +651,22 @@ compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
 #' @noRd
 compute_permute_pval_multiout <- function(data_list, ascm_multi, h0,
                                         post_length, type,
-                                        q, ns) {
+                                        q, ns, stat_func) {
   t0 <- ncol(data_list$X[[1]]) - post_length
   tpost <- t0 + post_length
 
   out <- compute_permute_test_stats_multiout(data_list, ascm_multi, h0,
-                                          post_length, type, q, ns)
+                                          post_length, type, q, ns, stat_func)
   k <- length(data_list$X)
 
   comb_stat <- mean(apply(out$resids[(t0 + 1):tpost, , drop = F], 2, out$stat_func))
   comb_test_stats <- apply(out$test_stats, 2, mean)
+  # if(h0 == 0) {
+  #   hist(comb_test_stats)
+  #   abline(v = comb_stat)
+  #   print(mean(comb_stat <= comb_test_stats))
+  #   print(1 - mean(comb_stat > comb_test_stats))
+  # }
   1 - mean(comb_stat > comb_test_stats)
 }
 
@@ -651,13 +683,14 @@ compute_permute_pval_multiout <- function(data_list, ascm_multi, h0,
 #' @noRd
 compute_permute_ci_multiout <- function(data_list, ascm_multi, grid,
                                       post_length, alpha, type,
-                                      q, ns, lin_h0 = NULL) {
+                                      q, ns, lin_h0 = NULL, stat_func) {
   # make sure 0 is in the grid
   if(is.null(lin_h0)) {
     grid <- lapply(grid, function(x) c(x, 0))
     k <- length(grid)
     # get all combinations of grid
     grid <- expand.grid(grid)
+    grid_low <- NULL
   } else {
     k <- length(lin_h0)
     # keep track of low dimensional grid
@@ -668,7 +701,7 @@ compute_permute_ci_multiout <- function(data_list, ascm_multi, grid,
   ps <- apply(grid, 1,
               function(x) {
                 compute_permute_pval_multiout(data_list, ascm_multi, x, 
-                                     post_length, type, q, ns)
+                                     post_length, type, q, ns, stat_func)
               })
   sapply(1:k, 
     function(i) c(min(grid[ps >= alpha, i]), 
