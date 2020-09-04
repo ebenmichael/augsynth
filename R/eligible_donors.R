@@ -34,7 +34,7 @@ get_eligible_donors <- function(trt, time_cohort, n_leads) {
 
     J <- length(grps)
 
-    # only allow weights on donors treated after n_lags
+    # only allow weights on donors treated after n_leads
     donors <- lapply(1:J, function(j) trt > n_leads + grps[j])
 
     return(donors)
@@ -93,37 +93,34 @@ get_matched_donors <- function(trt, Z, donors, how, k = NULL, ...) {
 get_knn_donors <- function(trt, Z, donors, k) {
 
   # knn matching within time cohort
-  grps <- unique(trt[is.finite(trt)])
+  trt_idxs <- which(is.finite(trt))
+  lapply(1:length(trt_idxs), 
+        function(j) {
+          idx <- trt_idxs[j]
+          # idxs for treated units treated at time tj
+          Z_tj <- Z[idx, , drop = F]
 
-  # create a list of potential neighbors and queries for each time cohort
-  lapply(grps,
-         function(tj) {
-           # idxs for treated units treated at time tj
-           tj_idxs <- trt == tj
-           Z_tj <- Z[tj_idxs, , drop = F]
-
-           # get donors for treated cohort
-           donors_idxs <- which(trt[is.finite(trt)] == tj)
-           # just take the first treated unit since all donors are the same
-           # for the same treatment cohort
-           donors_tj <- donors[[donors_idxs[1]]]
-           Z_donors_tj <- Z[donors_tj, , drop = F]
-
-           # do knn matching
-           nn <- FNN::get.knnx(data = Z_donors_tj, query = Z_tj, k = k)
-           # keep track of which indices these are
-           lapply(1:nrow(nn$nn.index),
-                  function(j) {
-                    donors_j <- logical(length(donors_tj))
-                    true_idx <- which(donors_tj)[nn$nn.index[j, ]]
-                    donors_j[true_idx] <- TRUE
-                    return(donors_j)
-                  }) -> matched_donors_tj
-          names(matched_donors_tj) <- donors_idxs
-          return(matched_donors_tj)
+          # get donors for treated cohort
+          donors_tj <- donors[[j]]
+          Z_donors_tj <- Z[donors_tj, , drop = F]
+          # check that k is less than the number of donors
+          # if not, warn and set k to be the number of donors - 1
+          if(k >= nrow(Z_donors_tj)) {
+            warning(paste("Number of potential donor units is less than",
+                          "the number of required matches,",
+                          "returning all but one donor as matches"))
+            newk <- nrow(Z_donors_tj) - 1
+          } else {
+            newk <- k
+          }
+          # do knn matching
+          nn <- FNN::get.knnx(data = Z_donors_tj, query = Z_tj, k = newk)
+          # keep track of which indices these are
+          donors_j <- logical(length(donors_tj))
+          true_idx <- which(donors_tj)[nn$nn.index[1, ]]
+          donors_j[true_idx] <- TRUE
+          return(donors_j)
          }) -> matches
-  # flatten list
-  matches <- unlist(matches, recursive = F)
-  # reorder the donors
-  matches[as.character(sort(as.integer(names(matches))))]
+  names(matches) <- trt_idxs
+  return(matches)
 }

@@ -45,6 +45,26 @@ test_that("Getting eligible donor units by exact matching works", {
 })
 
 
+test_that("K-NN finds the right number of neighbors", {
+
+  # variables to match on
+  Z <- matrix(rnorm(length(regions) * 3), ncol = 3)
+  basque %>%
+    inner_join(
+      data.frame(regionno = regions,
+                 Z1 = Z[, 1], Z2 = Z[, 2], Z3 = Z[, 3]),
+      by = "regionno") -> basque2
+  
+  dat <- format_data_stag(quo(gdpcap), quo(trt), quo(regionno),
+                          quo(year), basque2)
+  k <- 3
+  donors <- get_eligible_donors(dat$trt, F, 100)
+  knn_donors <- get_knn_donors(dat$trt, Z, donors, k)
+  expect_true(all(sapply(knn_donors, sum) == k))
+
+  k <- 20
+  expect_warning(get_knn_donors(dat$trt, Z, donors, k))
+})
 
 test_that("Getting eligible donor units by knn matching works", {
 
