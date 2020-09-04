@@ -8,16 +8,16 @@ get_donors <- function(X, y, trt, Z, time_cohort,
   # first get eligible donors by treatment time
   donors <- get_eligible_donors(trt, time_cohort, n_leads)
 
+  # get donors with no NA values
+  nona_donors <- get_nona_donors(X, y, trt, time_cohort)
+
+  donors <- lapply(1:length(donors),
+                     function(j) donors[[j]] & nona_donors[[j]])
+
   # if Z isn't NULL, futher restrict the donors by matching
   if(!is.null(Z)) {
     donors <- get_matched_donors(trt, Z, donors, how, ...)
   }
-
-  # get donors with no NA values
-  nona_donors <- get_nona_donors(X, y, trt, time_cohort)
-
-  donors <- lapply(1:length(donors), 
-                     function(j) donors[[j]] & nona_donors[[j]])
 
   return(donors)
 }
