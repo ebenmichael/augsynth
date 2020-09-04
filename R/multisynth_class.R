@@ -65,7 +65,19 @@ multisynth <- function(form, unit, time, data,
 
     # get covariates
     if(length(form)[2] == 2) {
-        Z <- extract_covariates(form, unit, time, wide$time[min(wide$trt) + 1], data, cov_agg)
+      Z <- extract_covariates(form, unit, time, wide$time[min(wide$trt) + 1],
+                              data, cov_agg)
+    } else if(length(form)[2] == 3) {
+      app_form <- Formula::Formula(formula(form, rhs = 1:2))
+      Z_app <- extract_covariates(app_form, unit, time,
+                                  wide$time[min(wide$trt) + 1],
+                                  data, cov_agg)
+      exact_form <- Formula::Formula(formula(form, rhs = c(1,3)))
+      Z_exact <- extract_covariates(exact_form, unit, time,
+                                  wide$time[min(wide$trt) + 1],
+                                  data, cov_agg)
+      Z <- cbind(Z_app, Z_exact)
+      wide$exact_covariates <- colnames(Z_exact)
     } else {
         Z <- NULL
     }
@@ -107,7 +119,8 @@ multisynth <- function(form, unit, time, data,
         ## Get imbalance for uniform weights on raw data
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, ...)
+                             wide$Z, time_cohort, n_leads, how = how_match, 
+                             exact_covariates = wide$exact_covariates, ...)
 
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
@@ -255,7 +268,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, ...)
+                             wide$Z, time_cohort, n_leads, how = how_match, 
+                             exact_covariates = wide$exact_covariates, ...)
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
         if(is.null(nu)) {

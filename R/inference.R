@@ -475,7 +475,7 @@ drop_unit_i_multi <- function(msyn, i) {
     not_miss_j <- which_t %in% setdiff(which_t, i)
 
     # drop unit i from data
-    drop_i <- list()
+    drop_i <- msyn$data
     drop_i$X <- msyn$data$X[-i, , drop = F]
     drop_i$y <- msyn$data$y[-i, , drop = F]
     drop_i$trt <- msyn$data$trt[-i]
