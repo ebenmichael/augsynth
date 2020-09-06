@@ -3,8 +3,8 @@ set.seed(1011)
 
 library(Synth)
 data(basque)
-basque <- basque %>% mutate(trt = case_when((regionno == 17) & (year == 1975) ~ 1,
-                                              (regionno == 16) & (year == 1980) ~ 1,
+basque <- basque %>% mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
+                                              (regionno == 16) & (year >= 1980) ~ 1,
                                               TRUE ~ 0)) %>%
       filter(regionno != 1)
 
