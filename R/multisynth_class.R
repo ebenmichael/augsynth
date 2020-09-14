@@ -321,11 +321,12 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 #' Get prediction of average outcome under control or ATT
 #' @param object Fit multisynth object
 #' @param att If TRUE, return the ATT, if FALSE, return imputed counterfactual
+#' @param bs_weight Weight to perturb units by for weighted bootstrap
 #' @param ... Optional arguments
 #'
 #' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
-predict.multisynth <- function(object, att = F, ...) {
+predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
 
     multisynth <- object
     relative <- T
@@ -341,6 +342,11 @@ predict.multisynth <- function(object, att = F, ...) {
     ttot <- ncol(fulldat)
     grps <- multisynth$grps
     J <- length(grps)
+
+    if(is.null(bs_weight)) {
+      # bs_weight <- rep(1 / sqrt(sum(is.finite(multisynth$data$trt))), n)
+      bs_weight <- rep(1, n)
+    }
 
     if(time_cohort) {
         which_t <- lapply(grps, 
@@ -359,8 +365,8 @@ predict.multisynth <- function(object, att = F, ...) {
 
     ## estimate the post-treatment values to get att estimates
     mu1hat <- vapply(1:J,
-                     function(j) colMeans(fulldat[which_t[[j]],
-                                                , drop=FALSE]),
+                     function(j) colMeans((bs_weight * fulldat)[which_t[[j]],
+                                                              , drop=FALSE]),
                      numeric(ttot))
 
 
@@ -369,12 +375,14 @@ predict.multisynth <- function(object, att = F, ...) {
     if(typeof(multisynth$y0hat) == "list") {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[[j]][which_t[[j]],
-                                                                  , drop=FALSE])
+                            y0hat <- colMeans(
+                              (bs_weight * multisynth$y0hat[[j]])[which_t[[j]],
+                                                                , drop=FALSE])
+                            weightsj <- multisynth$weights[,j] * bs_weight
+                            resj <- multisynth$residuals[[j]][weightsj != 0,, drop = F]
                             if(!all(multisynth$weights == 0)) {
-                                y0hat + t(multisynth$residuals[[j]]) %*%
-                                    multisynth$weights[,j] / 
-                                    sum(multisynth$weights[,j])
+                                y0hat + t(resj) %*% weightsj[weightsj != 0]# / 
+                                  #sum(weightsj)
                             } else {
                                 y0hat
                             }
@@ -384,12 +392,14 @@ predict.multisynth <- function(object, att = F, ...) {
     } else {
         mu0hat <- vapply(1:J,
                         function(j) {
-                            y0hat <- colMeans(multisynth$y0hat[which_t[[j]],
-                                                                  , drop=FALSE])
+                            y0hat <- colMeans(
+                              (bs_weight * multisynth$y0hat)[which_t[[j]],
+                                                              , drop=FALSE])
+                            weightsj <- multisynth$weights[, j] * bs_weight
+                            resj <- multisynth$residuals[weightsj != 0,, drop = F]
                             if(!all(multisynth$weights == 0)) {
-                                y0hat + t(multisynth$residuals) %*%
-                                    multisynth$weights[,j] / 
-                                    sum(multisynth$weights[,j])
+                                y0hat + t(resj) %*% weightsj[weightsj != 0]# / 
+                                  #sum(weightsj)
                             } else {
                                 y0hat
                             }
@@ -502,15 +512,18 @@ print.multisynth <- function(x, ...) {
 #' Plot function for multisynth
 #' @importFrom graphics plot
 #' @param x Augsynth object to be plotted
-#' @param se Whether to compute and plot standard errors
+#' @param inf_type Type of inference to perform
+#' @param inf Whether to compute and plot standard errors
 #' @param levels Which units/groups to plot, default is every group
 #' @param ... Optional arguments
 #' @export
-plot.multisynth <- function(x, se = T, levels = NULL, ...) {
+plot.multisynth <- function(x, inf_type = "jackknife", inf = T,
+                            levels = NULL, label = T, ...) {
 
     multisynth <- x
 
-    plot(summary(multisynth, jackknife = se), se = se, levels = levels)
+    plot(summary(multisynth, inf_type = inf_type, ...),
+         inf = inf, levels = levels, label = label)
 }
 
 compute_se <- function(multisynth, relative=NULL) {
@@ -624,7 +637,7 @@ compute_se <- function(multisynth, relative=NULL) {
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
 #'         }
 #' @export
-summary.multisynth <- function(object, jackknife = T, ...) {
+summary.multisynth <- function(object, inf_type = "jackknife", ...) {
 
     multisynth <- object
     
@@ -653,19 +666,21 @@ summary.multisynth <- function(object, jackknife = T, ...) {
     
     summ <- list()
     ## post treatment estimate for each group and overall
-    att <- predict(multisynth, relative, att=T)
+    # att <- predict(multisynth, relative, att=T)
     
-    if(jackknife) {
-        se <- jackknife_se_multi(multisynth, relative)
+    if(inf_type == "jackknife") {
+        attse <- jackknife_se_multi(multisynth, relative, ...)
+    } else if(inf_type == "bootstrap") {
+        attse <- weighted_bootstrap_multi(multisynth, ...)
     } else {
-        # se <- compute_se(multisynth, relative)
-        se <- matrix(NA, nrow(att), ncol(att))
+        attse <- list(att = predict(multisynth, relative, att=T),
+                      se = matrix(NA, nrow(att), ncol(att)))
     }
     
 
     if(relative) {
         att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
-                                att))
+                                attse$att))
         if(time_cohort) {
             col_names <- c("Time", "Average", 
                             as.character(times[grps + 1]))
@@ -679,24 +694,35 @@ summary.multisynth <- function(object, jackknife = T, ...) {
             mutate(Time=Time-1) -> att
 
         se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
-                               se))                            
+                               attse$se))                            
         names(se) <- col_names
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
             mutate(Time=Time-1)-> se
+        lower_bound <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
+                                  attse$lower_bound))
+        names(lower_bound) <- col_names
+        lower_bound %>% gather(Level, lower_bound, -Time) -> lower_bound
+
+        upper_bound <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
+                                        attse$upper_bound))
+        names(upper_bound) <- col_names
+        upper_bound %>% gather(Level, upper_bound, -Time) -> upper_bound
 
     } else {
-        att <- data.frame(cbind(times, att))
+        att <- data.frame(cbind(times, attse$att))
         names(att) <- c("Time", "Average", times[grps[1:J]])        
         att %>% gather(Level, Estimate, -Time) -> att
 
-        se <- data.frame(cbind(times, se))
+        se <- data.frame(cbind(times, attse$se))
         names(se) <- c("Time", "Average", times[grps[1:J]])        
         se %>% gather(Level, Std.Error, -Time) -> se
+
     }
 
-    summ$att <- inner_join(att, se, by = c("Time", "Level"))
-
+    summ$att <- inner_join(att, se, by = c("Time", "Level")) %>%
+      inner_join(lower_bound, by = c("Time", "Level")) %>%
+        inner_join(upper_bound, by = c("Time", "Level"))
 
     summ$relative <- relative
     summ$grps <- grps
@@ -779,7 +805,7 @@ print.summary.multisynth <- function(x, level = "Average", ...) {
 #' @param levels Which units/groups to plot, default is every group
 #' @param ... Optional arguments
 #' @export
-plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
+plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T, ...) {
 
     summ <- x
     
@@ -818,7 +844,7 @@ plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
     }
 
     ## add ses
-    if(se) {
+    if(inf) {
         max_time <- max(summ$att$Time, na.rm = T)
         if(max_time == 0) {
           error_plt <- ggplot2::geom_errorbar
@@ -831,8 +857,8 @@ plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
         }
         if("Average" %in% levels) {
             p <- p + error_plt(
-                ggplot2::aes(ymin=Estimate-2*Std.Error,
-                             ymax=Estimate+2*Std.Error),
+                ggplot2::aes(ymin=lower_bound,
+                             ymax=upper_bound),
                 alpha = alph, color=clr,
                 data = summ$att %>% 
                         filter(Level == "Average",
@@ -840,8 +866,8 @@ plot.summary.multisynth <- function(x, se = T, levels = NULL, ...) {
             
         } else {
             p <- p + error_plt(
-                ggplot2::aes(ymin=Estimate-2*Std.Error,
-                             ymax=Estimate+2*Std.Error),
+                ggplot2::aes(ymin=lower_bound,
+                             ymax=upper_bound),
                              data = . %>% filter(Time >= 0),
                 alpha = alph, color = clr)
         }

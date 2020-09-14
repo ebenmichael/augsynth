@@ -429,14 +429,15 @@ jackknife_se_single <- function(ascm) {
 #' @param multisynth fitted multisynth object
 #' @param relative Whether to compute effects according to relative time
 #' @noRd
-jackknife_se_multi <- function(multisynth, relative=NULL) {
+jackknife_se_multi <- function(multisynth, relative=NULL, alpha = 0.05) {
     ## get info from the multisynth object
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
     n_leads <- multisynth$n_leads
     n <- nrow(multisynth$data$X)
-    outddim <- nrow(predict(multisynth, att=T))
+    att <- predict(multisynth, att=T)
+    outddim <- nrow(att)
 
     J <- length(multisynth$grps)
 
@@ -457,8 +458,10 @@ jackknife_se_multi <- function(multisynth, relative=NULL) {
 
     se2 <- apply(jack_est, c(1,2),
                 function(x) (n-1) / n * sum((x - mean(x,na.rm=T))^2, na.rm=T))
-
-    return(sqrt(se2))
+    lower_bound <- att - qnorm(1 - alpha / 2) * sqrt(se2)
+    upper_bound <- att + qnorm(1 - alpha / 2) * sqrt(se2)
+    return(list(att = att, se = sqrt(se2),
+                lower_bound = lower_bound, upper_bound = upper_bound))
 
 }
 
@@ -563,4 +566,134 @@ jackknife_se_multiout <- function(ascm) {
     out$se <- rbind(matrix(NA, t0, ncol(se)), se)
     out$sigma <- NA
     return(out)
+}
+
+
+
+#' Compute the weighted bootstrap distribution
+#' @param multisynth fitted multisynth object
+#' @param rweight Function to draw random weights as a function of n (e.g rweight(n))
+#' @param relative Whether to compute effects according to relative time
+#' @noRd
+weighted_bootstrap_multi <- function(multisynth,
+                                    rweight = rmultinom_b,
+                                    n_boot = 1000,
+                                    alpha = 0.05,
+                                    relative=NULL) {
+  ## get info from the multisynth object
+  if(is.null(relative)) {
+      relative <- multisynth$relative
+  }
+
+  n <- nrow(multisynth$data$X)
+  att <- predict(multisynth, att=T)
+  outddim <- nrow(att)
+  n1 <- sum(is.finite(multisynth$data$trt))
+  J <- length(multisynth$grps)
+
+
+  # draw random weights to get bootstrap distribution
+  bs_est <- vapply(1:n_boot,
+                      function(i) {
+                        Z <- rweight(n)# / sqrt(n1)
+
+                        predict(multisynth, att=T, bs_weight = Z) - sum(Z) / n1 * att
+                      },
+                      matrix(0, nrow=outddim,ncol=(J+1)))
+
+  se2 <- apply(bs_est, c(1,2),
+              function(x) mean((x - mean(x))^2, na.rm=T))
+  bias <- apply(bs_est, c(1,2),
+              function(x) mean(x, na.rm=T))
+  upper_bound <- att - apply(bs_est, c(1,2),
+              function(x) quantile(x, alpha / 2, na.rm = T))
+  
+  lower_bound <- att - apply(bs_est, c(1,2),
+              function(x) quantile(x, 1 - alpha / 2, na.rm = T))
+
+  return(list(att = att,
+              bias = bias,
+              se = sqrt(se2),
+              upper_bound = upper_bound,
+              lower_bound = lower_bound))
+
+}
+
+predict_weighted <- function(msyn, bs_weight) {
+  tJ <- ncol(msyn$data$X)
+  trt <- msyn$data$trt
+  n1 <- sum(is.finite(trt))
+  n_leads <- msyn$n_leads
+  resdat <- msyn$residuals#cbind(msyn$data$X, msyn$data$y)
+  sapply(1:n_leads, 
+    function(k) {
+      avg <- 0
+      for(tj in unique(msyn$grps)) {
+        wts <- 1 * (trt == tj) - rowSums(msyn$weights[, msyn$grps == tj, drop = F])
+        if(typeof(resdat) == "list") {
+          ys <- resdat[msyn$grps == tj][[1]][, (tj + k), drop = F]
+        } else {
+          ys <- resdat[, (tj + k), drop = F]
+        }
+
+        avg <- avg + wts * ys
+        # print(wts)
+      }
+      # print(cbind(bs_weight, avg))
+      sum(bs_weight * avg) / sqrt(n1)
+    }) -> pred
+  pred <- c(pred, mean(pred))
+  return(pred)
+}
+
+bs2 <- function(msyn, rweight, n_boot) {
+  n <- nrow(msyn$data$X)
+  n1 <- sum(is.finite(msyn$data$trt))
+  att <- predict_weighted(msyn, rep(1, n) / sqrt(n1))
+  sapply(1:n_boot,
+    function(i) {
+      bs_weight <- rweight(n) / sqrt(n1)
+      predict_weighted(msyn, bs_weight) - att#sum(bs_weight) / sqrt(n1) *  att
+    })
+}
+
+#' Bayesian bootstrap
+#' @param n Number of units
+rdirichlet_b <- function(n) {
+  Z <- as.numeric(rgamma(n, 1, 1))
+  return(Z / sum(Z) * n)
+}
+
+#' Non-parametric bootstrap
+#' @param n Number of units
+rmultinom_b <- function(n) as.numeric(rmultinom(1, n, rep(1 / n, n)))
+
+#' Wild bootstrap (Mammen 1993)
+#' @param n Number of units
+rwild_b <- function(n) {
+  sample(c(-(sqrt(5) - 1) / 2, (sqrt(5) + 1) / 2 ), n,
+         replace = TRUE,
+         prob = c((sqrt(5) + 1)/ (2 * sqrt(5)), (sqrt(5) - 1) / (2 * sqrt(5))))
+}
+
+bootstrap_tmp <- function(x, trt, rweight, alpha = 0.05, n_boot = 1000) {
+  n <- length(x)
+  n1 <- sum(trt)
+  augx <- (2 * trt - 1) * n /  (trt * n1 + (1 - trt) * (n - n1)) * x
+
+  xbar <- mean(augx)
+  vapply(1:n_boot,
+    function(i) {
+      Z <- rweight(n) / sqrt(n)
+      sum(augx * Z) / sqrt(n) - sum(Z) / sqrt(n) * xbar
+  }, numeric(1)) -> bs_res
+
+  se2 <- mean((bs_res - mean(bs_res)) ^ 2)
+  lower_bound <- xbar - quantile(bs_res, 1 - alpha / 2)
+  # lower_bound <- quantile(bs_res, alpha / 2)
+  upper_bound <- xbar - quantile(bs_res, alpha / 2)
+  # upper_bound <- quantile(bs_res, 1 - alpha / 2)
+
+  list(bs_res = bs_res, se = sqrt(se2),
+       lower_bound = lower_bound, upper_bound = upper_bound)
 }
