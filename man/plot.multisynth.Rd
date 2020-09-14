@@ -4,12 +4,14 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(x, se = T, levels = NULL, ...)
+\method{plot}{multisynth}(x, inf_type = "jackknife", inf = T, levels = NULL, label = T, ...)
 }
 \arguments{
 \item{x}{Augsynth object to be plotted}
 
-\item{se}{Whether to compute and plot standard errors}
+\item{inf_type}{Type of inference to perform}
+
+\item{inf}{Whether to compute and plot standard errors}
 
 \item{levels}{Which units/groups to plot, default is every group}
 

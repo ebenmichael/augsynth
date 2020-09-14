@@ -619,46 +619,9 @@ weighted_bootstrap_multi <- function(multisynth,
 
 }
 
-predict_weighted <- function(msyn, bs_weight) {
-  tJ <- ncol(msyn$data$X)
-  trt <- msyn$data$trt
-  n1 <- sum(is.finite(trt))
-  n_leads <- msyn$n_leads
-  resdat <- msyn$residuals#cbind(msyn$data$X, msyn$data$y)
-  sapply(1:n_leads, 
-    function(k) {
-      avg <- 0
-      for(tj in unique(msyn$grps)) {
-        wts <- 1 * (trt == tj) - rowSums(msyn$weights[, msyn$grps == tj, drop = F])
-        if(typeof(resdat) == "list") {
-          ys <- resdat[msyn$grps == tj][[1]][, (tj + k), drop = F]
-        } else {
-          ys <- resdat[, (tj + k), drop = F]
-        }
-
-        avg <- avg + wts * ys
-        # print(wts)
-      }
-      # print(cbind(bs_weight, avg))
-      sum(bs_weight * avg) / sqrt(n1)
-    }) -> pred
-  pred <- c(pred, mean(pred))
-  return(pred)
-}
-
-bs2 <- function(msyn, rweight, n_boot) {
-  n <- nrow(msyn$data$X)
-  n1 <- sum(is.finite(msyn$data$trt))
-  att <- predict_weighted(msyn, rep(1, n) / sqrt(n1))
-  sapply(1:n_boot,
-    function(i) {
-      bs_weight <- rweight(n) / sqrt(n1)
-      predict_weighted(msyn, bs_weight) - att#sum(bs_weight) / sqrt(n1) *  att
-    })
-}
-
 #' Bayesian bootstrap
 #' @param n Number of units
+#' @export
 rdirichlet_b <- function(n) {
   Z <- as.numeric(rgamma(n, 1, 1))
   return(Z / sum(Z) * n)
@@ -666,34 +629,14 @@ rdirichlet_b <- function(n) {
 
 #' Non-parametric bootstrap
 #' @param n Number of units
+#' @export
 rmultinom_b <- function(n) as.numeric(rmultinom(1, n, rep(1 / n, n)))
 
 #' Wild bootstrap (Mammen 1993)
 #' @param n Number of units
+#' @export
 rwild_b <- function(n) {
   sample(c(-(sqrt(5) - 1) / 2, (sqrt(5) + 1) / 2 ), n,
          replace = TRUE,
          prob = c((sqrt(5) + 1)/ (2 * sqrt(5)), (sqrt(5) - 1) / (2 * sqrt(5))))
-}
-
-bootstrap_tmp <- function(x, trt, rweight, alpha = 0.05, n_boot = 1000) {
-  n <- length(x)
-  n1 <- sum(trt)
-  augx <- (2 * trt - 1) * n /  (trt * n1 + (1 - trt) * (n - n1)) * x
-
-  xbar <- mean(augx)
-  vapply(1:n_boot,
-    function(i) {
-      Z <- rweight(n) / sqrt(n)
-      sum(augx * Z) / sqrt(n) - sum(Z) / sqrt(n) * xbar
-  }, numeric(1)) -> bs_res
-
-  se2 <- mean((bs_res - mean(bs_res)) ^ 2)
-  lower_bound <- xbar - quantile(bs_res, 1 - alpha / 2)
-  # lower_bound <- quantile(bs_res, alpha / 2)
-  upper_bound <- xbar - quantile(bs_res, alpha / 2)
-  # upper_bound <- quantile(bs_res, 1 - alpha / 2)
-
-  list(bs_res = bs_res, se = sqrt(se2),
-       lower_bound = lower_bound, upper_bound = upper_bound)
 }

@@ -4,7 +4,7 @@
 \alias{print.summary.multisynth}
 \title{Print function for summary function for multisynth}
 \usage{
-\method{print}{summary.multisynth}(x, level = "average", ...)
+\method{print}{summary.multisynth}(x, level = "Average", ...)
 }
 \arguments{
 \item{x}{summary object}
