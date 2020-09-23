@@ -17,7 +17,9 @@ get_donors <- function(X, y, trt, Z, time_cohort,
 
   # if Z isn't NULL, futher restrict the donors by matching
   if(!is.null(Z)) {
-    donors <- get_matched_donors(trt, Z, donors, how, exact_covariates, ...)
+    if(ncol(Z) != 0) {
+      donors <- get_matched_donors(trt, Z, donors, how, exact_covariates, ...)
+    }
   }
 
   return(donors)

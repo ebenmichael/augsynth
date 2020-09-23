@@ -30,7 +30,7 @@
 #'          \item{"global_l2"}{Imbalance overall}
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
-multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
+multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
                           relative=T, nu=0, lambda=0, time_cohort = FALSE,
                           donors = NULL,
                           verbose = FALSE, 
@@ -78,13 +78,35 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
         # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
                  function(j) X[[j]][donors[[j]], mask[j,]==1, drop=F])
+        
+        # std dev of outcomes for first treatment time
+        sdx <- sd(X[[1]][is.finite(trt)])
     } else {
         x_t <- lapply(1:J, function(j) colSums(X[which_t[[j]], mask[j,]==1, drop=F]))        
         
         # Xc contains pre-treatment data for valid donor units
         Xc <- lapply(1:nrow(mask),
                  function(j) X[donors[[j]], mask[j,]==1, drop=F])
+
+        # std dev of outcomes
+        sdx <- sd(X[is.finite(trt)])
     }
+
+    # get covariates for donors
+    if(!is.null(Z)) {
+      # scale covariates to have same variance as pure control outcomes
+      Z_scale <- sdx * apply(Z, 2, 
+        function(z) (z - mean(z[!is.finite(trt)])) / sd(z[!is.finite(trt)]))
+      
+      z_t <- lapply(1:J, function(j) colSums(Z_scale[which_t[[j]], , drop = F]))
+      Zc <- lapply(1:J, function(j) Z_scale[donors[[j]], , drop = F])
+    } else {
+      z_t <- lapply(1:J, function(j) c(0))
+      Zc <- lapply(1:J, function(j) Matrix::Matrix(0,
+                                                   nrow = sum(donors[[j]]),
+                                                   ncol = 1))
+    }
+    dz <- ncol(Zc[[1]])
 
     # replace NA values with zero
     x_t <- lapply(x_t, function(xtk) tidyr::replace_na(xtk, 0))
@@ -96,16 +118,16 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     }
     n0 <- sum(n0s)
 
-    const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, d, n1)
+    const_mats <- make_constraint_mats(trt, grps, n_leads, n_lags, Xc, Zc, d, n1)
     Amat <- const_mats$Amat
     lvec <- const_mats$lvec
     uvec <- const_mats$uvec
 
     ## quadratic balance measures
 
-    qvec <- make_qvec(Xc, x_t, nu, n_lags, d)
+    qvec <- make_qvec(Xc, x_t, z_t, nu, n_lags, d)
 
-    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
+    Pmat <- make_Pmat(Xc, x_t, dz, nu, n_lags, lambda, d)
 
     ## Optimize
     settings <- do.call(osqp::osqpSettings, 
@@ -153,6 +175,25 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                    global_l2 = global_l2,
                    ind_l2 = ind_l2)
 
+    if(!is.null(Z)) {
+      # imbalance in auxiliary covariates
+      z_t <- sapply(1:J, function(j) colMeans(Z[which_t[[j]], , drop = F]))
+      imbal_z <- z_t - t(Z) %*% weights
+      avg_imbal_z <- rowSums(t(t(imbal_z) * n1)) / sum(n1)
+      global_l2_z <- sqrt(sum(avg_imbal_z ^ 2))
+      ind_l2_z <- sum(apply(imbal_z, 2, function(x) sqrt(sum(x ^ 2))))
+      imbal_z <- cbind(avg_imbal_z, imbal_z)
+      rownames(imbal_z) <- colnames(Z)
+
+      output$imbalance_aux <- imbal_z
+      output$global_l2_aux <- global_l2_z
+      output$ind_l2_aux <- ind_l2_z
+    }
+    
+
+    
+    
+
     return(output)
 }
 
@@ -172,7 +213,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 #'          \item{"lvec"}{Lower bounds for linear constraints}
 #'          \item{"uvec"}{Upper bounds for linear constraints}
 #'         }
-make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
+make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, Zc, d, n1) {
 
     J <- length(grps)
     idxs0  <- trt  > n_leads + min(grps)
@@ -186,7 +227,7 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
     Amat <- as.matrix(Matrix::t(A1))
     Amat <- Matrix::rbind2(Matrix::t(A1), Matrix::Diagonal(nrow(A1)))
 
-
+    dz <- ncol(Zc[[1]])
     # constraints for transformed weights
     A_trans1 <- do.call(Matrix::bdiag,
                        lapply(1:J,
@@ -199,26 +240,38 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
                             zero_mat <- Matrix::Matrix(0, n0, max_dim - ndim)
                             Matrix::t(cbind(zero_mat, mat))
                        }))
+
     # sum of total number of pre-periods
     sum_tj <- min(d, n_lags) * J
     A_trans2 <- - Matrix::Diagonal(sum_tj)
-    A_trans <- Matrix::cbind2(A_trans1, A_trans2)
+    A_trans <- Matrix::cbind2(
+      Matrix::cbind2(A_trans1, A_trans2),
+      Matrix::Matrix(0, nrow = nrow(A_trans1), ncol = dz * J))
+
+    # constraints for transformed weights on auxiliary covariates
+    A_transz <- Matrix::t(Matrix::bdiag(Zc))
+    A_transz <- Matrix::cbind2(
+      Matrix::cbind2(A_transz, 
+                     Matrix::Matrix(0, nrow = nrow(A_transz), ncol = sum_tj)),
+      -Matrix::Diagonal(dz * J))
 
     # add in zero columns for transformated weights
     Amat <- Matrix::cbind2(Amat, 
                            Matrix::Matrix(0,
                                           nrow = nrow(Amat),
-                                          ncol = sum_tj))
-    Amat <- Matrix::rbind2(Amat, A_trans)
+                                          ncol = sum_tj + dz * J))
+    Amat <- Matrix::rbind2(Matrix::rbind2(Amat, A_trans), A_transz)
 
     lvec <- c(n1, # sum to n1 constraint
               numeric(nrow(A1)), # lower bound by zero
-              numeric(sum_tj) # constrain transformed weights
+              numeric(sum_tj), # constrain transformed weights
+              numeric(dz * J) # constrain transformed weights
              ) 
     
     uvec <- c(n1, #sum to n1 constraint
               rep(Inf, nrow(A1)),
-              numeric(sum_tj) # constrain transformed weights
+              numeric(sum_tj), # constrain transformed weights
+              numeric(dz * J) # constrain transformed weights
               )
 
 
@@ -232,7 +285,7 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 #' @param n_lags Number of lags to balance
 #' @param d Largest number of pre-intervention time periods
 #' @noRd
-make_qvec <- function(Xc, x_t, nu, n_lags, d) {
+make_qvec <- function(Xc, x_t, z_t, nu, n_lags, d) {
 
     J <- length(x_t)
 
@@ -254,10 +307,14 @@ make_qvec <- function(Xc, x_t, nu, n_lags, d) {
                                     xtk[(dk - ndim + 1):dk])
                             }) %>% reduce(`+`)
     qvec_avg <- rep(avg_target_vec, J)
-
     qvec <- - (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c))
+
+    qvec_avg_z <- z_t %>% reduce(`+`)
+    qvec_avg_z <- rep(qvec_avg_z, J)
+    qvec_z <- - (nu * qvec_avg_z + (1 - nu) * reduce(z_t, c)) / length(z_t[[1]])
+
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
-    return(c(numeric(total_ctrls), qvec))
+    return(c(numeric(total_ctrls), qvec, qvec_z))
 }
 
 
@@ -269,7 +326,7 @@ make_qvec <- function(Xc, x_t, nu, n_lags, d) {
 #' @param lambda Regularization hyperparameter
 #' @param d Largest number of pre-intervention time periods
 #' @noRd
-make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
+make_Pmat <- function(Xc, x_t, dz, nu, n_lags, lambda, d) {
 
     J <- length(x_t)
 
@@ -288,13 +345,17 @@ make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
     }
     V2 <- tile_sparse(max_dim, J) / n_lags
     Pmat <- nu * V2 + (1 - nu) * V1
+    V1_z <- Matrix::Diagonal(dz * J, 1 / dz)
+    V2_z <- tile_sparse(dz, J) / dz
+    Pmat_z <- nu * V2_z + (1 - nu) * V1_z
     # combine
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
     Pmat <- Matrix::bdiag(Matrix::Matrix(0, nrow = total_ctrls,
                                          ncol = total_ctrls),
-                          Pmat)
+                          Pmat, Pmat_z)
     I0 <- Matrix::bdiag(Matrix::Diagonal(total_ctrls),
-                        Matrix::Matrix(0, nrow = total_dim, ncol = total_dim))
+                        Matrix::Matrix(0, nrow = total_dim + dz * J,
+                                          ncol = total_dim + dz * J))
     return(Pmat + lambda * I0)
 
 }

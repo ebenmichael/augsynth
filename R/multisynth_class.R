@@ -77,7 +77,23 @@ multisynth <- function(form, unit, time, data,
                                   wide$time[min(wide$trt) + 1],
                                   data, cov_agg)
       Z <- cbind(Z_app, Z_exact)
+      wide$match_covariates <- colnames(Z_exact)
+    } else if(length(form)[2] == 4) {
+      weight_form <- Formula::Formula(formula(form, rhs = c(1,2)))
+      Z_weight <- extract_covariates(weight_form, unit, time,
+                                      wide$time[min(wide$trt) + 1],
+                                      data, cov_agg)
+      app_form <- Formula::Formula(formula(form, rhs = c(1,3)))
+      Z_app <- extract_covariates(app_form, unit, time,
+                                  wide$time[min(wide$trt) + 1],
+                                  data, cov_agg)
+      exact_form <- Formula::Formula(formula(form, rhs = c(1,4)))
+      Z_exact <- extract_covariates(exact_form, unit, time,
+                                  wide$time[min(wide$trt) + 1],
+                                  data, cov_agg)
+      Z <- cbind(Z_weight, Z_app, Z_exact)
       wide$exact_covariates <- colnames(Z_exact)
+      wide$match_covariates <- c(colnames(Z_app), wide$exact_covariates)
     } else {
         Z <- NULL
     }
@@ -119,13 +135,17 @@ multisynth <- function(form, unit, time, data,
         ## Get imbalance for uniform weights on raw data
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, 
+                             wide$Z[, colnames(wide$Z) %in% 
+                                      wide$match_covariates, drop = F],
+                             time_cohort, n_leads, how = how_match, 
                              exact_covariates = wide$exact_covariates, ...)
 
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
                             trt=wide$trt,
                             mask=wide$mask,
+                            Z = Z[, ! colnames(Z) %in% wide$match_covariates,
+                                  drop = F],
                             n_leads=n_leads,
                             n_lags=n_lags,
                             relative=T,
@@ -268,7 +288,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, 
+                             wide$Z[, colnames(wide$Z) %in% 
+                                      wide$match_covariates, drop = F],
+                             time_cohort, n_leads, how = how_match, 
                              exact_covariates = wide$exact_covariates, ...)
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
@@ -277,6 +299,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
             nu_fit <- multisynth_qp(X=bal_mat,
                                     trt=wide$trt,
                                     mask=wide$mask,
+                                    Z = wide$Z[, !colnames(wide$Z) %in%
+                                                  wide$match_covariates,
+                                                  drop = F],
                                     n_leads=n_leads,
                                     n_lags=n_lags,
                                     relative=relative,
@@ -296,6 +321,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         msynth <- multisynth_qp(X=bal_mat,
                                 trt=wide$trt,
                                 mask=wide$mask,
+                                Z = wide$Z[, !colnames(wide$Z) %in%
+                                                  wide$match_covariates,
+                                                  drop = F],
                                 n_leads=n_leads,
                                 n_lags=n_lags,
                                 relative=relative,
