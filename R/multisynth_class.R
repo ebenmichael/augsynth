@@ -11,7 +11,8 @@
 #' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
 #' @param nu Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
-#' @param fixedeff Whether to include a unit fixed effect, default F 
+#' @param V Scaling matrix for synth optimization, default NULL is identity
+#' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts
@@ -41,7 +42,7 @@
 #' @export
 multisynth <- function(form, unit, time, data,
                        n_leads=NULL, n_lags=NULL,
-                       nu=NULL, lambda=0,
+                       nu=NULL, lambda=0, V = NULL,
                        fixedeff = FALSE,
                        n_factors=0,
                        scm=T,
@@ -103,7 +104,7 @@ multisynth <- function(form, unit, time, data,
 
     msynth <- multisynth_formatted(wide = wide, relative = T,
                                 n_leads = n_leads, n_lags = n_lags,
-                                nu = nu, lambda = lambda,
+                                nu = nu, lambda = lambda, V = V,
                                 force = force, n_factors = n_factors,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
@@ -127,6 +128,7 @@ multisynth <- function(form, unit, time, data,
                             n_lags=n_lags,
                             relative=T,
                             nu=0, lambda=1e10,
+                            V = V,
                             time_cohort = time_cohort,
                             donors = msynth$donors,
                             eps_rel = eps_rel, 
@@ -155,6 +157,7 @@ multisynth <- function(form, unit, time, data,
 #' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
 #' @param nu Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
+#' @param V Scaling matrix for synth optimization, default NULL is identity
 #' @param force c(0,1,2,3) what type of fixed effects to include
 #' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
@@ -170,7 +173,7 @@ multisynth <- function(form, unit, time, data,
 #' @noRd
 #' @return multisynth object
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
-                       nu, lambda,
+                       nu, lambda, V,
                        force,
                        n_factors,
                        scm, time_cohort, 
@@ -279,14 +282,15 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     n_lags=n_lags,
                                     relative=relative,
                                     nu=0, lambda=lambda,
+                                    V = V,
                                     time_cohort = time_cohort,
                                     donors = donors,
                                     eps_rel = eps_rel,
                                     eps_abs = eps_abs,
                                     verbose = verbose)
-            ## select nu by triangle inequality ratio
-            glbl <- sqrt(sum(nu_fit$imbalance[,1]^2))
-            ind <- sum(apply(nu_fit$imbalance[,-1, drop = F], 2, function(x) sqrt(sum(x^2))))
+            # select nu by triangle inequality ratio
+            glbl <- nu_fit$global_l2
+            ind <- nu_fit$ind_l2
             nu <- glbl / ind
 
         }
@@ -298,6 +302,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 n_lags=n_lags,
                                 relative=relative,
                                 nu=nu, lambda=lambda,
+                                V = V,
                                 time_cohort = time_cohort,
                                 donors = donors,
                                 eps_rel = eps_rel,

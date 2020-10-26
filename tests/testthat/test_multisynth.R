@@ -106,3 +106,56 @@ test_that("Limiting number of lags works", {
     )
 }
 )
+
+test_that("L2 imbalance computed correctly", {
+
+  basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                              !regionno %in% c(16, 17) ~ 0,
+                                              regionno %in% c(16, 17) ~ 1)) %>%
+      filter(regionno != 1)
+
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2,
+                scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+  glbl <- sqrt(sum(msyn$imbalance[,1]^2))
+  ind <- sum(apply(msyn$imbalance[,-1, drop = F], 2,
+              function(x) sqrt(sum(x^2))))
+  expect_equal(glbl, msyn$global_l2)
+  expect_equal(ind, msyn$ind_l2)
+})
+
+test_that("V matrix is equivalent to hard thresholding", {
+
+
+  basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                              !regionno %in% c(16, 17) ~ 0,
+                                              regionno %in% c(16, 17) ~ 1)) %>%
+      filter(regionno != 1)
+
+  V <- c(numeric(10), rep(1,5))
+  msyn1 <- multisynth(gdpcap ~ trt, regionno, year, basque2,
+                scm=T, eps_rel=1e-8, eps_abs=1e-8, n_lags = 15, V = V)
+
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, basque2,
+                scm=T, eps_rel=1e-8, eps_abs=1e-8, n_lags = 5)
+
+  expect_equal(msyn1$weights, msyn2$weights, tolerance = 1e-6)
+  expect_equal(msyn1$global_l2, msyn2$global_l2, tolerance = 1e-6)
+  expect_equal(msyn1$ind_l2, msyn2$ind_l2, tolerance = 1e-6)
+}
+)
+
+test_that("V matrix is the same for single and multi synth", {
+
+  V <- exp(seq(log(1e-3), log(1), length.out = 20))
+
+  syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc = "none",
+                scm=T, V = V)
+
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque,
+                scm=T, eps_rel=1e-8, eps_abs=1e-8, V = V,
+                fixed = F, nu = 0)
+
+  expect_equal(as.numeric(syn$weights), as.numeric(msyn$weights[-16, ]), tolerance = 1e-3)
+}
+)

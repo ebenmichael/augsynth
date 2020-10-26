@@ -31,7 +31,7 @@
 #'          \item{"ind_l2"}{Matrix of imbalance for each group}
 #'         }
 multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
-                          relative=T, nu=0, lambda=0, time_cohort = FALSE,
+                          relative=T, nu=0, lambda=0, V = NULL, time_cohort = FALSE,
                           donors = NULL,
                           verbose = FALSE, 
                           eps_rel=1e-4, eps_abs=1e-4) {
@@ -49,7 +49,7 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     } else if(n_lags > d) {
         n_lags <- d
     }
-
+    V <- make_V_matrix(n_lags, V)
     ## treatment times
     if(time_cohort) {
         grps <- unique(trt[is.finite(trt)])
@@ -103,9 +103,9 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
 
     ## quadratic balance measures
 
-    qvec <- make_qvec(Xc, x_t, nu, n_lags, d)
+    qvec <- make_qvec(Xc, x_t, nu, n_lags, d, V)
 
-    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda, d)
+    Pmat <- make_Pmat(Xc, x_t, nu, n_lags, lambda, d, V)
 
     ## Optimize
     settings <- do.call(osqp::osqpSettings, 
@@ -130,14 +130,15 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
                                 out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]])
                         },
                         numeric(d))
-
     avg_imbal <- rowSums(t(t(imbalance)))
 
-
-    global_l2 <- sqrt(sum(avg_imbal^2)) #/ sqrt(length(avg_imbal))
-    ind_l2 <- sum(apply(imbalance, 2, function(x) sqrt(sum(x^2)))) #/ sqrt(prod(dim(imbalance)))
-    ## pad weights with zeros for treated units and divide by number of treated units
-
+    Vsq <- t(V) %*% V
+    global_l2 <- c(sqrt(t(avg_imbal[(d - n_lags + 1):d]) %*% Vsq %*%
+                          avg_imbal[(d - n_lags + 1):d]))
+    ind_l2 <- sum(apply(imbalance, 2,
+                  function(x) c(sqrt(t(x[(d - n_lags + 1):d]) %*% Vsq %*%
+                                x[(d - n_lags + 1):d]))))
+    # pad weights with zeros for treated units and divide by number of treated units
     vapply(1:J,
            function(j) {
              weightj <-  numeric(n)
@@ -151,7 +152,8 @@ multisynth_qp <- function(X, trt, mask, n_leads=NULL, n_lags=NULL,
     output <- list(weights = weights,
                    imbalance = cbind(avg_imbal, imbalance),
                    global_l2 = global_l2,
-                   ind_l2 = ind_l2)
+                   ind_l2 = ind_l2,
+                   V = V)
 
     return(output)
 }
@@ -231,18 +233,19 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, d, n1) {
 #' @param nu Hyperparameter between global and individual balance
 #' @param n_lags Number of lags to balance
 #' @param d Largest number of pre-intervention time periods
+#' @param V Scaling matrix
 #' @noRd
-make_qvec <- function(Xc, x_t, nu, n_lags, d) {
+make_qvec <- function(Xc, x_t, nu, n_lags, d, V) {
 
     J <- length(x_t)
-
+    Vsq <- t(V) %*% V
     qvec <- lapply(1:J,
                    function(j) {
                        dj <- length(x_t[[j]])
                        ndim <- min(dj, n_lags)
                        max_dim <- min(d, n_lags)
                        vec <- x_t[[j]][(dj - ndim + 1):dj] / ndim
-                       c(numeric(max_dim - ndim), vec)
+                       Vsq %*% c(numeric(max_dim - ndim), vec)
                    })
 
     avg_target_vec <- lapply(x_t,
@@ -252,7 +255,7 @@ make_qvec <- function(Xc, x_t, nu, n_lags, d) {
                                 max_dim <- min(d, n_lags)
                                 c(numeric(max_dim - ndim), 
                                     xtk[(dk - ndim + 1):dk])
-                            }) %>% reduce(`+`)
+                            }) %>% reduce(`+`) %*% Vsq
     qvec_avg <- rep(avg_target_vec, J)
 
     qvec <- - (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c))
@@ -268,12 +271,13 @@ make_qvec <- function(Xc, x_t, nu, n_lags, d) {
 #' @param n_lags Number of lags to balance
 #' @param lambda Regularization hyperparameter
 #' @param d Largest number of pre-intervention time periods
+#' @param V Scaling matrix
 #' @noRd
-make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
+make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d, V) {
 
     J <- length(x_t)
 
-
+    Vsq <- t(V) %*% V
     ndims <- vapply(1:J,
                     function(j) min(length(x_t[[j]]), n_lags),
                     numeric(1))
@@ -282,11 +286,11 @@ make_Pmat <- function(Xc, x_t, nu, n_lags, lambda, d) {
     total_dim <- max_dim * J
     V1 <- Matrix::bdiag(lapply(ndims, 
                         function(ndim) Matrix::Diagonal(max_dim, 1 / ndim)))
-
-    tile_sparse <- function(d,j) {
-        kronecker(Matrix::Matrix(1, nrow = j, ncol = j), Matrix::Diagonal(d))
+    V1 <- Matrix::bdiag(lapply(ndims, function(ndim) Vsq / ndim))
+    tile_sparse <- function(j) {
+        kronecker(Matrix::Matrix(1, nrow = j, ncol = j), Vsq)
     }
-    V2 <- tile_sparse(max_dim, J) / n_lags
+    V2 <- tile_sparse(J) / n_lags
     Pmat <- nu * V2 + (1 - nu) * V1
     # combine
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)

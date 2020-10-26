@@ -498,6 +498,7 @@ drop_unit_i_multi <- function(msyn, i) {
     args_list <- list(wide = drop_i, relative = msyn$relative,
                       n_leads = msyn$n_leads, n_lags = msyn$n_lags,
                       nu = msyn$nu, lambda = msyn$lambda,
+                      V = msyn$V,
                       force = msyn$force, n_factors = msyn$n_factors,
                       scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
