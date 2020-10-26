@@ -87,8 +87,9 @@ multisynth <- function(form, unit, time, data,
     # for the last treated unit
     if(is.null(n_leads)) {
         n_leads <- ncol(wide$y)
-    } else if(n_leads > max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)) {
-        n_leads <- max(apply(1-wide$mask, 1, sum)) + ncol(wide$y)
+    } else if(n_leads > max(apply(1-wide$mask, 1, sum, na.rm = T)) +
+                                                              ncol(wide$y)) {
+        n_leads <- max(apply(1-wide$mask, 1, sum, na.rm = T)) + ncol(wide$y)
     }
 
     ## if n_lags is NULL set it to the largest number of pre-treatment periods
@@ -117,10 +118,6 @@ multisynth <- function(form, unit, time, data,
 
     if(scm) {
         ## Get imbalance for uniform weights on raw data
-        # get eligible set of donor units based on covariates
-        donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, 
-                             exact_covariates = wide$exact_covariates, ...)
 
         ## TODO: Get rid of this stupid hack of just fitting the weights again with big lambda
         unif <- multisynth_qp(X=wide$X, ## X=residuals[,1:ncol(wide$X)],
@@ -131,7 +128,7 @@ multisynth <- function(form, unit, time, data,
                             relative=T,
                             nu=0, lambda=1e10,
                             time_cohort = time_cohort,
-                            donors = donors,
+                            donors = msynth$donors,
                             eps_rel = eps_rel, 
                             eps_abs = eps_abs,
                             verbose = verbose)
@@ -268,7 +265,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z, time_cohort, n_leads, how = how_match, 
+                             wide$Z, time_cohort, n_lags, n_leads,
+                             how = how_match,
                              exact_covariates = wide$exact_covariates, ...)
         ## if no nu value is provided, use default based on
         ## global and individual imbalance for no-pooling estimator
@@ -346,6 +344,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     msynth$long_df <- long_df
 
     msynth$how_match <- how_match
+    msynth$donors <- donors
     ##format output
     class(msynth) <- "multisynth"
     return(msynth)

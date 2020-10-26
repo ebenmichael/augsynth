@@ -44,6 +44,44 @@ test_that("Getting eligible donor units by exact matching works", {
   expect_equal(sum(msyn$weights[fake_bin == 0, 2]), 1, tolerance = 1e-6)
 })
 
+test_that("Getting eligible donor units by exact matching works with factors", {
+
+  # binary variable to split on
+  fake_fac <- sample(c(0, 1, 3), length(regions), replace = T)
+  basque %>%
+    inner_join(
+      data.frame(regionno = regions, Z = fake_fac) %>%
+        mutate(
+          Z = case_when(regionno == 17 ~ 0,
+                             regionno == 16 ~ 1,
+                             TRUE ~ Z),
+               Z = as.factor(Z)
+              ),
+               by = "regionno") -> basque2
+
+  msyn <- multisynth(gdpcap ~ trt | Z, regionno, year, basque2, nu = 0,
+                     scm = T, how_match = "exact")
+
+  # check that there is actually no weight on donors with different Z
+  expect_equal(sum(msyn$weights[fake_fac == 1, 1]), 1, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 0, 1]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 3, 1]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 1, 2]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 0, 2]), 1, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 3, 2]), 0, tolerance = 1e-6)
+
+
+  # again with fixed effect
+  msyn <- multisynth(gdpcap ~ trt | Z, regionno, year, basque2, nu = 0,
+                     scm = T, fixedeff = T, how_match = "exact")
+  # check that there is actually no weight on donors with different Z
+  expect_equal(sum(msyn$weights[fake_fac == 1, 1]), 1, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 0, 1]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 3, 1]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 1, 2]), 0, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 0, 2]), 1, tolerance = 1e-6)
+  expect_equal(sum(msyn$weights[fake_fac == 3, 2]), 0, tolerance = 1e-6)
+})
 
 test_that("K-NN finds the right number of neighbors", {
 

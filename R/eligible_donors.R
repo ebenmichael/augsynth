@@ -2,7 +2,7 @@
 ## Code to get eligible donor units based on covariates
 ##############################################################################
 
-get_donors <- function(X, y, trt, Z, time_cohort,
+get_donors <- function(X, y, trt, Z, time_cohort, n_lags,
                        n_leads, how = "knn", 
                        exact_covariates = NULL, ...) {
 
@@ -10,7 +10,7 @@ get_donors <- function(X, y, trt, Z, time_cohort,
   donors <- get_eligible_donors(trt, time_cohort, n_leads)
 
   # get donors with no NA values
-  nona_donors <- get_nona_donors(X, y, trt, time_cohort)
+  nona_donors <- get_nona_donors(X, y, trt, n_lags, n_leads, time_cohort)
 
   donors <- lapply(1:length(donors),
                      function(j) donors[[j]] & nona_donors[[j]])
@@ -42,29 +42,30 @@ get_eligible_donors <- function(trt, time_cohort, n_leads) {
 }
 
 #' Get donors that don't have missing outcomes where treated units have outcomes
-get_nona_donors <- function(X, y, trt, time_cohort) {
+get_nona_donors <- function(X, y, trt, n_lags, n_leads, time_cohort) {
 
   n <- length(trt)
   # find na treatment times
-  is_na <- is.na(cbind(X, y)[is.finite(trt), , drop = F])
-
+  fulldat <- cbind(X, y)
+  is_na <- is.na(fulldat[is.finite(trt), , drop = F])
   # aggregate by time cohort
   if(time_cohort) {
     grps <- unique(trt[is.finite(trt)])
     # if doing a time cohort, convert the boolean mask
     finite_trt <- trt[is.finite(trt)]
-    is_na <- sapply(grps,
+    is_na <- t(sapply(grps,
                     function(tj) apply(is_na[finite_trt == tj, , drop = F],
-                                       2, all))
+                                       2, all)))
   } else {
       grps <- trt[is.finite(trt)]
   }
-
+  not_na <- !is.na(fulldat)
   J <- length(grps)
   lapply(1:J,
              function(j) {
-               isna_j <- is_na[j, ]
-               apply(cbind(X, y), 1, function(x) all(!is.na(x)[!isna_j]))
+               idxs <- max(grps[j] - n_lags + 1, 1):(grps[j] + n_leads)
+               isna_j <- is_na[j, idxs]
+               apply(not_na[, idxs, drop = F][, !isna_j, drop = F], 1, all)
         }) -> donors
 
   return(donors)
@@ -78,7 +79,7 @@ get_matched_donors <- function(trt, Z, donors, how, exact_covariates = NULL, k =
     if(how == "exact") {
       return(
         lapply(1:J,
-            function(j) donors[[j]] & apply(Z == Z[trt_idx[j]], 1, all)
+            function(j) donors[[j]] & apply(t(Z) == Z[trt_idx[j], ], 2, all)
         )
       )
     } else if(how == "knn") {
@@ -90,15 +91,15 @@ get_matched_donors <- function(trt, Z, donors, how, exact_covariates = NULL, k =
         if(how == "exact") {
       return(
         lapply(1:J,
-            function(j) donors[[j]] & apply(Z == Z[trt_idx[j], 
-                                                   exact_covariates], 1, all)
+            function(j) donors[[j]] & apply(t(Z) == Z[trt_idx[j], 
+                                                   exact_covariates], 2, all)
         )
       )
     } else if(how == "knn") {
         donors <- lapply(1:J,
             function(j) { donors[[j]] &
-              apply(Z[, exact_covariates, drop = F] == 
-                Z[trt_idx[j],exact_covariates], 1, all)
+              apply(t(Z[, exact_covariates, drop = F]) == 
+                Z[trt_idx[j],exact_covariates], 2, all)
             }
               )
         approx_covs <- which(!colnames(Z) %in% exact_covariates)
@@ -131,13 +132,11 @@ get_knn_donors <- function(trt, Z, donors, k) {
           if(k >= nrow(Z_donors_tj)) {
             warning(paste("Number of potential donor units is less than",
                           "the number of required matches,",
-                          "returning all but one donor as matches"))
-            newk <- nrow(Z_donors_tj) - 1
-          } else {
-            newk <- k
+                          "returning all donors as matches"))
+            return(donors_tj)
           }
           # do knn matching
-          nn <- FNN::get.knnx(data = Z_donors_tj, query = Z_tj, k = newk)
+          nn <- FNN::get.knnx(data = Z_donors_tj, query = Z_tj, k = k)
           # keep track of which indices these are
           donors_j <- logical(length(donors_tj))
           true_idx <- which(donors_tj)[nn$nn.index[1, ]]
