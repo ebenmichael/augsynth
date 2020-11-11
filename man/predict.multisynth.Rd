@@ -4,12 +4,14 @@
 \alias{predict.multisynth}
 \title{Get prediction of average outcome under control or ATT}
 \usage{
-\method{predict}{multisynth}(object, att = F, ...)
+\method{predict}{multisynth}(object, att = F, bs_weight = NULL, ...)
 }
 \arguments{
 \item{object}{Fit multisynth object}
 
 \item{att}{If TRUE, return the ATT, if FALSE, return imputed counterfactual}
+
+\item{bs_weight}{Weight to perturb units by for weighted bootstrap}
 
 \item{...}{Optional arguments}
 }

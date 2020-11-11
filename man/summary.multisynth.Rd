@@ -4,14 +4,14 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(object, jackknife = T, ...)
+\method{summary}{multisynth}(object, inf_type = "jackknife", ...)
 }
 \arguments{
 \item{object}{multisynth object}
 
-\item{jackknife}{Whether to compute jackknife standard errors}
-
 \item{...}{Optional arguments}
+
+\item{jackknife}{Whether to compute jackknife standard errors}
 }
 \value{
 summary.multisynth object that contains:
