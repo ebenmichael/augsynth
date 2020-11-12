@@ -648,8 +648,11 @@ summary.multisynth <- function(object, inf_type = "jackknife", ...) {
     } else if(inf_type == "bootstrap") {
         attse <- weighted_bootstrap_multi(multisynth, ...)
     } else {
-        attse <- list(att = predict(multisynth, relative, att=T),
-                      se = matrix(NA, nrow(att), ncol(att)))
+        att <- predict(multisynth, relative, att=T)
+        attse <- list(att = att,
+                      se = matrix(NA, nrow(att), ncol(att)),
+                      upper_bound = matrix(NA, nrow(att), ncol(att)),
+                      lower_bound = matrix(NA, nrow(att), ncol(att)))
     }
     
 
