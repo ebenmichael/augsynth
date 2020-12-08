@@ -447,12 +447,7 @@ predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
                                                                 , drop=FALSE])
                             weightsj <- multisynth$weights[,j] * bs_weight
                             resj <- multisynth$residuals[[j]][weightsj != 0,, drop = F]
-                            if(!all(multisynth$weights == 0)) {
-                                y0hat + t(resj) %*% weightsj[weightsj != 0]# / 
-                                  #sum(weightsj)
-                            } else {
-                                y0hat
-                            }
+                            y0hat + t(resj) %*% weightsj[weightsj != 0]
                         }
                        , numeric(ttot)
                         )
@@ -464,12 +459,7 @@ predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
                                                               , drop=FALSE])
                             weightsj <- multisynth$weights[, j] * bs_weight
                             resj <- multisynth$residuals[weightsj != 0,, drop = F]
-                            if(!all(multisynth$weights == 0)) {
-                                y0hat + t(resj) %*% weightsj[weightsj != 0]# / 
-                                  #sum(weightsj)
-                            } else {
-                                y0hat
-                            }
+                            y0hat + t(resj) %*% weightsj[weightsj != 0]
                         }
                        , numeric(ttot)
                         )
