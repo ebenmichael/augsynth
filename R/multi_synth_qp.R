@@ -36,6 +36,13 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
                           verbose = FALSE, 
                           eps_rel=1e-4, eps_abs=1e-4) {
 
+    # if Z has no columns then set it to NULL
+    if(!is.null(Z)) {
+      if(ncol(Z) == 0) {
+        Z <- NULL
+      }
+    }
+
     n <- if(typeof(X) == "list") dim(X[[1]])[1] else dim(X)[1]
     d <- if(typeof(X) == "list") dim(X[[1]])[2] else dim(X)[2]
 

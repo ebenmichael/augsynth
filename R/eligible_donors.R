@@ -105,7 +105,12 @@ get_matched_donors <- function(trt, Z, donors, how, exact_covariates = NULL, k =
             }
               )
         approx_covs <- which(!colnames(Z) %in% exact_covariates)
-        return(get_knn_donors(trt, Z[, approx_covs, drop = F], donors, k))
+        if(length(approx_covs != 0)) {
+          return(get_knn_donors(trt, Z[, approx_covs, drop = F], donors, k))
+        } else {
+          return(donors)
+        }
+        
     } else {
       stop("Option for exact matching must be in ('exact', 'knn')")
     }
