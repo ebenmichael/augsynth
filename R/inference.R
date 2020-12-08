@@ -584,7 +584,7 @@ jackknife_se_multiout <- function(ascm) {
 #' @param relative Whether to compute effects according to relative time
 #' @noRd
 weighted_bootstrap_multi <- function(multisynth,
-                                    rweight = rmultinom_b,
+                                    rweight = rwild_b,
                                     n_boot = 1000,
                                     alpha = 0.05,
                                     relative=NULL) {
