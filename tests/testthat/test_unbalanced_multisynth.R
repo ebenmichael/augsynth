@@ -32,7 +32,10 @@ test_that("Non-NA donors are chosen correctly with missing pre-treatment", {
 
   dat_format <- format_data_stag(quo(gdpcap), quo(trt),
                                   quo(regionno), quo(year), basque_mis)
-  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
+  n_lags <- ncol(dat_format$X)
+  n_leads <- ncol(dat_format$y)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt,
+                            n_lags, n_leads, F)
 
   expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
   expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
@@ -47,7 +50,10 @@ test_that("Non-NA donors are chosen correctly with missing post-treatment", {
 
   dat_format <- format_data_stag(quo(gdpcap), quo(trt),
                                   quo(regionno), quo(year), basque_mis)
-  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
+  n_lags <- ncol(dat_format$X)
+  n_leads <- ncol(dat_format$y)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt,
+                           n_lags, n_leads, F)
 
   expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
   expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
@@ -63,10 +69,31 @@ test_that("Non-NA donors are chosen correctly with missing pre- and post-treatme
 
   dat_format <- format_data_stag(quo(gdpcap), quo(trt),
                                   quo(regionno), quo(year), basque_mis)
-  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt, F)
+  n_lags <- ncol(dat_format$X)
+  n_leads <- ncol(dat_format$y)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt,
+                           n_lags, n_leads, F)
 
   expect_true(!all(donors[[1]][regions %in% c(15, 17, 18) ]))
   expect_true(all(donors[[1]][!regions %in% c(15, 17, 18) ]))
+  expect_true(all(donors[[2]]))
+})
+
+
+test_that("Non-NA donors are chosen correctly with missing pre- and post-treatment and not considering all leads and lags", {
+
+  # drop a time period for unit 17
+  basque %>%
+    filter(!regionno %in% c(15, 17, 18) | !year %in% c(1970, 1990)) -> basque_mis
+
+  dat_format <- format_data_stag(quo(gdpcap), quo(trt),
+                                  quo(regionno), quo(year), basque_mis)
+  n_lags <- ncol(dat_format$X)
+  n_leads <- ncol(dat_format$y)
+  donors <- get_nona_donors(dat_format$X, dat_format$y, dat_format$trt,
+                           5, 5, F)
+
+  expect_true(all(donors[[1]]))
   expect_true(all(donors[[2]]))
 })
 
