@@ -183,7 +183,10 @@ predict.augsynth <- function(object, att = F, ...) {
     if(att) {
         return(colMeans(comb[trt == 1,, drop = F]) - c(y0))
     } else {
-        return(y0)
+        rnames <- rownames(y0)
+        y0_vec <- c(y0)
+        names(y0_vec) <- rnames
+        return(y0_vec)
     }
 }
 

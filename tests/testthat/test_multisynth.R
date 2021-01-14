@@ -22,7 +22,7 @@ test_that("augsynth and multisynth give the same answer for a single treated uni
     # estimates are the same-ish
     pred_msyn <- predict(msyn, att=F)[,1]
     pred_msyn <- pred_msyn[-length(pred_msyn)]
-    expect_equal(c(predict(syn, att=F)), pred_msyn, tolerance=5e-5)
+    expect_equal(unname(predict(syn, att=F)), pred_msyn, tolerance=5e-5)
 
 
     ## level of balance is same-ish expected
@@ -86,8 +86,8 @@ test_that("Separate synth is the same as fitting separate synths", {
     # estimates are the same-ish
     pred_msyn <- predict(msyn, att=F)
     pred_msyn <- pred_msyn[-nrow(pred_msyn), ]
-    expect_equal(c(predict(scm17, att=F)), pred_msyn[, 3], tolerance=5e-3)
-    expect_equal(c(predict(scm16, att=F)), pred_msyn[, 2], tolerance=5e-3)
+    expect_equal(unname(predict(scm17, att=F)), pred_msyn[, 3], tolerance=5e-3)
+    expect_equal(unname(predict(scm16, att=F)), pred_msyn[, 2], tolerance=5e-3)
 }
 )
 
@@ -143,9 +143,9 @@ test_that("V matrix is equivalent to hard thresholding", {
   msyn2 <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
                 scm=T, eps_rel=1e-8, eps_abs=1e-8, n_lags = 5)
 
-  expect_equal(msyn1$weights, msyn2$weights, tolerance = 1e-6)
-  expect_equal(msyn1$global_l2, msyn2$global_l2, tolerance = 1e-6)
-  expect_equal(msyn1$avg_l2, msyn2$avg_l2, tolerance = 1e-6)
+  expect_equal(msyn1$weights, msyn2$weights, tolerance = 1e-5)
+  expect_equal(msyn1$global_l2, msyn2$global_l2, tolerance = 1e-5)
+  expect_equal(msyn1$avg_l2, msyn2$avg_l2, tolerance = 1e-5)
 }
 )
 

@@ -72,7 +72,7 @@ test_that("single_augsynth and augsynth_multiout are the same for one outcome", 
     expect_equal(c(syn1$weights), c(syn2$weights), tolerance=3e-4)
 
     # estimates are the same
-    expect_equal(c(predict(syn1, att=F)), c(predict(syn2, att = F)), tolerance=5e-5)
+    expect_equal(c(predict(syn1, att=F)), unname(predict(syn2, att = F)), tolerance=5e-5)
 
 
     ## level of balance is same
@@ -89,7 +89,8 @@ test_that("single_augsynth and augsynth_multiout are the same for one outcome wi
     expect_equal(c(syn1$weights), c(syn2$weights), tolerance=3e-4)
 
     # estimates are the same
-    expect_equal(c(predict(syn1, att=F)), c(predict(syn2, att = F)), tolerance=5e-5)
+    expect_equal(c(predict(syn1, att=F)), unname(predict(syn2, att = F)),
+                 tolerance=5e-5)
 
 
     ## level of balance is same
@@ -106,7 +107,7 @@ test_that("single_augsynth and augsynth_multiout are the same for one outcome wi
     expect_equal(c(syn1$weights), c(syn2$weights), tolerance=3e-4)
 
     # estimates are the same
-    expect_equal(c(predict(syn1, att=F)), c(predict(syn2, att = F)), tolerance=5e-5)
+    expect_equal(c(predict(syn1, att=F)), unname(predict(syn2, att = F)), tolerance=5e-5)
 
 
     ## level of balance is same

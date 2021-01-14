@@ -219,14 +219,14 @@ predict.augsynth_multiout <- function(object, ...) {
 
     # call augsynth predict
     pred <- NextMethod()
-
-    if(att) {
-        pred_names <- names(pred)
-    } else {
-        pred_names <- rownames(pred)
-    }
-    pred <- c(pred)
-    names(pred) <- pred_names
+    # if(att) {
+    #     pred_names <- names(pred)
+    # } else {
+    #     pred_names <- rownames(pred)
+    # }
+    # pred_names <- names(pred)
+    # pred <- c(pred)
+    # names(pred) <- pred_names
 
     # separate out by outcome
     n_outs <- length(object$outcomes)
