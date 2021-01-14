@@ -4,12 +4,16 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(object, jackknife = T, ...)
+\method{summary}{multisynth}(object, inf_type = "bootstrap", ...)
 }
 \arguments{
 \item{object}{multisynth object}
 
-\item{jackknife}{Whether to compute jackknife standard errors}
+\item{inf_type}{Type of inference to perform:
+ \itemize{
+   \item{bootstrap}{Wild bootstrap, the default option}
+   \item{jackknife}{Jackknife}
+}}
 
 \item{...}{Optional arguments}
 }
