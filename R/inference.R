@@ -235,7 +235,12 @@ compute_permute_test_stats <- function(wide_data, ascm, h0,
                         ascm$extra_args))
   resids <- predict(new_ascm, att = T)[1:tpost]
   # permute residuals and compute test statistic
-  stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  if(post_length == 1) {
+    stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+  } else if(post_length > 0) {
+    stat_func <- function(x) (abs(sum(x)) ^ q  / sqrt(length(x))) ^ (1 / q)
+  }
+  
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
                         function(x) {
