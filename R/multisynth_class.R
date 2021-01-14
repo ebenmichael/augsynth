@@ -288,13 +288,10 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         donors <- get_donors(wide$X, wide$y, wide$trt,
                              wide$Z[, colnames(wide$Z) %in% 
                                       wide$match_covariates, drop = F],
-                             time_cohort, n_lags, n_leads, how = how_match, 
+                             time_cohort, n_lags, n_leads, how = how_match,
                              exact_covariates = wide$exact_covariates, ...)
-        ## if no nu value is provided, use default based on
-        ## global and individual imbalance for no-pooling estimator
-        if(is.null(nu)) {
-            ## fit with nu = 0
-            nu_fit <- multisynth_qp(X=bal_mat,
+        # run separate synth for scaling
+        sep_fit <- multisynth_qp(X=bal_mat,
                                     trt=wide$trt,
                                     mask=wide$mask,
                                     Z = wide$Z[, !colnames(wide$Z) %in%
@@ -310,9 +307,12 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                     eps_rel = eps_rel,
                                     eps_abs = eps_abs,
                                     verbose = verbose)
+        # if no nu value is provided, use default based on
+        # global and individual imbalance for separate synth
+        if(is.null(nu)) {
             # select nu by triangle inequality ratio
-            glbl <- nu_fit$global_l2
-            ind <- nu_fit$ind_l2
+            glbl <- sep_fit$global_l2 * sqrt(nrow(sep_fit$imbalance))
+            ind <- sep_fit$avg_l2
             nu <- glbl / ind
 
         }
@@ -330,6 +330,8 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                                 V = V,
                                 time_cohort = time_cohort,
                                 donors = donors,
+                                norm_pool = sep_fit$global_l2 ^ 2,
+                                norm_sep = sep_fit$ind_l2 ^ 2,
                                 eps_rel = eps_rel,
                                 eps_abs = eps_abs,
                                 verbose = verbose)

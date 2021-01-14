@@ -20,6 +20,8 @@
 #'              Default: 0
 #' @param lambda Regularization hyper-parameter. Default, 0
 #' @param time_cohort Whether to average synthetic controls into time cohorts
+#' @param norm_pool Normalizing value for pooled objective, default: number of treated units squared
+#' @param norm_sep Normalizing value for separate objective, default: number of treated units
 #' @param verbose Whether to print logs for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param eps_abs Absolute error tolerance for osqp
@@ -32,7 +34,7 @@
 #'         }
 multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
                           relative=T, nu=0, lambda=0, V = NULL, time_cohort = FALSE,
-                          donors = NULL,
+                          donors = NULL, norm_pool = NULL, norm_sep = NULL,
                           verbose = FALSE, 
                           eps_rel=1e-4, eps_abs=1e-4) {
 
@@ -70,6 +72,12 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
 
 
     J <- length(grps)
+    if(is.null(norm_sep)) {
+      norm_sep <- 1#J
+    }
+    if(is.null(norm_pool)) {
+      norm_pool <- 1#J ^ 2
+    }
     n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
     # if no specific donors passed in,
@@ -132,9 +140,9 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
 
     ## quadratic balance measures
 
-    qvec <- make_qvec(Xc, x_t, z_t, nu, n_lags, d, V)
+    qvec <- make_qvec(Xc, x_t, z_t, nu, n_lags, d, V, norm_pool, norm_sep)
 
-    Pmat <- make_Pmat(Xc, x_t, dz, nu, n_lags, lambda, d, V)
+    Pmat <- make_Pmat(Xc, x_t, dz, nu, n_lags, lambda, d, V, norm_pool, norm_sep)
 
     ## Optimize
     settings <- do.call(osqp::osqpSettings, 
@@ -159,14 +167,15 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
                                 out$x[(nj0cumsum[j] + 1):nj0cumsum[j + 1]])
                         },
                         numeric(d))
-    avg_imbal <- rowSums(t(t(imbalance)))
+    avg_imbal <- rowMeans(t(t(imbalance)))
 
     Vsq <- t(V) %*% V
     global_l2 <- c(sqrt(t(avg_imbal[(d - n_lags + 1):d]) %*% Vsq %*%
-                          avg_imbal[(d - n_lags + 1):d]))
-    ind_l2 <- sum(apply(imbalance, 2,
+                          avg_imbal[(d - n_lags + 1):d])) / sqrt(d)
+    avg_l2 <- mean(apply(imbalance, 2,
                   function(x) c(sqrt(t(x[(d - n_lags + 1):d]) %*% Vsq %*%
                                 x[(d - n_lags + 1):d]))))
+    ind_l2 <- sqrt(mean(apply(imbalance, 2, function(x) c(x %*% Vsq %*% x) / sum(x != 0))))
     # pad weights with zeros for treated units and divide by number of treated units
     vapply(1:J,
            function(j) {
@@ -182,6 +191,7 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
                    imbalance = cbind(avg_imbal, imbalance),
                    global_l2 = global_l2,
                    ind_l2 = ind_l2,
+                   avg_l2 = avg_l2,
                    V = V)
 
     if(!is.null(Z)) {
@@ -294,8 +304,10 @@ make_constraint_mats <- function(trt, grps, n_leads, n_lags, Xc, Zc, d, n1) {
 #' @param n_lags Number of lags to balance
 #' @param d Largest number of pre-intervention time periods
 #' @param V Scaling matrix
+#' @param norm_pool Normalizing value for pooled objective
+#' @param norm_sep Normalizing value for separate objective
 #' @noRd
-make_qvec <- function(Xc, x_t, z_t, nu, n_lags, d, V) {
+make_qvec <- function(Xc, x_t, z_t, nu, n_lags, d, V, norm_pool, norm_sep) {
 
     J <- length(x_t)
     Vsq <- t(V) %*% V
@@ -317,11 +329,19 @@ make_qvec <- function(Xc, x_t, z_t, nu, n_lags, d, V) {
                                     xtk[(dk - ndim + 1):dk])
                             }) %>% reduce(`+`) %*% Vsq
     qvec_avg <- rep(avg_target_vec, J)
-    qvec <- - (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c))
+    # qvec <- - (nu * qvec_avg / n_lags + (1 - nu) * reduce(qvec, c))
+    # qvec <- - (nu * qvec_avg / (J ^ 2 * n_lags) +
+    #           (1 - nu) * reduce(qvec, c) / J)
+    qvec <- - (nu * qvec_avg / (norm_pool * n_lags * J ^ 2) +
+               (1 - nu) * reduce(qvec, c) / (norm_sep * J))
 
     qvec_avg_z <- z_t %>% reduce(`+`)
     qvec_avg_z <- rep(qvec_avg_z, J)
-    qvec_z <- - (nu * qvec_avg_z + (1 - nu) * reduce(z_t, c)) / length(z_t[[1]])
+    # qvec_z <- - (nu * qvec_avg_z + (1 - nu) * reduce(z_t, c)) / length(z_t[[1]])
+    # qvec_z <- - (nu * qvec_avg_z / J ^2 +
+    #              (1 - nu) * reduce(z_t, c) / J) / length(z_t[[1]])
+    qvec_z <- - (nu * qvec_avg_z / (norm_pool * J ^ 2) +
+                 (1 - nu) * reduce(z_t, c) / (norm_sep * J)) / length(z_t[[1]])
 
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
     return(c(numeric(total_ctrls), qvec, qvec_z))
@@ -336,8 +356,11 @@ make_qvec <- function(Xc, x_t, z_t, nu, n_lags, d, V) {
 #' @param lambda Regularization hyperparameter
 #' @param d Largest number of pre-intervention time periods
 #' @param V Scaling matrix
+#' @param norm_pool Normalizing value for pooled objective
+#' @param norm_sep Normalizing value for separate objective
 #' @noRd
-make_Pmat <- function(Xc, x_t, dz, nu, n_lags, lambda, d, V) {
+make_Pmat <- function(Xc, x_t, dz, nu, n_lags, lambda, d, V,
+                      norm_pool, norm_sep) {
 
     J <- length(x_t)
 
@@ -359,10 +382,14 @@ make_Pmat <- function(Xc, x_t, dz, nu, n_lags, lambda, d, V) {
                   Matrix::Diagonal(d))
     }
     V2 <- tile_sparse(J) / n_lags
-    Pmat <- nu * V2 + (1 - nu) * V1
+    # Pmat <- nu * V2 + (1 - nu) * V1
+    # Pmat <- nu * V2 / J ^ 2 + (1 - nu) * V1 / J
+    Pmat <- nu * V2 / (norm_pool * J ^ 2) + (1 - nu) * V1 / (norm_sep * J)
     V1_z <- Matrix::Diagonal(dz * J, 1 / dz)
     V2_z <- tile_sparse_cov(dz, J) / dz
-    Pmat_z <- nu * V2_z + (1 - nu) * V1_z
+    # Pmat_z <- nu * V2_z + (1 - nu) * V1_z
+    # Pmat_z <- nu * V2_z / J ^ 2 + (1 - nu) * V1_z / J
+    Pmat_z <- nu * V2_z / (norm_pool * J ^ 2) + (1 - nu) * V1_z / (norm_sep * J)
     # combine
     total_ctrls <- lapply(Xc, nrow) %>% reduce(`+`)
     Pmat <- Matrix::bdiag(Matrix::Matrix(0, nrow = total_ctrls,
