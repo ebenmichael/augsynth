@@ -3,7 +3,15 @@
 ################################################################################
 
 #' Fit staggered synth
-#' @param form outcome ~ treatment
+#' @param form outcome ~ treatment | weighting covariates | approximate matching covaraites | exact matching covariates
+#' \itemize{
+#'    \item{outcome}{Name of the outcome of interest}
+#'    \item{treatment}{Name of the treatment assignment variable}
+#'    \item{weighting covariates}{Auxiliary covariates to weight on}
+#'    \item{approximate matching covariates}{Auxiliary covariates to approximately match one before weighting}
+#'    \item{exact matching covariates}{Auxiliary covariates to exactly match on before weighting}
+#' }
+#' If covariates are time-varying, their average value before the first unit is treated will be used. This can be changed by supplying a custom aggregation function to cov_agg.
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
@@ -12,10 +20,11 @@
 #' @param nu Fraction of balance for individual balance
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param V Scaling matrix for synth optimization, default NULL is identity
-#' @param fixedeff Whether to include a unit fixed effect, default F
+#' @param fixedeff Whether to include a unit fixed effect, default TRUE
 #' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
-#' @param time_cohort Whether to average synthetic controls into time cohorts
+#' @param time_cohort Whether to average synthetic controls into time cohorts, default FALSE
+#' @param cov_agg Covariate aggregation function
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
@@ -43,7 +52,7 @@
 multisynth <- function(form, unit, time, data,
                        n_leads=NULL, n_lags=NULL,
                        nu=NULL, lambda=0, V = NULL,
-                       fixedeff = FALSE,
+                       fixedeff = TRUE,
                        n_factors=0,
                        scm=T,
                        time_cohort = F,
@@ -70,16 +79,21 @@ multisynth <- function(form, unit, time, data,
                               data, cov_agg)
     } else if(length(form)[2] == 3) {
       app_form <- Formula::Formula(formula(form, rhs = 1:2))
-      Z_app <- extract_covariates(app_form, unit, time,
+      Z_weight <- extract_covariates(app_form, unit, time,
                                   wide$time[min(wide$trt) + 1],
                                   data, cov_agg)
       exact_form <- Formula::Formula(formula(form, rhs = c(1,3)))
-      Z_exact <- extract_covariates(exact_form, unit, time,
+      Z_match<- extract_covariates(exact_form, unit, time,
                                   wide$time[min(wide$trt) + 1],
                                   data, cov_agg)
-      Z <- cbind(Z_app, Z_exact)
-      wide$match_covariates <- colnames(Z_exact)
+      Z <- cbind(Z_weight, Z_match)
+      wide$match_covariates <- colnames(Z_match)
     } else if(length(form)[2] == 4) {
+      if(time_cohort) {
+        stop("Aggregating by time cohort and matching on covariates are not ",
+             "implemented together. If matching then you cannot aggregate ",
+             "by time cohort.")
+      }
       weight_form <- Formula::Formula(formula(form, rhs = c(1,2)))
       Z_weight <- extract_covariates(weight_form, unit, time,
                                       wide$time[min(wide$trt) + 1],
@@ -571,13 +585,17 @@ print.multisynth <- function(x, ...) {
 #' Plot function for multisynth
 #' @importFrom graphics plot
 #' @param x Augsynth object to be plotted
-#' @param inf_type Type of inference to perform
-#' @param inf Whether to compute and plot standard errors
+#' @param inf_type Type of inference to perform:
+#'  \itemize{
+#'    \item{bootstrap}{Wild bootstrap, the default option}
+#'    \item{jackknife}{Jackknife}
+#' }
+#' @param inf Whether to compute and plot confidence intervals
 #' @param levels Which units/groups to plot, default is every group
 #' @param label Whether to label the individual levels
 #' @param ... Optional arguments
 #' @export
-plot.multisynth <- function(x, inf_type = "jackknife", inf = T,
+plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
                             levels = NULL, label = T, ...) {
 
     multisynth <- x
@@ -592,7 +610,11 @@ plot.multisynth <- function(x, inf_type = "jackknife", inf = T,
 
 #' Summary function for multisynth
 #' @param object multisynth object
-#' @param jackknife Whether to compute jackknife standard errors
+#' @param inf_type Type of inference to perform:
+#'  \itemize{
+#'    \item{bootstrap}{Wild bootstrap, the default option}
+#'    \item{jackknife}{Jackknife}
+#' }
 #' @param ... Optional arguments
 #' 
 #' @return summary.multisynth object that contains:
@@ -605,7 +627,7 @@ plot.multisynth <- function(x, inf_type = "jackknife", inf = T,
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
 #'         }
 #' @export
-summary.multisynth <- function(object, inf_type = "jackknife", ...) {
+summary.multisynth <- function(object, inf_type = "bootstrap", ...) {
 
     multisynth <- object
     
@@ -639,6 +661,10 @@ summary.multisynth <- function(object, inf_type = "jackknife", ...) {
     if(inf_type == "jackknife") {
         attse <- jackknife_se_multi(multisynth, relative, ...)
     } else if(inf_type == "bootstrap") {
+        if(object$force == 2) {
+          warning("Wild bootstrap without including a unit fixed effect ",
+                  "is likely to be very conservative!")
+        }
         attse <- weighted_bootstrap_multi(multisynth, ...)
     } else {
         att <- predict(multisynth, relative, att=T)
@@ -772,7 +798,7 @@ print.summary.multisynth <- function(x, level = "Average", ...) {
 #' @importFrom ggplot2 aes
 #' 
 #' @param x summary object
-#' @param se Whether to plot standard errors
+#' @param inf Whether to plot confidence intervals
 #' @param levels Which units/groups to plot, default is every group
 #' @param label Whether to label the individual levels
 #' @param ... Optional arguments

@@ -103,11 +103,13 @@ test_that("Separate synth with missing treated unit time drops the time", {
   basque %>%
     filter(!regionno %in% c(17) | year != 1970) -> basque_mis
 
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
+                     fixedeff = F,
                      nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
-  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, 
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
                       basque %>% filter(year != 1970),
+                      fixedeff = F,
                       nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
 

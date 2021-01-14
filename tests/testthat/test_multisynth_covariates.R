@@ -139,7 +139,7 @@ test_that("Getting eligible donor units by knn matching works", {
 
   # without synth weights, weights are uniform
   k <- 2
-  unimatch <- multisynth(gdpcap ~ trt| 0 | Z1 + Z2 + Z3, regionno, year,
+  unimatch <- multisynth(gdpcap ~ trt| 0 | Z1 + Z2 + Z3 | 0, regionno, year,
                      basque2, scm = T, how_match = "knn", k = k, lambda = 1e10)
 
   expect_equal(unimatch$weights[unimatch$weights != 0 ], rep(1 / k, 2 * k))
@@ -227,4 +227,33 @@ test_that("Getting eligible donor units by exact and knn matching works", {
                 function(i) sum(unimatch2$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
 
   expect_lt(imbal2, imbal1)
+})
+
+
+test_that("An error is thrown if trying to match with time cohorts or the formula is wrong", {
+
+  # binary variable to split on
+  fake_bin <- sample(c(0, 1), length(regions), replace = T)
+
+  # variables to match on
+  Z <- matrix(rnorm(length(regions) * 3), ncol = 3)
+  basque %>%
+    inner_join(
+      data.frame(regionno = regions,
+                 Z1 = Z[, 1], Z2 = Z[, 2], Z3 = Z[, 3],
+                 Z_bin = fake_bin) %>%
+        mutate(Z_bin = case_when(regionno == 17 ~ 0,
+                             regionno == 16 ~ 1,
+                             TRUE ~ Z_bin)),
+      by = "regionno") %>% 
+    mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
+                            (regionno == 16) & (year >= 1975) ~ 1,
+                                              TRUE ~ 0)) %>%
+      filter(regionno != 1)-> basque2
+
+  expect_error(multisynth(gdpcap ~ trt | Z1 + Z2, regionno, year, basque2,
+                     time_cohort = T), NA)
+
+  expect_error(multisynth(gdpcap ~ trt | Z1 + Z2 | 0 | Z_bin,
+                          regionno, year, basque2, time_cohort = T))
 })

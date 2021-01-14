@@ -12,9 +12,9 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
 test_that("augsynth and multisynth give the same answer for a single treated unit and no augmentation", {
 
     syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
-                    progfunc="None", scm=T)
+                    progfunc="None", scm=T, fixedeff = F)
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque, nu = 0,
-                       scm=T, eps_rel=1e-5, eps_abs=1e-5)
+                       fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
     
     # weights are the same-ish
     expect_equal(c(syn$weights), c(msyn$weights[-16]), tolerance=3e-4)
@@ -74,7 +74,7 @@ test_that("Separate synth is the same as fitting separate synths", {
                     progfunc="None", scm=T) -> scm16
     
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
-                       scm=T, eps_rel=1e-5, eps_abs=1e-5)
+                       scm=T, eps_rel=1e-5, eps_abs=1e-5, fixedeff = F)
     
     # weights are the same-ish
     sscm_weights <- unname(c(scm17$weights))

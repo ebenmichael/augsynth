@@ -9,11 +9,13 @@
 \arguments{
 \item{x}{summary object}
 
+\item{inf}{Whether to plot confidence intervals}
+
 \item{levels}{Which units/groups to plot, default is every group}
 
-\item{...}{Optional arguments}
+\item{label}{Whether to label the individual levels}
 
-\item{se}{Whether to plot standard errors}
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for summary function for multisynth
