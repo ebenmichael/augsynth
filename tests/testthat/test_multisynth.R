@@ -26,7 +26,7 @@ test_that("augsynth and multisynth give the same answer for a single treated uni
 
 
     ## level of balance is same-ish expected
-    expect_equal(syn$l2_imbalance, msyn$ind_l2, tolerance=1e-5)
+    expect_equal(syn$l2_imbalance, msyn$avg_l2, tolerance=1e-5)
 
 }
 )
@@ -117,10 +117,14 @@ test_that("L2 imbalance computed correctly", {
   msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2,
                 scm=T, eps_rel=1e-5, eps_abs=1e-5)
 
-  glbl <- sqrt(sum(msyn$imbalance[,1]^2))
-  ind <- sum(apply(msyn$imbalance[,-1, drop = F], 2,
-              function(x) sqrt(sum(x^2))))
+  glbl <- sqrt(mean(msyn$imbalance[,1]^2))
+  ind <- sqrt(mean(
+    apply(msyn$imbalance[, -1], 2,
+          function(x) sum(x ^ 2) / sum(x != 0))))
+  avg_ind <- mean(apply(msyn$imbalance[,-1, drop = F], 2,
+              function(x) sqrt(sum(x ^ 2))))
   expect_equal(glbl, msyn$global_l2)
+  expect_equal(avg_ind, msyn$avg_l2)
   expect_equal(ind, msyn$ind_l2)
 })
 
@@ -133,15 +137,15 @@ test_that("V matrix is equivalent to hard thresholding", {
       filter(regionno != 1)
 
   V <- c(numeric(10), rep(1,5))
-  msyn1 <- multisynth(gdpcap ~ trt, regionno, year, basque2,
+  msyn1 <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
                 scm=T, eps_rel=1e-8, eps_abs=1e-8, n_lags = 15, V = V)
 
-  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, basque2,
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
                 scm=T, eps_rel=1e-8, eps_abs=1e-8, n_lags = 5)
 
   expect_equal(msyn1$weights, msyn2$weights, tolerance = 1e-6)
   expect_equal(msyn1$global_l2, msyn2$global_l2, tolerance = 1e-6)
-  expect_equal(msyn1$ind_l2, msyn2$ind_l2, tolerance = 1e-6)
+  expect_equal(msyn1$avg_l2, msyn2$avg_l2, tolerance = 1e-6)
 }
 )
 

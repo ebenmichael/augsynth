@@ -175,7 +175,10 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
     avg_l2 <- mean(apply(imbalance, 2,
                   function(x) c(sqrt(t(x[(d - n_lags + 1):d]) %*% Vsq %*%
                                 x[(d - n_lags + 1):d]))))
-    ind_l2 <- sqrt(mean(apply(imbalance, 2, function(x) c(x %*% Vsq %*% x) / sum(x != 0))))
+    ind_l2 <- sqrt(mean(
+      apply(imbalance, 2,
+      function(x) c(x[(d - n_lags + 1):d] %*% Vsq %*% x[(d - n_lags + 1):d]) /
+          sum(x[(d - n_lags + 1):d] != 0))))
     # pad weights with zeros for treated units and divide by number of treated units
     vapply(1:J,
            function(j) {
