@@ -695,16 +695,20 @@ summary.multisynth <- function(object, inf_type = "bootstrap", ...) {
         names(se) <- col_names
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
-            mutate(Time=Time-1)-> se
+            mutate(Time=Time-1) -> se
         lower_bound <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                   attse$lower_bound))
         names(lower_bound) <- col_names
-        lower_bound %>% gather(Level, lower_bound, -Time) -> lower_bound
+        lower_bound %>% gather(Level, lower_bound, -Time) %>%
+          rename("Time"=Time) %>%
+          mutate(Time=Time-1) -> lower_bound
 
         upper_bound <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                         attse$upper_bound))
         names(upper_bound) <- col_names
-        upper_bound %>% gather(Level, upper_bound, -Time) -> upper_bound
+        upper_bound %>% gather(Level, upper_bound, -Time) %>%
+          rename("Time"=Time) %>%
+            mutate(Time=Time-1) -> upper_bound
 
     } else {
         att <- data.frame(cbind(times, attse$att))
