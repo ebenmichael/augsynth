@@ -61,7 +61,7 @@ fit_feff <- function(X, trt, mask, force) {
 
     if(force %in% c(2,3)) {
         ## compute time fixed effects from pure controls
-        time_eff <- matrix(colMeans(X[!is.finite(trt),],
+        time_eff <- matrix(colMeans(X[!is.finite(trt),, drop = F],
                             na.rm = TRUE),
                             nrow=nrow(X),
                             ncol=ncol(X),
@@ -75,9 +75,10 @@ fit_feff <- function(X, trt, mask, force) {
 
         ## compute unit fixed effects from pre-intervention outcomes
         unit_eff <- lapply(grps, 
-                            function(tj) matrix(rowMeans(residuals[, 1:tj],
-                                                            na.rm = TRUE),
-                                                   nrow=nrow(X), ncol=ncol(X)))
+                            function(tj) matrix(
+                                            rowMeans(residuals[, 1:tj, drop = F],
+                                                     na.rm = TRUE),
+                                            nrow=nrow(X), ncol=ncol(X)))
         residuals <- lapply(1:J, function(j) residuals -
                                                 unit_eff[[j]])
         y0hat <- unit_eff
