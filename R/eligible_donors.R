@@ -65,7 +65,8 @@ get_nona_donors <- function(X, y, trt, n_lags, n_leads, time_cohort) {
   J <- length(grps)
   lapply(1:J,
              function(j) {
-               idxs <- max(grps[j] - n_lags + 1, 1):(grps[j] + n_leads)
+               idxs <- max(grps[j] - n_lags + 1, 1):min(grps[j] + n_leads,
+                                                        ncol(fulldat))
                isna_j <- is_na[j, idxs]
                apply(not_na[, idxs, drop = F][, !isna_j, drop = F], 1, all)
         }) -> donors
