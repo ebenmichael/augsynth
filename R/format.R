@@ -272,3 +272,60 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
     }
     return(Z)
 }
+
+#' Check that we can actually run multisynth on the data
+#' @param wide Output of format_data_stag
+#' @param fixedeff Whether to include a unit fixed effect
+#' @param n_leads How long past treatment effects should be estimated for, default is number of post treatment periods for last treated unit
+#' @param n_lags Number of pre-treatment periods to balance, default is to balance all periods
+check_data_stag <- function(wide, fixedeff, n_leads, n_lags) {
+
+  # If there are less than 5 pre-treatment outcomes, give a warning
+  less_5 <- wide$units[wide$trt < 5]
+  warn_msg <- ""
+  if(length(less_5) != 0) {
+    warn_msg <- paste0(
+      warn_msg,
+      "The following units have less than 5 pre-treatment outcomes: (",
+      paste(less_5, collapse = ","),
+      "). Be cautious!"
+    )
+  }
+
+  # check if there are any always treated units
+  always_trt <- wide$units[wide$trt == 0]
+
+  # If including a fixed effect, check that there is more than one pretreatment
+  # outcome for each unit
+  n1 <- wide$units[wide$trt == 1]
+
+  err_msg <- ""
+  if(length(always_trt) != 0) {
+    err_msg <- paste0(
+      err_msg,
+      "The following units are always treated and should be removed: (",
+      paste(always_trt, collapse = ","),
+      ")\n")
+  }
+
+  if(length(n1) != 0 & fixedeff) {
+    if(nchar(err_msg) > 0) {
+      err_msg <- paste0(err_msg, "  Also: ")
+    }
+    err_msg <- paste0(
+      err_msg,
+      "You are including a fixed effect with `fixedeff = T`, but the ",
+      "following units only have one pre-treatment outcome: (",
+      paste(n1, collapse = ","),
+      "). Either remove these units or set `fixedeff = F`."
+    )
+  }
+
+  if(nchar(warn_msg) > 0) {
+    warning(warn_msg)
+  }
+  if(nchar(err_msg) > 0) {
+    stop(err_msg)
+  }
+
+}

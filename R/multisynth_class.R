@@ -71,6 +71,9 @@ multisynth <- function(form, unit, time, data,
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
     wide <- format_data_stag(outcome, trt, unit, time, data)
+
+    check_data_stag(wide, fixedeff, n_leads, n_lags)
+
     force <- if(fixedeff) 3 else 2
 
     # get covariates

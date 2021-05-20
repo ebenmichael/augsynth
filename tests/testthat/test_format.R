@@ -40,3 +40,39 @@ test_that("format_synth creates matrices with the right dimensions", {
     expect_equivalent(syn_dat$Z0, syn_dat$X0)
 }
 )
+
+
+test_that("multisynth throws errors when there aren't enough pre-treatment times",
+  {
+    basque2 <- basque %>%
+      mutate(trt = case_when(
+        regionno == 16 ~ 1,
+        year >= 1975 & regionno == 17 ~ 1,
+        TRUE ~ 0)
+        ) %>%
+      filter(regionno != 1)
+
+  # error from always treated unit
+  expect_warning(
+    expect_error(
+      multisynth(gdpcap ~ trt, regionno, year, basque2)
+    )
+  )
+
+  basque2 <- basque %>%
+      mutate(trt = case_when(
+        regionno == 16 & year >= 1956 ~ 1,
+        year >= 1975 & regionno == 17 ~ 1,
+        TRUE ~ 0)
+        ) %>%
+      filter(regionno != 1)
+
+  # error from one pre-treatment outcome and fixedeff = T
+  expect_warning(
+    expect_error(multisynth(gdpcap ~ trt, regionno, year, basque2))
+  )
+
+  # no error from one pre-treatment outcome and fixedeff = F, just warning
+  expect_warning(multisynth(gdpcap ~ trt, regionno, year, basque2, fixedeff = F))
+
+  })
