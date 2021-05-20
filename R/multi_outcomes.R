@@ -54,7 +54,9 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
 
     ## add covariates
     if(length(form)[2] == 2) {
-        Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)
+        cov_form <- paste(deparse(terms(formula(form, rhs = 2))[[3]]), collapse = "")
+        new_form <- as.formula(paste("~", cov_form))
+        Z <- extract_covariates(new_form, unit, time, t_int, data, cov_agg)
     } else {
         Z <- NULL
     }
@@ -119,7 +121,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
     # potentially add back in fixed effects
     augsynth$mhat <- mhat + augsynth$mhat
 
-    augsynth$data = list(X = X, trt = trt, y = y)
+    augsynth$data = list(X = X, trt = trt, y = y, Z = Z)
     augsynth$data_list <- wide_list
     augsynth$outcomes <- outcomes_str
     ##format output
