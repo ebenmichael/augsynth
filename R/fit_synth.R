@@ -2,6 +2,29 @@
 # Helper scripts to fit synthetic controls to simulations
 #######################################################
 
+#' Make a V matrix from a vector (or null)
+make_V_matrix <- function(t0, V) {
+  if(is.null(V)) {
+        V <- diag(rep(1, t0))
+    } else if(is.vector(V)) {
+        if(length(V) != t0) {
+          stop(paste("`V` must be a vector with", t0, "elements or a", t0, 
+                     "x", t0, "matrix"))
+        }
+        V <- diag(V)
+    } else if(ncol(V) == 1 & nrow(V) == t0) {
+        V <- diag(c(V))
+    } else if(ncol(V) == t0 & nrow(V) == 1) {
+        V <- diag(c(V))
+    } else if(nrow(V) == t0) {
+    } else {
+        stop(paste("`V` must be a vector with", t0, "elements or a", t0, 
+                     "x", t0, "matrix"))
+    }
+
+  return(V)
+}
+
 #' Fit synthetic controls on outcomes after formatting data
 #' @param synth_data Panel data in format of Synth::dataprep
 #' @param V Matrix to scale the obejctive by
@@ -16,20 +39,8 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
 
     t0 <- dim(synth_data$Z0)[1]
     ## if no  is supplied, set equal to 1
-    if(is.null(V)) {
-        # custom.v <- rep(1, dim(synth_data$Z0)[1])
-        V <- diag(rep(1, t0))
-    } else if(is.vector(V)) {
-        V <- diag(V)
-    } else if(ncol(V) == 1 & nrow(V) == t0) {
-        V <- diag(c(V))
-    } else if(ncol(V) == t0 & nrow(V) == 1) {
-        V <- diag(c(V))
-    } else if(nrow(V) == t0) {
-    } else {
-        stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
-    }
 
+    V <- make_V_matrix(t0, V)
 
     weights <- synth_qp(synth_data$X1, t(synth_data$X0), V)
     l2_imbalance <- sqrt(sum((synth_data$Z0 %*% weights - synth_data$Z1)^2))

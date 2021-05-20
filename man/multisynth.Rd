@@ -13,10 +13,13 @@ multisynth(
   n_lags = NULL,
   nu = NULL,
   lambda = 0,
-  fixedeff = FALSE,
+  V = NULL,
+  fixedeff = TRUE,
   n_factors = 0,
   scm = T,
   time_cohort = F,
+  how_match = "knn",
+  cov_agg = NULL,
   eps_abs = 1e-04,
   eps_rel = 1e-04,
   verbose = FALSE,
@@ -24,7 +27,15 @@ multisynth(
 )
 }
 \arguments{
-\item{form}{outcome ~ treatment}
+\item{form}{outcome ~ treatment | weighting covariates | approximate matching covaraites | exact matching covariates
+\itemize{
+   \item{outcome}{Name of the outcome of interest}
+   \item{treatment}{Name of the treatment assignment variable}
+   \item{weighting covariates}{Auxiliary covariates to weight on}
+   \item{approximate matching covariates}{Auxiliary covariates to approximately match one before weighting}
+   \item{exact matching covariates}{Auxiliary covariates to exactly match on before weighting}
+}
+If covariates are time-varying, their average value before the first unit is treated will be used. This can be changed by supplying a custom aggregation function to cov_agg.}
 
 \item{unit}{Name of unit column}
 
@@ -40,13 +51,17 @@ multisynth(
 
 \item{lambda}{Regularization hyperparameter, default = 0}
 
-\item{fixedeff}{Whether to include a unit fixed effect, default F}
+\item{V}{Scaling matrix for synth optimization, default NULL is identity}
+
+\item{fixedeff}{Whether to include a unit fixed effect, default TRUE}
 
 \item{n_factors}{Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0}
 
 \item{scm}{Whether to fit scm weights}
 
-\item{time_cohort}{Whether to average synthetic controls into time cohorts}
+\item{time_cohort}{Whether to average synthetic controls into time cohorts, default FALSE}
+
+\item{cov_agg}{Covariate aggregation function}
 
 \item{eps_abs}{Absolute error tolerance for osqp}
 

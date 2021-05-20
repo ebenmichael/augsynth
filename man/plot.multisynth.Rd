@@ -4,14 +4,22 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(x, se = T, levels = NULL, ...)
+\method{plot}{multisynth}(x, inf_type = "bootstrap", inf = T, levels = NULL, label = T, ...)
 }
 \arguments{
 \item{x}{Augsynth object to be plotted}
 
-\item{se}{Whether to compute and plot standard errors}
+\item{inf_type}{Type of inference to perform:
+ \itemize{
+   \item{bootstrap}{Wild bootstrap, the default option}
+   \item{jackknife}{Jackknife}
+}}
+
+\item{inf}{Whether to compute and plot confidence intervals}
 
 \item{levels}{Which units/groups to plot, default is every group}
+
+\item{label}{Whether to label the individual levels}
 
 \item{...}{Optional arguments}
 }

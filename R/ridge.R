@@ -60,19 +60,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
 
     t0 <- ncol(X_c)
 
-    if(is.null(V)) {
-        # custom.v <- rep(1, dim(synth_data$Z0)[1])
-        V <- diag(rep(1, t0))
-    } else if(is.vector(V)) {
-        V <- diag(V)
-    } else if(ncol(V) == 1 & nrow(V) == t0) {
-        V <- diag(c(V))
-    } else if(ncol(V) == t0 & nrow(V) == 1) {
-        V <- diag(c(V))
-    } else if(nrow(V) == t0) {
-    } else {
-        stop("`V` must be a vector with t0 elements or a t0xt0 matrix")
-    }
+    V <- make_V_matrix(t0, V)
 
     # apply V matrix transformation
     X_c <- X_c %*% V
