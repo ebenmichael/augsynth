@@ -75,7 +75,7 @@ summary(syn, stat_func = function(x) -sum(x))
 ```
 Or if we want to priotize testing the average post-treatment effect, we can set it to be the absolute sum:
 ```{r summ_syn_sum}
-summary(syn, stat_func = function(x) sum(x))
+summary(syn, stat_func = function(x) abs(sum(x)))
 ```
 
 
