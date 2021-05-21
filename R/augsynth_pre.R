@@ -64,6 +64,10 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   if(multi_outcome & num_trt_years > 1) {
     stop("augsynth is not currently implemented for more than one outcome and more than one treated unit")
   } else if(num_trt_years > 1) {
+    message("More than one treatment time found. Running multisynth.")
+    if("progfunc" %in% names(list(...))) {
+      warning("`progfunc` is not an argument for multisynth, so it is ignored")
+    }
     return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
   } else {
     if (is.null(t_int)) {
@@ -71,9 +75,11 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
         summarise(t_int = max(trt_time)) %>% pull(t_int)
     }
     if(!multi_outcome) {
+      message("One outcome and one treatment time found. Running single_augsynth.")
       return(single_augsynth(form, !!enquo(unit), !!enquo(time), t_int,
                              data = data, ...))
     } else {
+      message("Multiple outcomes and one treatment time found. Running augsynth_multiout.")
       return(augsynth_multiout(form, !!enquo(unit), !!enquo(time), t_int,
                                data = data, ...))
     }
