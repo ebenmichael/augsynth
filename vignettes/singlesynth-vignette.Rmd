@@ -68,6 +68,17 @@ By default, we'll also see pointwise confidence intervals using a [conformal inf
 summary(syn)
 ```
 
+
+The default test statistic is the sum of the absolute treatment efects `function(x) sum(abs(x))`. We can change the test statistic via the `stat_func` argument. For instance, if we want to perform a one-way test against postive effects, we can set the test stastic to be the negative sum `function(x) -sum(x)`:
+```{r summ_syn_neg}
+summary(syn, stat_func = function(x) -sum(x))
+```
+Or if we want to priotize testing the average post-treatment effect, we can set it to be the absolute sum:
+```{r summ_syn_sum}
+summary(syn, stat_func = function(x) sum(x))
+```
+
+
 It's easier to see this information visually. Below we plot the difference between Kansas and it's synthetic control. Before the tax cuts (to the left of the dashed line) we expect these to be close, and after the tax cuts we measure the effect (with point-wise confidence intervals).
 
 ```{r fig_syn, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}

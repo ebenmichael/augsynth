@@ -200,6 +200,7 @@ conformal_inf <- function(ascm, alpha = 0.05,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return List that contains:
 #'         \itemize{
@@ -270,6 +271,7 @@ compute_permute_test_stats <- function(wide_data, ascm, h0,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return Computed p-value
 #' @noRd
@@ -291,6 +293,7 @@ compute_permute_pval <- function(wide_data, ascm, h0,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
 #' @noRd
@@ -576,6 +579,7 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return List that contains:
 #'         \itemize{
@@ -646,6 +650,7 @@ compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return Computed p-value
 #' @noRd
@@ -678,6 +683,7 @@ compute_permute_pval_multiout <- function(data_list, ascm_multi, h0,
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
 #' 
 #' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
 #' @noRd
