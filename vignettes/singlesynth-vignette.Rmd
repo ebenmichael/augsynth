@@ -117,7 +117,7 @@ summary(asyn)
 plot(asyn)
 ```
 
-There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. We can use a custom aggregation function by setting the `cov_agg` argument. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
 
 ```{r fit_covsynth, message=F, warning=F}
 covsyn <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) +

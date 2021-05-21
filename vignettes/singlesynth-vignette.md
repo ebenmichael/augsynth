@@ -77,7 +77,7 @@ summary(syn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.301 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.328 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -114,7 +114,7 @@ summary(syn, stat_func = function(x) -sum(x))
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.167 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.159 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -149,7 +149,7 @@ summary(syn, stat_func = function(x) abs(sum(x)))
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "None", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.324 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.029   ( 0.302 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -225,7 +225,7 @@ summary(asyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "Ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.078 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.040   ( 0.057 )
 #> L2 Imbalance: 0.062
 #> Percent improvement from uniform weights: 84.7%
 #> 
@@ -259,7 +259,7 @@ plot(asyn)
 
 <img src="figure/fig_asyn-1.png" title="plot of chunk fig_asyn" alt="plot of chunk fig_asyn" style="display: block; margin: auto;" />
 
-There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
+There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. We can use a custom aggregation function by setting the `cov_agg` argument. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
 
 
 ```r
@@ -279,7 +279,7 @@ summary(covsyn)
 #> single_augsynth(form = form, unit = !!enquo(unit), time = !!enquo(time), 
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.136 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.061   ( 0.11 )
 #> L2 Imbalance: 0.054
 #> Percent improvement from uniform weights: 86.6%
 #> 
@@ -337,7 +337,7 @@ summary(covsyn_resid)
 #>     t_int = t_int, data = data, progfunc = "ridge", scm = ..2, 
 #>     lambda = ..3, residualize = ..4)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.265 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.055   ( 0.288 )
 #> L2 Imbalance: 0.067
 #> Percent improvement from uniform weights: 83.4%
 #> 
@@ -396,7 +396,7 @@ summary(desyn)
 #>     t_int = t_int, data = data, progfunc = "none", scm = ..2, 
 #>     fixedeff = ..3)
 #> 
-#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.307 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.034   ( 0.319 )
 #> L2 Imbalance: 0.082
 #> Percent improvement from uniform weights: 55.1%
 #> 
