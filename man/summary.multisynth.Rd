@@ -4,7 +4,7 @@
 \alias{summary.multisynth}
 \title{Summary function for multisynth}
 \usage{
-\method{summary}{multisynth}(object, inf_type = "bootstrap", ...)
+\method{summary}{multisynth}(object, inf_type = "bootstrap", att_weight = NULL, ...)
 }
 \arguments{
 \item{object}{multisynth object}
