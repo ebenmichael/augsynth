@@ -76,3 +76,31 @@ test_that("multisynth throws errors when there aren't enough pre-treatment times
   expect_warning(multisynth(gdpcap ~ trt, regionno, year, basque2, fixedeff = F))
 
   })
+
+
+  test_that("formatting for staggered adoption doesn't care about order of time in data",
+  {
+    basque2 <- basque %>%
+      # slice(sample(1:n())) %>%
+      mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
+                              (regionno == 16) & (year >= 1980) ~ 1,
+                                TRUE ~ 0))
+
+      dat <- format_data_stag(quo(gdpcap), quo(trt), quo(regionno), quo(year), basque2)
+
+      # true treatment times
+      true_trt <- c(1975, 1980) - min(basque$year)
+
+      expect_equal(true_trt, sort(dat$trt[is.finite(dat$trt)]))
+
+    basque2 <- basque %>%
+        slice(sample(1:n())) %>%
+        mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
+                                (regionno == 16) & (year >= 1980) ~ 1,
+                                  TRUE ~ 0))
+
+    dat <- format_data_stag(quo(gdpcap), quo(trt), quo(regionno), quo(year), basque2)
+
+    expect_equal(true_trt, sort(dat$trt[is.finite(dat$trt)]))
+
+  })

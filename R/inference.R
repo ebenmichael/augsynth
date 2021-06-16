@@ -843,14 +843,14 @@ jackknife_se_single <- function(ascm) {
 #' @param multisynth fitted multisynth object
 #' @param relative Whether to compute effects according to relative time
 #' @noRd
-jackknife_se_multi <- function(multisynth, relative=NULL, alpha = 0.05) {
+jackknife_se_multi <- function(multisynth, relative=NULL, alpha = 0.05, att_weight = NULL) {
     ## get info from the multisynth object
     if(is.null(relative)) {
         relative <- multisynth$relative
     }
     n_leads <- multisynth$n_leads
     n <- nrow(multisynth$data$X)
-    att <- predict(multisynth, att=T)
+    att <- predict(multisynth, att=T, att_weight = att_weight)
     outddim <- nrow(att)
 
     J <- length(multisynth$grps)
@@ -859,7 +859,7 @@ jackknife_se_multi <- function(multisynth, relative=NULL, alpha = 0.05) {
     jack_est <- vapply(1:n,
                        function(i) {
                            msyn_i <- drop_unit_i_multi(multisynth, i)
-                           pred <- predict(msyn_i[[1]], relative=relative, att=T)
+                           pred <- predict(msyn_i[[1]], relative=relative, att=T, att_weight = att_weight)
                            if(length(msyn_i[[2]]) != 0) {
                                out <- matrix(NA, nrow=nrow(pred), ncol=(J+1))
                                out[,-(msyn_i[[2]]+1)] <- pred
@@ -1002,6 +1002,7 @@ weighted_bootstrap_multi <- function(multisynth,
                                     rweight = rwild_b,
                                     n_boot = 1000,
                                     alpha = 0.05,
+                                    att_weight = NULL,
                                     relative=NULL) {
   ## get info from the multisynth object
   if(is.null(relative)) {
@@ -1009,7 +1010,7 @@ weighted_bootstrap_multi <- function(multisynth,
   }
 
   n <- nrow(multisynth$data$X)
-  att <- predict(multisynth, att=T)
+  att <- predict(multisynth, att=T, att_weight = att_weight)
   outddim <- nrow(att)
   n1 <- sum(is.finite(multisynth$data$trt))
   J <- length(multisynth$grps)
@@ -1020,7 +1021,7 @@ weighted_bootstrap_multi <- function(multisynth,
                       function(i) {
                         Z <- rweight(n)# / sqrt(n1)
 
-                        predict(multisynth, att=T, bs_weight = Z) - sum(Z) / n1 * att
+                        predict(multisynth, att=T, att_weight = att_weight, bs_weight = Z) - sum(Z) / n1 * att
                       },
                       matrix(0, nrow=outddim,ncol=(J+1)))
 

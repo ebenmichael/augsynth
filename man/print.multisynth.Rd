@@ -4,7 +4,7 @@
 \alias{print.multisynth}
 \title{Print function for multisynth}
 \usage{
-\method{print}{multisynth}(x, ...)
+\method{print}{multisynth}(x, att_weight = NULL, ...)
 }
 \arguments{
 \item{x}{multisynth object}

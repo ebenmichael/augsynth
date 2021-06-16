@@ -407,12 +407,13 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
 #' Get prediction of average outcome under control or ATT
 #' @param object Fit multisynth object
 #' @param att If TRUE, return the ATT, if FALSE, return imputed counterfactual
+#' @param att_weight Weights to place on individual units/cohorts when averaging
 #' @param bs_weight Weight to perturb units by for weighted bootstrap
 #' @param ... Optional arguments
 #'
 #' @return Matrix of predicted post-treatment control outcomes for each treated unit
 #' @export
-predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
+predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = NULL, ...) {
 
     multisynth <- object
     relative <- T
@@ -486,6 +487,9 @@ predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
 
     tauhat <- mu1hat - mu0hat
 
+    if(is.null(att_weight)) {
+      att_weight <- rep(1, J)
+    }
     ## re-index time if relative to treatment
     if(relative) {
         total_len <- min(d + n_leads, ttot + d - min(grps)) ## total length of predictions
@@ -515,11 +519,43 @@ predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
                          },
                          numeric(total_len +1
                                  ))
+        # re-index unit weights if they change over time
+        if(is.null(dim(att_weight))) {
+          if(J == 1) {
+            att_weight <- matrix(replicate(total_len + 1, att_weight), ncol = 1)
+          } else {
+            att_weight <- t(replicate(total_len + 1, att_weight))
+          }
+        }
+        att_weight_new <- vapply(1:J,
+                        function(j) {
+                            vec <- c(rep(NA, d-grps[j]),
+                                    att_weight[1:grps[j],j],
+                                    att_weight[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j])
+                            ## last row is post-treatment average
+                            c(vec,
+                              rep(NA, total_len - length(vec)),
+                              mean(att_weight[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j]))
+                              
+                        },
+                        numeric(total_len +1
+                                ))
+          
         ## get the overall average estimate
         avg <- apply(mu0hat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
+        avg <- sapply(1:nrow(mu0hat),
+        function(k)  {
+          sum(n1 * mu0hat[k,] * att_weight_new[k,], na.rm=T) /
+            sum(n1 * (!is.na(mu0hat[k,])) * att_weight_new[k, ], na.rm = T)
+        })
         mu0hat <- cbind(avg, mu0hat)
 
         avg <- apply(tauhat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
+        avg <- sapply(1:nrow(mu0hat),
+        function(k)  {
+          sum(n1 * tauhat[k,] * att_weight_new[k,], na.rm=T) /
+            sum(n1 * (!is.na(tauhat[k,])) * att_weight_new[k, ], na.rm = T)
+        })
         tauhat <- cbind(avg, tauhat)
         
     } else {
@@ -568,7 +604,7 @@ predict.multisynth <- function(object, att = F, bs_weight = NULL, ...) {
 #' @param x multisynth object
 #' @param ... Optional arguments
 #' @export
-print.multisynth <- function(x, ...) {
+print.multisynth <- function(x, att_weight = NULL, ...) {
     multisynth <- x
     
     ## straight from lm
@@ -576,7 +612,7 @@ print.multisynth <- function(x, ...) {
         sep="\n", collapse="\n"), "\n\n", sep="")
 
     # print att estimates
-    att_post <- predict(multisynth, att=T)[,1]
+    att_post <- predict(multisynth, att=T, att_weight = att_weight)[,1]
     att_post <- att_post[length(att_post)]
 
     cat(paste("Average ATT Estimate: ",
@@ -630,7 +666,7 @@ plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
 #'         }
 #' @export
-summary.multisynth <- function(object, inf_type = "bootstrap", ...) {
+summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL, ...) {
 
     multisynth <- object
     
@@ -662,15 +698,15 @@ summary.multisynth <- function(object, inf_type = "bootstrap", ...) {
     # att <- predict(multisynth, relative, att=T)
     
     if(inf_type == "jackknife") {
-        attse <- jackknife_se_multi(multisynth, relative, ...)
+        attse <- jackknife_se_multi(multisynth, relative, att_weight = att_weight, ...)
     } else if(inf_type == "bootstrap") {
         if(object$force == 2) {
           warning("Wild bootstrap without including a unit fixed effect ",
                   "is likely to be very conservative!")
         }
-        attse <- weighted_bootstrap_multi(multisynth, ...)
+        attse <- weighted_bootstrap_multi(multisynth, att_weight = att_weight, ...)
     } else {
-        att <- predict(multisynth, relative, att=T)
+        att <- predict(multisynth, relative, att=T, att_weight = att_weight)
         attse <- list(att = att,
                       se = matrix(NA, nrow(att), ncol(att)),
                       upper_bound = matrix(NA, nrow(att), ncol(att)),
