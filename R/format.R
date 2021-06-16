@@ -90,6 +90,9 @@ format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
 #'         }
 format_data_stag <- function(outcome, trt, unit, time, data) {
 
+    # arrange data by time first
+    data <- data %>% arrange(!!time)
+      
     ## get first treatment times
     trt_time <- data %>%
         group_by(!!unit) %>%
