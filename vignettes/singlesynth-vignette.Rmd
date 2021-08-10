@@ -1,4 +1,5 @@
 ---
+title: "Single Outcome AugSynth Vignette"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Single Outcome AugSynth Vignette}

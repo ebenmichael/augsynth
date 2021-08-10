@@ -291,6 +291,7 @@ test_that("multisynth with covariates doesn't depend on unit or time order ", {
                             State, year,
                             analysis_df_covs %>% arrange(desc(year)))
 
-  expect_equal(msyn$weights, msyn_rev_time$weights)
+  expect_equal(predict(msyn), predict(msyn_rev_time))
+  expect_equal(predict(msyn), predict(msyn_rev_unit))
 
 })

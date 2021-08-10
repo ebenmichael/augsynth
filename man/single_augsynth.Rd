@@ -32,7 +32,7 @@ single_augsynth(
 ridge=Ridge regression (allows for standard errors),
 none=No outcome model,
 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-mcp=MCPanel, 
+mcp=MCPanel,
 cits=Comparitive Interuppted Time Series
 causalimpact=Bayesian structural time series with CausalImpact}
 

@@ -4,7 +4,7 @@
 \alias{time_jackknife_plus}
 \title{Jackknife+ algorithm over time}
 \usage{
-time_jackknife_plus(ascm, alpha = 0.05, conservative = F)
+time_jackknife_plus(ascm, alpha = 0.05, conservative = FALSE)
 }
 \arguments{
 \item{ascm}{Fitted `augsynth` object}

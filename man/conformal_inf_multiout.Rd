@@ -16,6 +16,8 @@ conformal_inf_multiout(
 )
 }
 \arguments{
+\item{ascm_multi}{data.frame}
+
 \item{alpha}{Confidence level}
 
 \item{stat_func}{Function to compute test statistic}
@@ -27,6 +29,8 @@ conformal_inf_multiout(
 \item{ns}{Number of resamples for "iid" permutations}
 
 \item{grid_size}{Number of grid points to use when inverting the hypothesis test}
+
+\item{lin_h0}{value}
 
 \item{ascm}{Fitted `augsynth` object}
 }

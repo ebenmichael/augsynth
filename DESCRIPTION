@@ -18,17 +18,12 @@ Imports:
     Matrix,
     osqp,
     rlang,
-    purrr,
-Remotes:
-    susanathey/MCPanel
-License: MIT + file LICENSE
-Encoding: UTF-8
-LazyData: true
-RoxygenNote: 7.1.1
+    purrr
 Suggests:
     testthat,
     CausalImpact,
     keras,
+    FNN,
     gsynth,
     knitr,
     rmarkdown,
@@ -38,4 +33,10 @@ Suggests:
     randomForest,
     kableExtra,
     ggrepel
+Remotes:
+    susanathey/MCPanel
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.2
 VignetteBuilder: knitr

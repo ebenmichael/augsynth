@@ -7,6 +7,8 @@
 time_jackknife_plus_multiout(ascm_multi, alpha = 0.05, conservative = F)
 }
 \arguments{
+\item{ascm_multi}{data.frame}
+
 \item{alpha}{Confidence level}
 
 \item{conservative}{Whether to use the conservative jackknife+ procedure}
