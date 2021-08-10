@@ -36,6 +36,13 @@ test_that("augsynth finds the treated time when is a single treated unit", {
                   progfunc = "None", scm = T)
 
   expect_equal(syn$weights, syn2$weights)
+
+  # should work with out of order time as well
+  syn_rev <- augsynth(gdpcap ~ trt, regionno, year,
+                      basque %>% arrange(desc(year)),
+                      progfunc = "None", scm = T)
+  expect_equal(syn$weights, syn_rev$weights)
+  expect_equal(predict(syn), predict(syn_rev))
 })
 
 
@@ -65,8 +72,7 @@ test_that("augsynth runs multisynth when there is staggered adoption", {
                                               TRUE ~ 0)) %>%
       filter(regionno != 1)
 
-  syn <- augsynth(gdpcap ~ trt, regionno, year, basque,
-                  progfunc = "None", scm = T, t_int = 1975)
+  syn <- augsynth(gdpcap ~ trt, regionno, year, basque, scm = T)
 
   syn_multi <- multisynth(gdpcap ~ trt, regionno, year, basque)
 

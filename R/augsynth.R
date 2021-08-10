@@ -65,7 +65,8 @@ single_augsynth <- function(form, unit, time, t_int, data,
                                       scm, fixedeff, ...)
     
     # add some extra data
-    augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
+    augsynth$data$time <- data %>% distinct(!!time) %>%
+                                   arrange(!!time) %>% pull(!!time)
     augsynth$call <- call_name
     augsynth$t_int <- t_int 
     

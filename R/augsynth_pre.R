@@ -56,7 +56,8 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   ## get first treatment times
   trt_time <- data %>%
       group_by(!!unit_quosure) %>%
-      summarise(trt_time = (!!time_quosure)[(!!trt) == 1][1]) %>%
+      filter(!all(!!trt == 0)) %>%
+      summarise(trt_time = min((!!time_quosure)[(!!trt) == 1])) %>%
       mutate(trt_time = replace_na(trt_time, Inf))
 
   num_trt_years <- sum(is.finite(unique(trt_time$trt_time)))
