@@ -384,7 +384,7 @@ summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
     }
     
     
-    summ$inf_type <- inf_type
+    summ$inf_type <- if(inf) inf_type else "None"
     class(summ) <- "summary.augsynth"
     return(summ)
 }
@@ -435,6 +435,10 @@ print.summary.augsynth <- function(x, ...) {
       out_msg <- paste("Average ATT Estimate: ",
                         format(round(att_post,3), nsmall=3), "\n")
       inf_type <- "Jackknife+ over time periods"
+    } else {
+      out_msg <- paste("Average ATT Estimate: ",
+                        format(round(att_post,3), nsmall=3), "\n")
+      inf_type <- "None"
     }
 
 
@@ -482,6 +486,9 @@ print.summary.augsynth <- function(x, ...) {
       names(out_att) <- c("Time", "Estimate", 
                           paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
                           paste0((1 - summ$alpha) * 100, "% CI Upper Bound"))
+    } else {
+      out_att <- summ$att[t_int:t_final,] %>% 
+              select(Time, Estimate)
     }
     out_att %>%
       mutate_at(vars(-Time), ~ round(., 3)) %>%
