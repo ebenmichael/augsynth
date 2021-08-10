@@ -35,7 +35,7 @@ test_that("augsynth finds the treated time when is a single treated unit", {
   syn2 <- augsynth(gdpcap ~ trt, regionno, year, basque,
                   progfunc = "None", scm = T)
 
-  expect_equal(syn$weights, syn2$weights)
+  expect_equal(syn$weights, syn2$weights, tolerance = 1e-6)
 
   # should work with out of order time as well
   syn_rev <- augsynth(gdpcap ~ trt, regionno, year,
