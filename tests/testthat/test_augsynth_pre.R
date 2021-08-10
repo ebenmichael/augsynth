@@ -78,3 +78,32 @@ test_that("augsynth runs multisynth when there is staggered adoption", {
 
   expect_equal(syn$weights, syn_multi$weights)
 })
+
+
+
+test_that("augsynth with a single treated unit doesn't depend on unit order", {
+
+  data(kansas)
+
+
+  syn <- augsynth(lngdpcapita ~ treated | log(revstatecapita), abb,
+                  year_qtr, kansas, progfunc = "None", scm = T)
+
+  syn2 <- augsynth(lngdpcapita ~ treated | log(revstatecapita), fips, year_qtr,
+                   kansas %>% arrange(desc(fips)), progfunc = "None", scm = T)
+
+
+  expect_equal(predict(syn), predict(syn2))
+
+
+  asyn <- augsynth(lngdpcapita ~ treated | log(revstatecapita), fips,
+                  year_qtr, kansas, scm = T)
+
+  asyn2 <- augsynth(lngdpcapita ~ treated | log(revstatecapita), fips, year_qtr,
+                   kansas %>% arrange(desc(fips)), scm = T)
+
+  expect_equal(c(asyn$weights), c(asyn2$weights))
+  expect_equal(predict(asyn), predict(asyn2))
+
+
+})

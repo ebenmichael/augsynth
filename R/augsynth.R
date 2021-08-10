@@ -52,7 +52,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     
     treated_units <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
     control_units <- data %>% filter(!(!!unit %in% treated_units)) %>% 
-                        distinct(!!unit) %>% pull(!!unit)
+                        distinct(!!unit) %>% arrange(!!unit) %>% pull(!!unit)
         ## add covariates
     if(length(form)[2] == 2) {
         Z <- extract_covariates(form, unit, time, t_int, data, cov_agg)

@@ -24,6 +24,8 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
         spread(!!time, !!outcome) %>%
         select(-!!unit) %>%
         as.matrix()
+    
+
 
     ## post treatment outcomes
     y <- data %>%
@@ -33,11 +35,13 @@ format_data <- function(outcome, trt, unit, time, t_int, data) {
         select(-!!unit) %>%
         as.matrix()
 
+
     ## treatment status
     trt <- data %>%
         select(!!unit, !!trt) %>%
         group_by(!!unit) %>%
         summarise(trt = max(!!trt)) %>%
+        ungroup() %>%
         pull(trt)
 
     return(list(X=X, trt=trt, y=y))
@@ -267,6 +271,7 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
     data %>% distinct(!!unit) %>%
       rename(unit = !!unit) %>%
       left_join(Z, by = "unit") %>%
+      arrange(unit) %>%
       select(-unit) %>%
       as.matrix() -> Z
     
