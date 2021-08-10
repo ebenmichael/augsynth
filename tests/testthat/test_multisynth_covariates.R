@@ -257,3 +257,40 @@ test_that("An error is thrown if trying to match with time cohorts or the formul
   expect_error(multisynth(gdpcap ~ trt | Z1 + Z2 | 0 | Z_bin,
                           regionno, year, basque2, time_cohort = T))
 })
+
+
+test_that("multisynth with covariates doesn't depend on unit or time order ", {
+
+  data <- read.csv("https://dataverse.harvard.edu/api/access/datafile/:persistentId?persistentId=doi:10.7910/DVN/WGWMAV/3UHTLP", sep="\t")
+  data %>%
+    filter(!State %in% c("DC", "WI"),
+           year >= 1959, year <= 1997) %>%
+    mutate(YearCBrequired = ifelse(is.na(YearCBrequired), 
+                                   Inf, YearCBrequired),
+           cbr = 1 * (year >= YearCBrequired)) -> analysis_df
+
+  data %>%
+  select(State, year, agr, pnwht, purban, perinc, studteachratio) %>%
+  group_by(State) %>%
+  summarise(perinc_1959 = perinc[year == 1959],
+            studteachratio_1959 = studteachratio[year == 1959]) %>% 
+  # filter to lower 48 where we have data
+  filter(!State %in% c("AK", "HI"))  -> cov_data
+
+  analysis_df %>%
+    inner_join(cov_data, by = "State") -> analysis_df_covs
+
+  msyn <- multisynth(lnppexpend ~ cbr | perinc_1959 + studteachratio_1959,
+                            State, year, analysis_df_covs)
+
+  msyn_rev_unit <- multisynth(lnppexpend ~ cbr | perinc_1959 + studteachratio_1959,
+                            State, year,
+                            analysis_df_covs %>% arrange(desc(State)))
+
+  msyn_rev_time <- multisynth(lnppexpend ~ cbr | perinc_1959 + studteachratio_1959,
+                            State, year,
+                            analysis_df_covs %>% arrange(desc(year)))
+
+  expect_equal(msyn$weights, msyn_rev_time$weights)
+
+})

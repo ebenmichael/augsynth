@@ -97,10 +97,10 @@ test_that("augsynth with a single treated unit doesn't depend on unit order", {
 
 
   asyn <- augsynth(lngdpcapita ~ treated | log(revstatecapita), fips,
-                  year_qtr, kansas, scm = T)
+                  year_qtr, kansas, progfunc = "ridge", scm = T)
 
   asyn2 <- augsynth(lngdpcapita ~ treated | log(revstatecapita), fips, year_qtr,
-                   kansas %>% arrange(desc(fips)), scm = T)
+                   kansas %>% arrange(desc(fips)), progfunc = "ridge", scm = T)
 
   expect_equal(c(asyn$weights), c(asyn2$weights))
   expect_equal(predict(asyn), predict(asyn2))

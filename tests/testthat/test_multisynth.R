@@ -163,3 +163,55 @@ test_that("V matrix is the same for single and multi synth", {
   expect_equal(as.numeric(syn$weights), as.numeric(msyn$weights[-16, ]), tolerance = 1e-3)
 }
 )
+
+
+                            
+test_that("multisynth doesn't depend on unit order", {
+
+    basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                                !regionno %in% c(16, 17) ~ 0,
+                                                regionno %in% c(16, 17) ~ 1)) %>%
+        filter(regionno != 1)
+
+    msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
+                       fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+    msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
+                       basque2 %>% arrange(desc(regionno)), nu = 0,
+                       fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+    
+    # weights are the same
+    expect_equal(c(msyn$weights), c(msyn2$weights))
+
+    # estimates are the same
+    expect_equal(predict(msyn), predict(msyn2))
+
+}
+)
+
+
+                            
+test_that("multisynth doesn't depend on time order", {
+
+    basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                                !regionno %in% c(16, 17) ~ 0,
+                                                regionno %in% c(16, 17) ~ 1)) %>%
+        filter(regionno != 1)
+
+    msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
+                       fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+    msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
+                       basque2 %>% arrange(desc(year)), nu = 0,
+                       fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+    
+    # weights are the same
+    expect_equal(c(msyn$weights), c(msyn2$weights))
+
+    # estimates are the same
+    expect_equal(predict(msyn), predict(msyn2))
+
+}
+)
