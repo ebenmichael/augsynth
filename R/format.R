@@ -101,7 +101,7 @@ format_data_stag <- function(outcome, trt, unit, time, data) {
     trt_time <- data %>%
         group_by(!!unit) %>%
         summarise(trt_time=(!!time)[(!!trt) == 1][1]) %>%
-        mutate(trt_time=replace_na(trt_time, Inf))
+        mutate(trt_time=replace_na(as.numeric(trt_time), Inf))
     
 
     t_int <- trt_time %>% filter(is.finite(trt_time)) %>%

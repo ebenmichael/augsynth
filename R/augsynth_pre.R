@@ -58,7 +58,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
       group_by(!!unit_quosure) %>%
       filter(!all(!!trt == 0)) %>%
       summarise(trt_time = min((!!time_quosure)[(!!trt) == 1])) %>%
-      mutate(trt_time = replace_na(trt_time, Inf))
+      mutate(trt_time = replace_na(as.numeric(trt_time), Inf))
 
   num_trt_years <- sum(is.finite(unique(trt_time$trt_time)))
 

@@ -113,7 +113,7 @@ test_that("Separate synth with missing treated unit time drops the time", {
                       nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
 
-  expect_equal(msyn$weights[,2], msyn2$weights[,2], tolderance = 1e-6)
+  expect_equal(msyn$weights[,2], msyn2$weights[,2], tolerance = 1e-6)
 })
 
 
