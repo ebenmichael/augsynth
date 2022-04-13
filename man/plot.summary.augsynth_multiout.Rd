@@ -4,7 +4,7 @@
 \alias{plot.summary.augsynth_multiout}
 \title{Plot function for summary function for augsynth}
 \usage{
-\method{plot}{summary.augsynth_multiout}(x, inf = T, ...)
+\method{plot}{summary.augsynth_multiout}(x, inf = TRUE, ...)
 }
 \arguments{
 \item{x}{summary.augsynth_multiout object}

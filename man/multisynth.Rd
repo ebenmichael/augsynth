@@ -61,6 +61,8 @@ If covariates are time-varying, their average value before the first unit is tre
 
 \item{time_cohort}{Whether to average synthetic controls into time cohorts, default FALSE}
 
+\item{how_match}{"knn"}
+
 \item{cov_agg}{Covariate aggregation function}
 
 \item{eps_abs}{Absolute error tolerance for osqp}

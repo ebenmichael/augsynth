@@ -1,7 +1,8 @@
 ---
+title: "MultiSynth"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{MultiSynth Vignette}
+  %\VignetteIndexEntry{MultiSynth}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
