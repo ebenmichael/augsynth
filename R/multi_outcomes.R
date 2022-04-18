@@ -26,13 +26,11 @@
 #'         }
 #' @export
 augsynth_multiout <- function(form, unit, time, t_int, data,
-                              progfunc=c("Ridge", "None", "EN", "RF",
-                                          "GSYN", "MCP",
-                                          "CITS", "CausalImpact",
-                                          "seq2seq"),
+                              progfunc=c("Ridge", "None"),
                               scm=T,
                               fixedeff = FALSE,
                               cov_agg=NULL,
+                              combine_method = "avg",
                               ...) {
     call_name <- match.call()
 
@@ -61,9 +59,10 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
         Z <- NULL
     }
 
-    # combine method is just concatenation
-    # TODO: Include other options
-    combine_method <- "concat"
+    # only allow ridge augmentation
+    if(! tolower(progfunc) %in% c("none", "ridge")) {
+      stop(paste(progfunc, "is not a valid augmentation function with multiple outcomes. Only `none` or `ridge` are allowable options for `prog_func`"))
+    }
 
     # fit augmented SCM
     augsynth <- fit_augsynth_multiout_internal(wide_list, combine_method, Z,
@@ -119,7 +118,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
                                       scm, fixedeff, V = V, ...)
 
     # potentially add back in fixed effects
-    augsynth$mhat <- mhat + augsynth$mhat
+    augsynth$mhat <- mhat# + augsynth$mhat
 
     augsynth$data = list(X = X, trt = trt, y = y, Z = Z)
     augsynth$data_list <- wide_list
@@ -168,11 +167,15 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
         new_wide_list <- lapply(1:n_outs, demean_j)
         wide_list$X <- lapply(new_wide_list, function(x) x$X)
         wide_list$y <- lapply(new_wide_list, function(x) x$y)
-        mhat_pre <- do.call(cbind, lapply(new_wide_list, function(x) x$mhat_pre))
-        mhat_post <- do.call(cbind, lapply(new_wide_list, function(x) x$mhat_post))
-        mhat <- cbind(mhat_pre, mhat_post)
+        mhat_pre <- lapply(new_wide_list, function(x) x$mhat_pre)
+        mhat_post <- lapply(new_wide_list, function(x) x$mhat_post)
     } else {
-        mhat <- matrix(0, nrow = n_units, ncol = total_dim)
+        mhat_pre <- lapply(
+          1:n_outs,
+          function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$X[[j]])))
+        mhat_post <- lapply(
+          1:n_outs,
+          function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$y[[j]])))
     }
 
     # combine outcomes
@@ -189,28 +192,45 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
                 function(x) rep(1 / (sqrt(ncol(x)) * 
                         sd(x[wide_list$trt == 0, , drop = F], na.rm=T)), 
                         ncol(x))))
-    } else if(combine_method == "svd") {
-        wide_bal <- list(X = do.call(cbind, wide_list$X),
-                         y = do.call(cbind, wide_list$y),
-                         trt = wide_list$trt)
+    # } else if(combine_method == "svd") {
+    #     wide_bal <- list(X = do.call(cbind, wide_list$X),
+    #                      y = do.call(cbind, wide_list$y),
+    #                      trt = wide_list$trt)
 
-        # first get the standard deviations of the outcomes to put on the same scale
-        sds <- do.call(c, 
-            lapply(wide_list$X, 
-                function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
+    #     # first get the standard deviations of the outcomes to put on the same scale
+    #     sds <- do.call(c, 
+    #         lapply(wide_list$X, 
+    #             function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
 
-        # do an SVD on centered and scaled outcomes
-        X0 <- wide_bal$X[wide_bal$trt == 0, , drop = FALSE]
-        X0 <- t((t(X0) - colMeans(X0)) / sds)
-        k <- if(is.null(k)) ncol(X0) else k
-        V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
+    #     # do an SVD on centered and scaled outcomes
+    #     X0 <- wide_bal$X[wide_bal$trt == 0, , drop = FALSE]
+    #     X0 <- t((t(X0) - colMeans(X0)) / sds)
+    #     k <- if(is.null(k)) ncol(X0) else k
+    #     V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
+    } else if(combine_method == "avg") {
+        # average pre-treatment outcomes, dividing by standard deviation
+      wide_bal <- list(X = Reduce(`+`, lapply(wide_list$X, function(x) x / sd(x[wide_list$trt == 0,]))),
+                       #X = Reduce(`+`, wide_list$X),
+                       y = Reduce(`+`, wide_list$y),
+                       trt = wide_list$trt)
 
-    }else {
-        stop(paste("combine_method should be one of ('concat'),", 
+      V <- diag(ncol(wide_bal$X))
+      # mhat_pre <- Reduce(`+`, mhat_pre)
+      # mhat_post <- Reduce(`+`, mhat_post)
+      # mhat <- cbind(mhat_pre, mhat_post)
+
+
+
+    } else {
+        stop(paste("combine_method should be one of ('avg', 'concat'),", 
             combine_method, " is not a valid combining option"))
     }
 
-    return(list(wide_bal = wide_bal, mhat = mhat, V = V))
+  mhat_pre <- do.call(cbind, mhat_pre)
+  mhat_post <- do.call(cbind, mhat_post)
+  mhat <- cbind(mhat_pre, mhat_post)
+
+  return(list(wide_bal = wide_bal, mhat = mhat, V = V))
 
 }
 

@@ -10,11 +10,11 @@ augsynth_multiout(
   time,
   t_int,
   data,
-  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact",
-    "seq2seq"),
+  progfunc = c("Ridge", "None"),
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
+  combine_method = "avg",
   ...
 )
 }
