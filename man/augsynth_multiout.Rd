@@ -43,6 +43,8 @@ seq2seq=Sequence to sequence learning with feedforward nets}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 
+\item{combine_method}{How to combine outcomes: `concat` concatenates outcomes and `avg` averages them, default: 'avg'}
+
 \item{...}{optional arguments for outcome model}
 }
 \value{

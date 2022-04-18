@@ -14,6 +14,7 @@
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
+#' @param combine_method How to combine outcomes: `concat` concatenates outcomes and `avg` averages them, default: 'avg'
 #' @param ... optional arguments for outcome model
 #'
 #' @return augsynth object that contains:
