@@ -10,11 +10,11 @@ augsynth_multiout(
   time,
   t_int,
   data,
-  progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP", "CITS", "CausalImpact",
-    "seq2seq"),
+  progfunc = c("Ridge", "None"),
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
+  combine_method = "avg",
   ...
 )
 }
@@ -42,6 +42,8 @@ seq2seq=Sequence to sequence learning with feedforward nets}
 \item{fixedeff}{Whether to include a unit fixed effect, default F}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
+
+\item{combine_method}{How to combine outcomes: `concat` concatenates outcomes and `avg` averages them, default: 'avg'}
 
 \item{...}{optional arguments for outcome model}
 }
