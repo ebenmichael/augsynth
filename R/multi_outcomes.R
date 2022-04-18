@@ -409,6 +409,17 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "jackknife", .
         average_att$Std.Error <- NA
     }
 
+      # get average of all outcomes
+    sds <- data.frame(Outcome = object$outcomes,
+                      sdo = sapply(object$data_list$X, sd))
+    att %>%
+      inner_join(sds, by = "Outcome") %>%
+      mutate(Estimate = Estimate / sdo) %>%
+      group_by(Time) %>%
+      summarise(Estimate = mean(Estimate)) %>%
+      mutate(Outcome = "Average") %>%
+      bind_rows(att, .) -> att
+
     summ$att <- att
     summ$average_att <- average_att
     summ$t_int <- object$t_int
@@ -432,6 +443,9 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "jackknife", .
     if(object$progfunc == "None" | (!object$scm)) {
         summ$bias_est <- NA
     }
+
+    
+
     
     class(summ) <- "summary.augsynth_multiout"
     return(summ)
@@ -466,23 +480,41 @@ print.summary.augsynth_multiout <- function(x, ...) {
 
 
 #' Plot function for summary function for augsynth
+#' @importFrom graphics plot
 #' @param x summary.augsynth_multiout object
-#' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
+#' @param inf Boolean, whether to plot uncertainty intervals, default TRUE
+#' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
+#' @param ... Optional arguments for summary function
 #' 
 #' @export
-plot.summary.augsynth_multiout <- function(x, inf = T, ...) {
+plot.augsynth_multiout  <- function(x, inf = T, plt_avg = F, ...) {
+  plot(summary(x, ...), inf =  inf, plt_avg = plt_avg)
+}
 
-    p <- x$att %>%
+#' Plot function for summary function for augsynth
+#' @param x summary.augsynth_multiout object
+#' @param inf Boolean, whether to plot uncertainty intervals, default TRUE
+#' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
+#' 
+#' @export
+plot.summary.augsynth_multiout <- function(x, inf = T, plt_avg = F, ...) {
+    if(plt_avg) {
+      p <- x$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
+    } else {
+      p <- x$att %>%
+        filter(Outcome != "Average") %>% 
+        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
+    }
     if(inf) {
       if(x$inf_type == "jackknife") {
         p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
                         ymax=Estimate+2*Std.Error),
-                    alpha=0.2)
+                    alpha=0.2, data = . %>% filter(Outcome != "Average"))
       } else if(x$inf_type %in% c("conformal", "jackknife+")) {
         p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
                         ymax=upper_bound),
-                    alpha=0.2)
+                    alpha=0.2, data =  . %>% filter(Outcome != "Average"))
       }
 
     }
