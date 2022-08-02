@@ -193,21 +193,24 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
                 function(x) rep(1 / (sqrt(ncol(x)) * 
                         sd(x[wide_list$trt == 0, , drop = F], na.rm=T)), 
                         ncol(x))))
-    # } else if(combine_method == "svd") {
-    #     wide_bal <- list(X = do.call(cbind, wide_list$X),
-    #                      y = do.call(cbind, wide_list$y),
-    #                      trt = wide_list$trt)
+    } else if(combine_method == "svd") {
+      if(is.null(k)) {
+        stop("Select the number of principal components `k`")
+      }
+        wide_bal <- list(X = do.call(cbind, wide_list$X),
+                         y = do.call(cbind, wide_list$y),
+                         trt = wide_list$trt)
 
-    #     # first get the standard deviations of the outcomes to put on the same scale
-    #     sds <- do.call(c, 
-    #         lapply(wide_list$X, 
-    #             function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
+        # first get the standard deviations of the outcomes to put on the same scale
+        sds <- do.call(c, 
+            lapply(wide_list$X, 
+                function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
 
-    #     # do an SVD on centered and scaled outcomes
-    #     X0 <- wide_bal$X[wide_bal$trt == 0, , drop = FALSE]
-    #     X0 <- t((t(X0) - colMeans(X0)) / sds)
-    #     k <- if(is.null(k)) ncol(X0) else k
-    #     V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
+        # do an SVD on centered and scaled outcomes
+        X0 <- wide_bal$X[wide_bal$trt == 0, , drop = FALSE]
+        X0 <- t((t(X0) - colMeans(X0)) / sds)
+        k <- if(is.null(k)) ncol(X0) else k
+        V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
     } else if(combine_method == "avg") {
         # average pre-treatment outcomes, dividing by standard deviation
       wide_bal <- list(X = Reduce(`+`, lapply(wide_list$X, function(x) x / sd(x[wide_list$trt == 0,]))),
