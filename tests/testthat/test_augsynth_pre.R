@@ -76,7 +76,7 @@ test_that("augsynth runs multisynth when there is staggered adoption", {
 
   syn_multi <- multisynth(gdpcap ~ trt, regionno, year, basque)
 
-  expect_equal(syn$weights, syn_multi$weights)
+  expect_equal(syn$weights, syn_multi$weights,  tolerance = 1e-5)
 })
 
 

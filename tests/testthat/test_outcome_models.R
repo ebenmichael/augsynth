@@ -19,7 +19,7 @@ test_that("Augmenting synth with glmnet runs", {
                      "you must install the glmnet package")
 
         ## install glmnet
-        install.packages("glmnet")
+        install.packages("glmnet", repos = "http://cran.us.r-project.org")
     }
 
     ## should run because glmnet is installed
@@ -38,7 +38,7 @@ test_that("Augmenting synth with random forest runs", {
                      "you must install the randomForest package")
 
         ## install randomForest
-        install.packages("randomForest")
+        install.packages("randomForest", repos = "http://cran.us.r-project.org")
     }
 
     ## should run because randomForest is installed
@@ -59,7 +59,7 @@ test_that("Augmenting synth with gsynth runs and produces the correct result", {
                      "you must install the gsynth package")
 
         ## install gsynth
-        install.packages("gsynth")
+        install.packages("gsynth", repos = "http://cran.us.r-project.org")
     }
 
     ## should run because gsynth is installed
@@ -103,7 +103,7 @@ test_that("Augmenting synth with CausalImpact runs", {
                      "you must install the CausalImpact package")
 
         ## install CausalImpact
-        install.packages("CausalImpact")
+        install.packages("CausalImpact", repos = "http://cran.us.r-project.org")
     }
 
     ## should run because CausalImpact is installed
