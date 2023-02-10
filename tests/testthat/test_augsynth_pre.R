@@ -107,3 +107,22 @@ test_that("augsynth with a single treated unit doesn't depend on unit order", {
 
 
 })
+
+
+
+
+test_that("augsynth runs single_synth with progfunc = 'ridge' when there is a single treated unit and no progfunc is specified", {
+
+  data(basque)
+  basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                              regionno != 17 ~0,
+                                              regionno == 17 ~ 1)) %>%
+      filter(regionno != 1)
+
+  syn <- augsynth(gdpcap ~ trt, regionno, year, basque, scm = T)
+
+  syn_single <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
+                                progfunc = "ridge", scm = T, t_int = 1975)
+
+  expect_equal(syn$weights, syn_single$weights)
+})

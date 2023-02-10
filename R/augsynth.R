@@ -32,8 +32,7 @@
 #'         }
 #' @export
 single_augsynth <- function(form, unit, time, t_int, data,
-                     progfunc = c("Ridge", "None", "EN", "RF", "GSYN", "MCP",
-                                  "CITS", "CausalImpact"),
+                     progfunc = "ridge",
                      scm=T,
                      fixedeff = FALSE,
                      cov_agg=NULL, ...) {
