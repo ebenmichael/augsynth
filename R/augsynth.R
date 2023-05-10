@@ -540,7 +540,6 @@ plot.summary.augsynth <- function(x, inf = T, ...) {
 #' @importFrom magrittr "%>%"
 #' @importFrom purrr reduce
 #' @import dplyr
-#' @import LowRankQP
 #' @import tidyr
 #' @importFrom stats terms
 #' @importFrom stats formula
