@@ -632,15 +632,39 @@ print.multisynth <- function(x, att_weight = NULL, ...) {
 #' @param inf Whether to compute and plot confidence intervals
 #' @param levels Which units/groups to plot, default is every group
 #' @param label Whether to label the individual levels
+#' @param weights Whether to plot the weights, default = FALSE
 #' @param ... Optional arguments
 #' @export
 plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
-                            levels = NULL, label = T, ...) {
+                            levels = NULL, label = T, 
+                            weights = FALSE, ...) {
 
-    multisynth <- x
+    if(weights) {
+      ever_trt <- x$data$units[is.finite(msyn$data$trt)]
+      never_trt <- x$data$units[!is.finite(msyn$data$trt)]
+      weights <- data.frame(x$weights)
 
-    plot(summary(multisynth, inf_type = inf_type, ...),
+      colnames(weights) <- ever_trt
+      weights$unit <- factor(rownames(weights),
+                             levels = sort(rownames(weights), decreasing = TRUE))
+
+      # plotting the weights
+      weights %>%
+        tidyr::pivot_longer(-unit, names_to = "trt_unit", values_to = "weight") %>%
+        ggplot2::ggplot(aes(x = trt_unit, y = unit, fill = round(weight, 3))) + 
+        ggplot2::geom_tile(color = "white", size=.5) +
+        ggplot2::scale_fill_gradient(low = "white", high = "black", limits=c(-0.01,1.01)) +
+        ggplot2::guides(fill = "none") +
+        ggplot2::xlab("Treated Unit") +
+        ggplot2::ylab("Donor Unit") +
+        ggplot2::theme_bw() + 
+        ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
+              axis.ticks.y = ggplot2::element_blank())
+    }
+    else {
+      plot(summary(x, inf_type = inf_type, ...),
          inf = inf, levels = levels, label = label)
+    }
 }
 
 

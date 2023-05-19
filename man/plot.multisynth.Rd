@@ -4,7 +4,15 @@
 \alias{plot.multisynth}
 \title{Plot function for multisynth}
 \usage{
-\method{plot}{multisynth}(x, inf_type = "bootstrap", inf = T, levels = NULL, label = T, ...)
+\method{plot}{multisynth}(
+  x,
+  inf_type = "bootstrap",
+  inf = T,
+  levels = NULL,
+  label = T,
+  weights = FALSE,
+  ...
+)
 }
 \arguments{
 \item{x}{Augsynth object to be plotted}
@@ -20,6 +28,8 @@
 \item{levels}{Which units/groups to plot, default is every group}
 
 \item{label}{Whether to label the individual levels}
+
+\item{weights}{Whether to plot the weights, default = FALSE}
 
 \item{...}{Optional arguments}
 }
