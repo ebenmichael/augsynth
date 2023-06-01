@@ -278,6 +278,15 @@ extract_covariates <- function(form, unit, time, t_int, data, cov_agg) {
     if(nrow(distinct(data, !!unit))  != nrow(Z)) {
       stop("Some units missing all covariate data")
     }
+
+    # check if any covariates have no variation
+    Zsds <- apply(Z, 2, sd)
+
+    if(any(Zsds == 0)) {
+      zero_covs <- paste(colnames(Z)[Zsds == 0], collapse = ", ")
+      stop(paste("The following covariates have no variation across units:",
+                 zero_covs))
+    }
     return(Z)
 }
 
