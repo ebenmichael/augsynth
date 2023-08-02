@@ -120,7 +120,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #' @param ascm Fitted `augsynth` object
 #' @param alpha Confidence level
 #' @param stat_func Function to compute test statistic
-#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations; default is "block"
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
 #' @param grid_size Number of grid points to use when inverting the hypothesis test
@@ -135,7 +135,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
 conformal_inf <- function(ascm, alpha = 0.05, 
-                          stat_func = NULL, type = "iid",
+                          stat_func = NULL, type = "block",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
@@ -168,7 +168,7 @@ conformal_inf <- function(ascm, alpha = 0.05,
           # make a grid around the estimated ATT
           grid <- seq(att[t0 + j] - 2 * post_sd, att[t0 + j] + 2 * post_sd,
                       length.out = grid_size)
-          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, "block",
+          compute_permute_ci(new_wide_data, ascm, grid, 1, alpha, type,
                              q, ns, stat_func)
          },
          numeric(3)) -> cis
@@ -509,7 +509,7 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
                 length.out = grid_size)
           }
           compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
-                                    alpha, "block", q, ns, lin_h0, stat_func)
+                                    alpha, type, q, ns, lin_h0, stat_func)
          },
          matrix(0, ncol = k, nrow=3)) -> cis
   # # test a null post-treatment effect
