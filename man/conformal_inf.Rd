@@ -8,7 +8,7 @@ conformal_inf(
   ascm,
   alpha = 0.05,
   stat_func = NULL,
-  type = "iid",
+  type = "block",
   q = 1,
   ns = 1000,
   grid_size = 50
@@ -21,7 +21,7 @@ conformal_inf(
 
 \item{stat_func}{Function to compute test statistic}
 
-\item{type}{Either "iid" for iid permutations or "block" for moving block permutations}
+\item{type}{Either "iid" for iid permutations or "block" for moving block permutations; default is "block"}
 
 \item{q}{The norm for the test static `((sum(x ^ q))) ^ (1/q)`}
 
