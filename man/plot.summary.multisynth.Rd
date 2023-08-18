@@ -4,7 +4,7 @@
 \alias{plot.summary.multisynth}
 \title{Plot function for summary function for multisynth}
 \usage{
-\method{plot}{summary.multisynth}(x, inf = T, levels = NULL, label = T, ...)
+\method{plot}{summary.multisynth}(x, inf = T, levels = NULL, label = T, weights = FALSE, ...)
 }
 \arguments{
 \item{x}{summary object}
@@ -14,6 +14,8 @@
 \item{levels}{Which units/groups to plot, default is every group}
 
 \item{label}{Whether to label the individual levels}
+
+\item{weights}{Whether to plot the weights, default = FALSE}
 
 \item{...}{Optional arguments}
 }
