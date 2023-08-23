@@ -1,0 +1,11 @@
+kableExtra
+magrittr
+dplyr
+ggplot2
+haven
+reshape2
+tidyr
+rlang
+foreign
+Synth
+augsynth
