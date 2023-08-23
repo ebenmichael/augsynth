@@ -4,7 +4,7 @@
 
 
 #' Fit Augmented SCM
-#' 
+#'
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column
@@ -14,14 +14,28 @@
 #'                 ridge=Ridge regression (allows for standard errors),
 #'                 none=No outcome model,
 #'                 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 mcp=MCPanel, 
+#'                 mcp=MCPanel,
 #'                 cits=Comparitive Interuppted Time Series
 #'                 causalimpact=Bayesian structural time series with CausalImpact
 #' @param scm Whether the SCM weighting function is used
-#' @param fixedeff Whether to include a unit fixed effect, default F 
+#' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
-#' @param ... optional arguments for outcome model
-#'
+#' @param plot Whether or not to return a plot of the augsynth model
+#' @param inf_type Type of inference algorithm. Options are
+#'         \itemize{
+#'          \item{"conformal"}{Conformal inference (default)}
+#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+#'          \item{"jackknife"}{Jackknife over units}
+#'          \item{"permutation"}{Placebo permutation, raw ATT}
+#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+#'         }
+#' @param ... Optional arguments for inference, for more details for each `inf_type` see
+#'         \itemize{
+#'          \item{"conformal"}{`conformal_inf`}
+#'          \item{"jackknife+"}{`time_jackknife_plus`}
+#'          \item{"jackknife"}{`jackknife_se_single`}
+#'          \item{"permutation"}{`permutation_inf`}
+#'         }
 #' @return augsynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -30,12 +44,14 @@
 #'          \item{"mhat"}{Outcome model estimate}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
+#' @param ... optional arguments for outcome model
 #' @export
 single_augsynth <- function(form, unit, time, t_int, data,
                      progfunc = "ridge",
                      scm=T,
                      fixedeff = FALSE,
-                     cov_agg=NULL, ...) {
+                     cov_agg=NULL,
+                     inf_type='conformal', ...) {
     call_name <- match.call()
 
     form <- Formula::Formula(form)
@@ -48,9 +64,9 @@ single_augsynth <- function(form, unit, time, t_int, data,
 
     wide <- format_data(outcome, trt, unit, time, t_int, data)
     synth_data <- do.call(format_synth, wide)
-    
+
     treated_units <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
-    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>% 
+    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>%
                         distinct(!!unit) %>% arrange(!!unit) %>% pull(!!unit)
         ## add covariates
     if(length(form)[2] == 2) {
@@ -58,19 +74,31 @@ single_augsynth <- function(form, unit, time, t_int, data,
     } else {
         Z <- NULL
     }
-    
+
     # fit augmented SCM
-    augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc, 
+    augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc,
                                       scm, fixedeff, ...)
-    
+
     # add some extra data
     augsynth$data$time <- data %>% distinct(!!time) %>%
                                    arrange(!!time) %>% pull(!!time)
     augsynth$call <- call_name
-    augsynth$t_int <- t_int 
-    
+    augsynth$t_int <- t_int
+
     augsynth$weights <- matrix(augsynth$weights)
     rownames(augsynth$weights) <- control_units
+
+    # TODO update similar attribute for multi <- if want to use for plotting later
+    augsynth$trt_unit <- data %>% filter(!!as.name(trt) == 1) %>%
+      pull(quo_name(unit)) %>% unique()
+    augsynth$time_var <- quo_name(time)
+    augsynth$unit_var <- quo_name(unit)
+    augsynth$raw_data <- data
+    augsynth$form <- form
+
+    if (inf_type != 'None') {
+      augsynth <- add_inference(augsynth, inf_type = inf_type)
+    }
 
     return(augsynth)
 }
@@ -85,9 +113,9 @@ single_augsynth <- function(form, unit, time, t_int, data,
 #' @param fixedeff Whether to de-mean synth
 #' @param V V matrix for Synth, default NULL
 #' @param ... Extra args for outcome model
-#' 
+#'
 #' @noRd
-#' 
+#'
 fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                   scm, fixedeff, V = NULL, ...) {
 
@@ -118,23 +146,23 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
     } else if(progfunc == "none") {
         ## Just SCM
         augsynth <- do.call(fit_ridgeaug_formatted,
-                        c(list(wide_data = fit_wide, 
+                        c(list(wide_data = fit_wide,
                                synth_data = fit_synth_data,
                                Z = Z, ridge = F, scm = T, V = V, ...)))
     } else {
         ## Other outcome models
-        progfuncs = c("ridge", "none", "en", "rf", "gsyn", "mcp",
+        progfuncs = c("ridge", "None", "en", "rf", "gsyn", "mcp",
                       "cits", "causalimpact", "seq2seq")
         if (progfunc %in% progfuncs) {
-            augsynth <- fit_augsyn(fit_wide, fit_synth_data, 
+            augsynth <- fit_augsyn(fit_wide, fit_synth_data,
                                    progfunc, scm, ...)
         } else {
             stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq', 'None'")
         }
-        
+
     }
 
-    augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0), 
+    augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0),
                                   augsynth$mhat)
     augsynth$data <- wide
     augsynth$data$Z <- Z
@@ -168,13 +196,13 @@ predict.augsynth <- function(object, att = F, ...) {
     #     att <- F
     # }
     augsynth <- object
-    
+
     X <- augsynth$data$X
     y <- augsynth$data$y
     comb <- cbind(X, y)
     trt <- augsynth$data$trt
     mhat <- augsynth$mhat
-    
+
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
     resid <- (comb[trt==0,,drop=F] - mhat[trt==0,drop=F])
@@ -197,7 +225,7 @@ predict.augsynth <- function(object, att = F, ...) {
 #' @export
 print.augsynth <- function(x, ...) {
     augsynth <- x
-    
+
     ## straight from lm
     cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
@@ -213,36 +241,66 @@ print.augsynth <- function(x, ...) {
 
 #' Plot function for augsynth
 #' @importFrom graphics plot
-#' 
+#'
 #' @param x Augsynth object to be plotted
-#' @param inf Boolean, whether to get confidence intervals around the point estimates
+#' @param ci Boolean, whether to get confidence intervals around the point estimates
 #' @param cv If True, plot cross validation MSE against hyper-parameter, otherwise plot effects
+#' @param inf_type Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
+#'         \itemize{
+#'          \item{"conformal"}{Conformal inference (default)}
+#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+#'          \item{"jackknife"}{Jackknife over units}
+#'          \item{"permutation"}{Placebo permutation, raw ATT}
+#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+#'          \item{"None"}{Return ATT Estimate only}
+#'         }
+#' @param ... Optional arguments for inference, for more details for each `inf_type` see
+#'         \itemize{
+#'          \item{"conformal"}{`conformal_inf`}
+#'          \item{"jackknife+"}{`time_jackknife_plus`}
+#'          \item{"jackknife"}{`jackknife_se_single`}
+#'          \item{"permutation"}{`permutation_inf`}
+#'         }
 #' @param ... Optional arguments
 #' @export
-plot.augsynth <- function(x, inf = T, cv = F, ...) {
-    # if ("se" %in% names(list(...))) {
-    #     se <- list(...)$se
-    # } else {
-    #     se <- T
-    # }
-
+plot.augsynth <- function(x, ci = TRUE, cv = FALSE,
+                          inf_type = NULL, ...) {
     augsynth <- x
-    
+
+    if (is.null(inf_type)) {
+      if (!is.null(augsynth$results)) {
+        inf_type <- augsynth$results$inf_type
+      } else {
+        inf_type <- 'conformal'
+      }
+    }
+
+    if (inf_type == 'None') {
+      inf <-  FALSE
+      ci <- FALSE
+    } else {
+      inf <- TRUE
+    }
+
+    if (is.null(augsynth$results)) {
+      augsynth <- add_inference(augsynth, inf_type = inf_type)
+    }
+
     if (cv == T) {
         errors = data.frame(lambdas = augsynth$lambdas,
                             errors = augsynth$lambda_errors,
                             errors_se = augsynth$lambda_errors_se)
         p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
-              ggplot2::geom_point(size = 2) + 
+              ggplot2::geom_point(size = 2) +
               ggplot2::geom_errorbar(
                 ggplot2::aes(ymin = errors,
                              ymax = errors + errors_se),
-                width=0.2, size = 0.5) 
+                width=0.2, size = 0.5)
         p <- p + ggplot2::labs(title = bquote("Cross Validation MSE over " ~ lambda),
-                              x = expression(lambda), y = "Cross Validation MSE", 
+                              x = expression(lambda), y = "Cross Validation MSE",
                               parse = TRUE)
         p <- p + ggplot2::scale_x_log10()
-        
+
         # find minimum and min + 1se lambda to plot
         min_lambda <- choose_lambda(augsynth$lambdas,
                                    augsynth$lambda_errors,
@@ -256,7 +314,7 @@ plot.augsynth <- function(x, inf = T, cv = F, ...) {
         min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
 
         p <- p + ggplot2::geom_point(
-            ggplot2::aes(x = min_lambda, 
+            ggplot2::aes(x = min_lambda,
                          y = augsynth$lambda_errors[min_lambda_index]),
             color = "gold")
         p + ggplot2::geom_point(
@@ -264,102 +322,157 @@ plot.augsynth <- function(x, inf = T, cv = F, ...) {
                            y = augsynth$lambda_errors[min_1se_lambda_index]),
               color = "gold") +
             ggplot2::theme_bw()
-    } else {
-        plot(summary(augsynth, ...), inf = inf)
+        return(p)
+    } else if (ci == T & inf_type %in% c("permutation", "permutation_rstat")) {
+        p <- ci95_rstat_plot(augsynth, inf_type = inf_type)
+    } else if (ci == F & inf_type %in% c("permutation", "permutation_rstat")) {
+        p <- permutation_plot(augsynth, inf_type = inf_type, ...)
+    } else  {
+      if (ci == F & !(inf_type %in% c("permutation", "permutation_rstat"))) {
+        message(paste0("Setting ci = F with inf_type = '", inf_type, "' returns ATT Estimate only"))
+      }
+        p <- augsynth_plot_from_results(augsynth, inf = ci, inf_type = inf_type)
     }
+    return(p)
 }
 
-
-#' Summary function for augsynth
+#' Function to add inference to augsynth object
 #' @param object augsynth object
-#' @param inf Boolean, whether to get confidence intervals around the point estimates
 #' @param inf_type Type of inference algorithm. Options are
 #'         \itemize{
 #'          \item{"conformal"}{Conformal inference (default)}
 #'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
 #'          \item{"jackknife"}{Jackknife over units}
+#'          \item{"permutation"}{Placebo permutation, raw ATT}
+#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
 #'         }
 #' @param ... Optional arguments for inference, for more details for each `inf_type` see
 #'         \itemize{
 #'          \item{"conformal"}{`conformal_inf`}
 #'          \item{"jackknife+"}{`time_jackknife_plus`}
 #'          \item{"jackknife"}{`jackknife_se_single`}
+#'          \item{"permutation"}{`permutation_inf`}
 #'         }
 #' @export
-summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
+add_inference <- function(object, inf_type = "conformal", ...) {
+  augsynth <- object
+
+  t0 <- ncol(augsynth$data$X)
+  t_final <- t0 + ncol(augsynth$data$y)
+
+  # if (inf_type == 'None') {
+  #   inf = F
+  # } else {
+  #   inf = T
+  # }
+
+  if (inf_type != "None") {
+
+    if(inf_type == "jackknife") {
+      att_se <- jackknife_se_single(augsynth)
+    } else if(inf_type == "jackknife+") {
+      att_se <- time_jackknife_plus(augsynth, ...)
+    } else if(inf_type == "conformal") {
+      att_se <- conformal_inf(augsynth, ...)
+    } else if (inf_type %in% c('permutation', 'permutation_rstat')) {
+      if (is.null(augsynth$results$permutations)) {
+        augsynth <- add_placebo_distribution(augsynth)
+      }
+      att_se <- permutation_inf(augsynth, inf_type)
+    } else {
+      stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
+    }
+
+    att <- data.frame(Time = augsynth$data$time,
+                      Estimate = att_se$att[1:t_final])
+    rownames(att) <- att$Time
+
+    if(inf_type == "jackknife") {
+      att$Std.Error <- att_se$se[1:t_final]
+      att_avg_se <- att_se$se[t_final + 1]
+    } else {
+      att_avg_se <- NA
+    }
+    att_avg <- att_se$att[t_final + 1]
+    if(inf_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal", "permutation", "permutation_rstat")) {
+      att$lower_bound <- att_se$lb[1:t_final]
+      att$upper_bound <- att_se$ub[1:t_final]
+    }
+    if(inf_type %in% c("conformal", "permutation", "permutation_rstat")) {
+      att$p_val <- att_se$p_val[1:t_final]
+    }
+  } else {
+    t0 <- ncol(augsynth$data$X)
+    t_final <- t0 + ncol(augsynth$data$y)
+    att_est <- predict(augsynth, att = T)
+    att <- data.frame(Time = augsynth$data$time,
+                      Estimate = att_est)
+    att$Std.Error <- NA
+    att_avg <- mean(att_est[(t0 + 1):t_final])
+    att_avg_se <- NA
+  }
+
+  augsynth$results$att <- att
+  augsynth$results$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
+
+  if(inf_type %in% c("jackknife+", "conformal", "permutation", "permutation_rstat")) {
+    augsynth$results$average_att$lower_bound <- att_se$lb[t_final + 1]
+    augsynth$results$average_att$upper_bound <- att_se$ub[t_final + 1]
+    augsynth$results$alpha <-  att_se$alpha
+  }
+  if(inf_type %in% c("conformal", "permutation", "permutation_rstat")) {
+    augsynth$results$average_att$p_val <- att_se$p_val[t_final + 1]
+  }
+
+  augsynth$results$inf_type <- inf_type
+
+  return(augsynth)
+
+}
+
+
+#' Summary function for augsynth (returns fields calculated by `add_inference()`)
+#' @param object augsynth object
+#' @param inf_type Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
+#'         \itemize{
+#'          \item{"conformal"}{Conformal inference (default)}
+#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+#'          \item{"jackknife"}{Jackknife over units}
+#'          \item{"permutation"}{Placebo permutation, raw ATT}
+#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+#'         }
+#' @param ... Optional arguments for inference, for more details for each `inf_type` see
+#'         \itemize{
+#'          \item{"conformal"}{`conformal_inf`}
+#'          \item{"jackknife+"}{`time_jackknife_plus`}
+#'          \item{"jackknife"}{`jackknife_se_single`}
+#'          \item{"permutation"}{`permutation_inf`}
+#'         }
+#' @export
+summary.augsynth <- function(object, inf_type = NULL, ...) {
     augsynth <- object
-    # if ("inf" %in% names(list(...))) {
-    #     inf <- list(...)$inf
-    # } else {
-    #     inf <- T
-    # }
-    # if ("inf_type" %in% names(list(...))) {
-    #     inf_type <- list(...)$inf_type
-    # } else {
-    #     inf_type <- "conformal"
-    # }
-    
-    
-    summ <- list()
 
     t0 <- ncol(augsynth$data$X)
     t_final <- t0 + ncol(augsynth$data$y)
 
-    if(inf) {
-        if(inf_type == "jackknife") {
-            att_se <- jackknife_se_single(augsynth)
-        } else if(inf_type == "jackknife+") {
-            att_se <- time_jackknife_plus(augsynth, ...)
-        } else if(inf_type == "conformal") {
-          att_se <- conformal_inf(augsynth, ...)
-        } else {
-            stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
-        }
-
-        att <- data.frame(Time = augsynth$data$time,
-                          Estimate = att_se$att[1:t_final])
-        if(inf_type == "jackknife") {
-          att$Std.Error <- att_se$se[1:t_final]
-          att_avg_se <- att_se$se[t_final + 1]
-        } else {
-          att_avg_se <- NA
-        }
-        att_avg <- att_se$att[t_final + 1]
-        if(inf_type %in% c("jackknife+", "nonpar_bs", "t_dist", "conformal")) {
-            att$lower_bound <- att_se$lb[1:t_final]
-            att$upper_bound <- att_se$ub[1:t_final]
-        }
-        if(inf_type == "conformal") {
-          att$p_val <- att_se$p_val[1:t_final]
-        }
-
-    } else {
-        t0 <- ncol(augsynth$data$X)
-        t_final <- t0 + ncol(augsynth$data$y)
-        att_est <- predict(augsynth, att = T)
-        att <- data.frame(Time = augsynth$data$time,
-                          Estimate = att_est)
-        att$Std.Error <- NA
-        att_avg <- mean(att_est[(t0 + 1):t_final])
-        att_avg_se <- NA
-    }
-
-    summ$att <- att
-    summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
-    if(inf) {
-      if(inf_type %in% c("jackknife+", "conformal")) {
-          summ$average_att$lower_bound <- att_se$lb[t_final + 1]
-          summ$average_att$upper_bound <- att_se$ub[t_final + 1]
-          summ$alpha <-  att_se$alpha
-      }
-      if(inf_type == "conformal") {
-        summ$average_att$p_val <- att_se$p_val[t_final + 1]
+    if (is.null(inf_type)) {
+      if (!is.null(augsynth$results)) {
+        inf_type <- augsynth$results$inf_type
+      } else {
+        inf_type <- 'conformal'
       }
     }
+    if (is.null(augsynth$results) | (augsynth$results$inf_type != inf_type)) {
+      augsynth <- add_inference(augsynth, inf_type = inf_type)
+    }
+
+    summ <- augsynth$results
+
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
     summ$l2_imbalance <- augsynth$l2_imbalance
     summ$scaled_l2_imbalance <- augsynth$scaled_l2_imbalance
+    summ$time_var <- augsynth$time_var
     if(!is.null(augsynth$covariate_l2_imbalance)) {
       summ$covariate_l2_imbalance <- augsynth$covariate_l2_imbalance
       summ$scaled_covariate_l2_imbalance <- augsynth$scaled_covariate_l2_imbalance
@@ -377,13 +490,14 @@ summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
     m1 <- colMeans(mhat[trt==1,,drop=F])
 
     if(tolower(augsynth$progfunc) == "none" | (!augsynth$scm)) {
-        summ$bias_est <- NA
+      summ$bias_est <- NA
     } else {
       summ$bias_est <- m1 - t(mhat[trt==0,,drop=F]) %*% w
     }
-    
-    
-    summ$inf_type <- if(inf) inf_type else "None"
+
+
+    summ$inf_type <- inf_type
+
     class(summ) <- "summary.augsynth"
     return(summ)
 }
@@ -394,7 +508,7 @@ summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
 #' @export
 print.summary.augsynth <- function(x, ...) {
     summ <- x
-    
+
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
@@ -404,7 +518,7 @@ print.summary.augsynth <- function(x, ...) {
     att_est <- summ$att$Estimate
     t_total <- length(att_est)
     t_int <- summ$att %>% filter(Time <= summ$t_int) %>% nrow()
-    
+
     att_pre <- att_est[1:(t_int-1)]
     att_post <- att_est[t_int:t_total]
 
@@ -419,14 +533,14 @@ print.summary.augsynth <- function(x, ...) {
       se_avg <- summ$average_att$Std.Error
 
       out_msg <- paste("Average ATT Estimate (Jackknife Std. Error): ",
-                        format(round(att_post,3), nsmall=3), 
+                        format(round(att_post,3), nsmall=3),
                         "  (",
                         format(round(se_avg,3)), ")\n")
       inf_type <- "Jackknife over units"
     } else if(summ$inf_type == "conformal") {
       p_val <- summ$average_att$p_val
       out_msg <- paste("Average ATT Estimate (p Value for Joint Null): ",
-                        format(round(att_post,3), nsmall=3), 
+                        format(round(att_post,3), nsmall=3),
                         "  (",
                         format(round(p_val,3)), ")\n")
       inf_type <- "Conformal inference"
@@ -434,6 +548,10 @@ print.summary.augsynth <- function(x, ...) {
       out_msg <- paste("Average ATT Estimate: ",
                         format(round(att_post,3), nsmall=3), "\n")
       inf_type <- "Jackknife+ over time periods"
+    } else if (summ$inf_type %in% c('permutation', "permutation_rstat")) {
+      out_msg <- paste("Average ATT Estimate: ",
+                       format(round(att_post,3), nsmall=3), "\n")
+      inf_type <- ifelse(summ$inf_type == 'permutation', "Permutation inference", "Permutation inference (RMSPE-adjusted)")
     } else {
       out_msg <- paste("Average ATT Estimate: ",
                         format(round(att_post,3), nsmall=3), "\n")
@@ -441,7 +559,7 @@ print.summary.augsynth <- function(x, ...) {
     }
 
 
-    out_msg <- paste(out_msg, 
+    out_msg <- paste(out_msg,
               "L2 Imbalance: ",
               format(round(summ$l2_imbalance,3), nsmall=3), "\n",
               "Percent improvement from uniform weights: ",
@@ -451,16 +569,16 @@ print.summary.augsynth <- function(x, ...) {
 
     out_msg <- paste(out_msg,
                      "Covariate L2 Imbalance: ",
-                     format(round(summ$covariate_l2_imbalance,3), 
+                     format(round(summ$covariate_l2_imbalance,3),
                                   nsmall=3),
                     "\n",
                      "Percent improvement from uniform weights: ",
-                     format(round(1 - summ$scaled_covariate_l2_imbalance,3)*100), 
+                     format(round(1 - summ$scaled_covariate_l2_imbalance,3)*100),
                      "%\n\n",
                      sep="")
 
   }
-  out_msg <- paste(out_msg, 
+  out_msg <- paste(out_msg,
               "Avg Estimated Bias: ",
               format(round(mean(summ$bias_est), 3),nsmall=3), "\n\n",
               "Inference type: ",
@@ -470,70 +588,124 @@ print.summary.augsynth <- function(x, ...) {
   cat(out_msg)
 
     if(summ$inf_type == "jackknife") {
-      out_att <- summ$att[t_int:t_final,] %>% 
+      out_att <- summ$att[t_int:t_final,] %>%
               select(Time, Estimate, Std.Error)
     } else if(summ$inf_type == "conformal") {
-      out_att <- summ$att[t_int:t_final,] %>% 
+      out_att <- summ$att[t_int:t_final,] %>%
               select(Time, Estimate, lower_bound, upper_bound, p_val)
-      names(out_att) <- c("Time", "Estimate", 
+      names(out_att) <- c("Time", "Estimate",
                           paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
                           paste0((1 - summ$alpha) * 100, "% CI Upper Bound"),
                           paste0("p Value"))
     } else if(summ$inf_type == "jackknife+") {
-      out_att <- summ$att[t_int:t_final,] %>% 
+      out_att <- summ$att[t_int:t_final,] %>%
               select(Time, Estimate, lower_bound, upper_bound)
-      names(out_att) <- c("Time", "Estimate", 
+      names(out_att) <- c("Time", "Estimate",
                           paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
                           paste0((1 - summ$alpha) * 100, "% CI Upper Bound"))
+    } else if (summ$inf_type %in% c('permutation', "permutation_rstat")) {
+      out_att <- summ$att[t_int:t_final, ] %>%
+        select(Time, Estimate, lower_bound, upper_bound, p_val)
+      names(out_att) <- c("Time", "Estimate",
+                          paste0((1 - summ$alpha) * 100, "% CI Lower Bound"),
+                          paste0((1 - summ$alpha) * 100, "% CI Upper Bound"),
+                          paste0('p Value'))
     } else {
-      out_att <- summ$att[t_int:t_final,] %>% 
+      out_att <- summ$att[t_int:t_final,] %>%
               select(Time, Estimate)
     }
     out_att %>%
       mutate_at(vars(-Time), ~ round(., 3)) %>%
       print(row.names = F)
 
-    
+
 }
 
 #' Plot function for summary function for augsynth
 #' @param x Summary object
-#' @param inf Boolean, whether to plot confidence intervals
 #' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(x, inf = T, ...) {
-    summ <- x
-    # if ("inf" %in% names(list(...))) {
-    #     inf <- list(...)$inf
-    # } else {
-    #     inf <- T
-    # }
-    
-    p <- summ$att %>%
-        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
-    if(inf) {
-        if(all(is.na(summ$att$lower_bound))) {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                        ymax=Estimate+2*Std.Error),
-                    alpha=0.2)
-        } else {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
-                        ymax=upper_bound),
-                    alpha=0.2)
-        }
+plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
+  summ <- x
 
+  if (inf_type != 'None') {
+    inf = T
+  } else{
+    inf = F
+  }
+
+  p <- summ$att %>%
+    ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
+  if(inf) {
+    if(all(is.na(summ$att$lower_bound))) {
+      p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+                                                 ymax=Estimate+2*Std.Error),
+                                    alpha=0.2)
+    } else {
+      p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
+                                                 ymax=upper_bound),
+                                    alpha=0.2)
     }
-    p + ggplot2::geom_line() +
-        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
-        ggplot2::geom_hline(yintercept=0, lty=2) + 
-        ggplot2::theme_bw()
+
+  }
+  p + ggplot2::geom_line() +
+    ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
+    ggplot2::geom_hline(yintercept=0, lty=2) +
+    ggplot2::theme_bw()
+
+}
+
+#' Plot function for summary function for augsynth
+#' @param x Summary object
+#' @param ... Optional arguments
+#' @export
+augsynth_plot_from_results <- function(augsynth, inf_type = NULL, ...) {
+
+  if (is.null(inf_type)) {
+    if (!is.null(augsynth$results)) {
+      inf_type <- augsynth$results$inf_type
+    } else {
+      inf_type <- 'conformal'
+    }
+  }
+  if (inf_type != "None") {
+    inf = T
+  } else {
+    inf = F
+  }
+
+  if (is.null(augsynth$results) | (augsynth$results$inf_type != inf_type)) {
+    augsynth <- add_inference(augsynth, inf_type = inf_type)
+  }
+
+  p <- augsynth$results$att %>%
+      ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
+  if(inf) {
+      if(all(is.na(augsynth$results$att$lower_bound))) {
+          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
+                      ymax=Estimate+2*Std.Error),
+                  alpha=0.2)
+      } else {
+          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
+                      ymax=upper_bound),
+                  alpha=0.2)
+      }
+
+  }
+  p <- p + ggplot2::geom_line() +
+      ggplot2::geom_vline(xintercept=augsynth$t_int, lty=2) +
+      ggplot2::geom_hline(yintercept=0, lty=2) +
+      ggplot2::labs(x = augsynth$time_var) +
+      ggplot2::theme_bw()
+
+  return(p)
 
 }
 
 
 
 #' augsynth
-#' 
+#'
 #' @description A package implementing the Augmented Synthetic Controls Method
 #' @docType package
 #' @name augsynth-package
@@ -543,9 +715,9 @@ plot.summary.augsynth <- function(x, inf = T, ...) {
 #' @import tidyr
 #' @importFrom stats terms
 #' @importFrom stats formula
-#' @importFrom stats update 
-#' @importFrom stats delete.response 
-#' @importFrom stats model.matrix 
-#' @importFrom stats model.frame 
+#' @importFrom stats update
+#' @importFrom stats delete.response
+#' @importFrom stats model.matrix
+#' @importFrom stats model.frame
 #' @importFrom stats na.omit
 NULL

@@ -14,6 +14,7 @@ single_augsynth(
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
+  inf_type = "conformal",
   ...
 )
 }
@@ -32,7 +33,7 @@ single_augsynth(
 ridge=Ridge regression (allows for standard errors),
 none=No outcome model,
 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-mcp=MCPanel, 
+mcp=MCPanel,
 cits=Comparitive Interuppted Time Series
 causalimpact=Bayesian structural time series with CausalImpact}
 
@@ -42,7 +43,18 @@ causalimpact=Bayesian structural time series with CausalImpact}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 
+\item{inf_type}{Type of inference algorithm. Options are
+\itemize{
+ \item{"conformal"}{Conformal inference (default)}
+ \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+ \item{"jackknife"}{Jackknife over units}
+ \item{"permutation"}{Placebo permutation, raw ATT}
+ \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+}}
+
 \item{...}{optional arguments for outcome model}
+
+\item{plot}{Whether or not to return a plot of the augsynth model}
 }
 \value{
 augsynth object that contains:
