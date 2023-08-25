@@ -53,7 +53,7 @@ This notebook demonstrates the functionality of several extensions to the `augsy
 
 ## Summary of changes
 
-This project currently lives on the [n-delaney/augsynth_rstat](https://github.com/n-delaney/augsynth_rstat) GitHub repository. All changes should (ideally) be backwards compatible, although they are only currently implemented for cases where `single_augsynth()` is executed. The proposed extensions to the `augsynth` package do the following:
+This project currently lives on the [n-delaney/augsynth_permutation](https://github.com/n-delaney/augsynth_permutation) GitHub repository. All changes should (ideally) be backwards compatible, although they are only currently implemented for cases where `single_augsynth()` is executed. The proposed extensions to the `augsynth` package do the following:
 
 * Add inference output by default to `augsynth` objects, stored in  `augsynth$results`.
 * Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include `permutation` and `permutation_rstat` (RMSPE-adjusted placebo tests). 
