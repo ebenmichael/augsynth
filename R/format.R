@@ -71,7 +71,8 @@ format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
 
     # X <- simplify2array(lapply(formats, function(x) x$X))
     # y <- simplify2array(lapply(formats, function(x) x$y))
-    X <- lapply(formats, function(x) t(na.omit(t(x$X))))
+    # X <- lapply(formats, function(x) t(na.omit(t(x$X))))
+    X <- lapply(formats, `[[`, "X")
     y <- lapply(formats, function(x) t(na.omit(t(x$y))))
     trt <- formats[[1]]$trt
     return(list(X = X, trt = trt, y = y))
