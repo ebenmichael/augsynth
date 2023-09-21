@@ -150,7 +150,7 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
     n_units <- Map(nrow, wide_list$X) %>% Reduce(max, .)
     # take out unit fixed effects
     demean_j <- function(j) {
-        means <- rowMeans(wide_list$X[[j]])
+        means <- rowMeans(wide_list$X[[j]], na.rm = TRUE)
 
         new_wide_data <- list()
         new_X <- wide_list$X[[j]] - means
@@ -183,16 +183,17 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
     if(combine_method == "concat") {
         # center X and scale by overall variance for outcome
         # X <- lapply(wide_list$X, function(x) t(t(x) - colMeans(x)) / sd(x))
-        wide_bal <- list(X = do.call(cbind, wide_list$X),
-                         y = do.call(cbind, wide_list$y),
+        wide_bal <- list(X = do.call(cbind, lapply(wide_list$X, function(x) t(na.omit(t(x))))),
+                         y = do.call(cbind, lapply(wide_list$y, function(x) t(na.omit(t(x))))),
                          trt = wide_list$trt)
 
         # V matrix scales by inverse variance for outcome and number of periods
         V <- do.call(c, 
             lapply(wide_list$X, 
-                function(x) rep(1 / (sqrt(ncol(x)) * 
+                function(x) rep(1 / (sqrt(nrow(na.omit(t(x)))) * 
                         sd(x[wide_list$trt == 0, , drop = F], na.rm=T)), 
-                        ncol(x))))
+                        nrow(na.omit(t(x))))))
+
     # } else if(combine_method == "svd") {
     #     wide_bal <- list(X = do.call(cbind, wide_list$X),
     #                      y = do.call(cbind, wide_list$y),
@@ -209,11 +210,14 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
     #     k <- if(is.null(k)) ncol(X0) else k
     #     V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
     } else if(combine_method == "avg") {
-        # average pre-treatment outcomes, dividing by standard deviation
-      wide_bal <- list(X = Reduce(`+`, lapply(wide_list$X, function(x) x / sd(x[wide_list$trt == 0,]))),
-                       #X = Reduce(`+`, wide_list$X),
-                       y = Reduce(`+`, wide_list$y),
-                       trt = wide_list$trt)
+        # average pre-treatment outcomes, dividing by standard deviation and removing missing values
+        X_avg <- rowMeans(simplify2array(lapply(wide_list$X,
+                                    function(x) (x - mean(x[wide_list$trt == 0,], na.rm = TRUE)) / sd(x[wide_list$trt == 0,], na.rm = TRUE))), dims = 2, na.rm = TRUE)
+        # remove any time periods with NAs
+        X_avg <- t(na.omit(t(X_avg)))
+      wide_bal <- list(X = X_avg,
+          y = rowMeans(simplify2array(wide_list$y), dims = 2, na.rm = TRUE),
+          trt = wide_list$trt)
 
       V <- diag(ncol(wide_bal$X))
       # mhat_pre <- Reduce(`+`, mhat_pre)
@@ -307,7 +311,7 @@ print.augsynth_multiout <- function(x, ...) {
 #' @param object augsynth_multiout object
 #' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' @export
-summary.augsynth_multiout <- function(object, inf = T, inf_type = "jackknife", ...) {
+summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", ...) {
     
 
     summ <- list()
@@ -466,7 +470,7 @@ print.summary.augsynth_multiout <- function(x, ...) {
     imbal <- x$att %>% 
         filter(Time < x$t_int) %>%
         group_by(Outcome) %>%
-        summarise(Pre.RMSE = sqrt(mean(Estimate ^ 2)))
+        summarise(Pre.RMSE = sqrt(mean(Estimate ^ 2, na.rm = TRUE)))
 
     cat(paste("Overall L2 Imbalance (Scaled):",
               format(round(x$l2_imbalance,3), nsmall=3), "  (",

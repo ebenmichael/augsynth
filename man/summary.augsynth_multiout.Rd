@@ -4,7 +4,7 @@
 \alias{summary.augsynth_multiout}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth_multiout}(object, inf = T, inf_type = "jackknife", ...)
+\method{summary}{augsynth_multiout}(object, inf = T, inf_type = "conformal", ...)
 }
 \arguments{
 \item{object}{augsynth_multiout object}
