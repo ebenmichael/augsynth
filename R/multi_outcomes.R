@@ -416,12 +416,14 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", .
 
       # get average of all outcomes
     sds <- data.frame(Outcome = object$outcomes,
-                      sdo = sapply(object$data_list$X, sd))
+                      sdo = sapply(object$data_list$X,
+                                    function(x)  sd(x[object$data_list$trt == 0,], na.rm = TRUE)))
+
     att %>%
       inner_join(sds, by = "Outcome") %>%
       mutate(Estimate = Estimate / sdo) %>%
       group_by(Time) %>%
-      summarise(Estimate = mean(Estimate)) %>%
+      summarise(Estimate = mean(Estimate, na.rm = TRUE)) %>%
       mutate(Outcome = "Average") %>%
       bind_rows(att, .) -> att
 
