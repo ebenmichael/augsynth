@@ -527,7 +527,9 @@ augsynth_gap_plot <- function(augsynth, measure = c("synth", "average")) {
 #' @export
 donor_table <- function(augsynth) {
 
-  if (!augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) {
+  if (is.null(augsynth$results)) {
+    augsynth <- add_inference(augsynth, inf_type = 'permutation')
+  } else if ((!augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) | is.null(augsynth$results)) {
     augsynth <- add_inference(augsynth, inf_type = 'permutation')
   }
 
@@ -550,10 +552,14 @@ donor_table <- function(augsynth) {
 #' @export
 update_augsynth <- function(augsynth, drop = 20){
 
-  inf_type <- augsynth$results$inf_type
+  if (is.null(augsynth$results)){
+    inf_type = 'none'
+  } else {
+    inf_type <- augsynth$results$inf_type
+  }
 
   # run placebo tests if necessary
-  if (!augsynth$results$inf_type %in% c('permutation', 'permutation_rstat')) {
+  if (!inf_type %in% c('permutation', 'permutation_rstat')) {
     augsynth <- add_inference(augsynth, inf_type = 'permutation')
   }
 

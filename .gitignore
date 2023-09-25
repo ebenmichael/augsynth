@@ -13,7 +13,7 @@ inst/doc
 # R stuff
 *.Rout
 *.Rhistory
-*.RData 
+*.RData
 *.Rapp.history
 
 # Mac stuff
@@ -29,3 +29,6 @@ test.R
 
 *-vignette.pdf
 .Rproj.user
+
+# scratch folder
+\scratch

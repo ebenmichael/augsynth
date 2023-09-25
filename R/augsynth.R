@@ -51,7 +51,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
                      scm=T,
                      fixedeff = FALSE,
                      cov_agg=NULL,
-                     inf_type='conformal', ...) {
+                     inf_type='None', ...) {
     call_name <- match.call()
 
     form <- Formula::Formula(form)
@@ -96,7 +96,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     augsynth$raw_data <- data
     augsynth$form <- form
 
-    if (inf_type != 'None') {
+    if (tolower(inf_type) != 'none') {
       augsynth <- add_inference(augsynth, inf_type = inf_type)
     }
 
@@ -275,7 +275,7 @@ plot.augsynth <- function(x, ci = TRUE, cv = FALSE,
       }
     }
 
-    if (inf_type == 'None') {
+    if (tolower(inf_type) == 'none') {
       inf <-  FALSE
       ci <- FALSE
     } else {
@@ -360,13 +360,7 @@ add_inference <- function(object, inf_type = "conformal", ...) {
   t0 <- ncol(augsynth$data$X)
   t_final <- t0 + ncol(augsynth$data$y)
 
-  # if (inf_type == 'None') {
-  #   inf = F
-  # } else {
-  #   inf = T
-  # }
-
-  if (inf_type != "None") {
+  if (tolower(inf_type) != "none") {
 
     if(inf_type == "jackknife") {
       att_se <- jackknife_se_single(augsynth)
@@ -462,9 +456,14 @@ summary.augsynth <- function(object, inf_type = NULL, ...) {
         inf_type <- 'conformal'
       }
     }
-    if (is.null(augsynth$results) | (augsynth$results$inf_type != inf_type)) {
+    if (is.null(augsynth$results)) {
+      augsynth <- add_inference(augsynth, inf_type = inf_type)
+    } else if (augsynth$results$inf_type != inf_type) {
       augsynth <- add_inference(augsynth, inf_type = inf_type)
     }
+    # if (is.null(augsynth$results) | (augsynth$results$inf_type != inf_type)) {
+    #   augsynth <- add_inference(augsynth, inf_type = inf_type)
+    # }
 
     summ <- augsynth$results
 
@@ -628,7 +627,7 @@ print.summary.augsynth <- function(x, ...) {
 plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
   summ <- x
 
-  if (inf_type != 'None') {
+  if (tolower(inf_type) != 'none') {
     inf = T
   } else{
     inf = F
@@ -668,7 +667,7 @@ augsynth_plot_from_results <- function(augsynth, inf_type = NULL, ...) {
       inf_type <- 'conformal'
     }
   }
-  if (inf_type != "None") {
+  if (tolower(inf_type) != "none") {
     inf = T
   } else {
     inf = F
