@@ -402,12 +402,13 @@ compute_permute_ci_linear <- function(wide_data, ascm, grid_int, grid_slope,
                 compute_permute_pval(wide_data, ascm, x[1] + x[2] * (1:post_length), 
                                      post_length, type, q, ns, stat_func)
               })
-  # return(grid_comb)
   ci_int <- c(min(grid_comb[grid_comb$p_val >= alpha, 1]),
               max(grid_comb[grid_comb$p_val >= alpha, 1]))
   ci_slope <- c(min(grid_comb[grid_comb$p_val >= alpha, 2]),
                    max(grid_comb[grid_comb$p_val >= alpha, 2]))
-  return(list(ci_int = ci_int, ci_slope = ci_slope))
+  int_slope_est <- as.numeric(grid_comb[which.max(grid_comb$p_val), 1:2])
+  return(list(est_int = int_slope_est[1], ci_int = ci_int,
+              est_slope = int_slope_est[2], ci_slope = ci_slope))
 }
 
 

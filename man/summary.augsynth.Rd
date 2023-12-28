@@ -4,7 +4,7 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_eff = F, ...)
+\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_effect = F, ...)
 }
 \arguments{
 \item{object}{augsynth object}
@@ -18,7 +18,7 @@
  \item{"jackknife"}{Jackknife over units}
 }}
 
-\item{linear_eff}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
+\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
 
 \item{...}{Optional arguments for inference, for more details for each `inf_type` see
 \itemize{
