@@ -279,6 +279,7 @@ plot.augsynth <- function(x, inf = T, cv = F, ...) {
 #'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
 #'          \item{"jackknife"}{Jackknife over units}
 #'         }
+#' @param linear_effect Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time 
 #' @param ... Optional arguments for inference, for more details for each `inf_type` see
 #'         \itemize{
 #'          \item{"conformal"}{`conformal_inf`}
@@ -286,20 +287,10 @@ plot.augsynth <- function(x, inf = T, cv = F, ...) {
 #'          \item{"jackknife"}{`jackknife_se_single`}
 #'         }
 #' @export
-summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
+summary.augsynth <- function(object, inf = T, inf_type = "conformal",
+                             linear_effect = F,
+                             ...) {
     augsynth <- object
-    # if ("inf" %in% names(list(...))) {
-    #     inf <- list(...)$inf
-    # } else {
-    #     inf <- T
-    # }
-    # if ("inf_type" %in% names(list(...))) {
-    #     inf_type <- list(...)$inf_type
-    # } else {
-    #     inf_type <- "conformal"
-    # }
-    
-    
     summ <- list()
 
     t0 <- ncol(augsynth$data$X)
@@ -312,6 +303,10 @@ summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
             att_se <- time_jackknife_plus(augsynth, ...)
         } else if(inf_type == "conformal") {
           att_se <- conformal_inf(augsynth, ...)
+          # get CIs for linear treatment effects
+          if(linear_effect) {
+            att_linear <- conformal_inf_linear(augsynth, ...)
+          }
         } else {
             stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
         }
@@ -345,16 +340,51 @@ summary.augsynth <- function(object, inf = T, inf_type = "conformal", ...) {
     }
 
     summ$att <- att
-    summ$average_att <- data.frame(Estimate = att_avg, Std.Error = att_avg_se)
+
     if(inf) {
-      if(inf_type %in% c("jackknife+", "conformal")) {
-          summ$average_att$lower_bound <- att_se$lb[t_final + 1]
-          summ$average_att$upper_bound <- att_se$ub[t_final + 1]
-          summ$alpha <-  att_se$alpha
+      if(inf_type %in% c("jackknife+")) {
+        summ$average_att <- data.frame(Value = "Average Post-Treatment Effect",
+                              Estimate = att_avg, Std.Error = att_avg_se)
+        summ$average_att$lower_bound <- att_se$lb[t_final + 1]
+        summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+        summ$alpha <-  att_se$alpha
       }
       if(inf_type == "conformal") {
-        summ$average_att$p_val <- att_se$p_val[t_final + 1]
+        # summ$average_att$p_val <- att_se$p_val[t_final + 1]
+        # summ$average_att$lower_bound <- att_se$lb[t_final + 1]
+        # summ$average_att$upper_bound <- att_se$ub[t_final + 1]
+        # summ$alpha <-  att_se$alpha
+        if(linear_effect) {
+          summ$average_att <- data.frame(
+                                Value = c("Average Post-Treatment Effect",
+                                          "Treatment Effect Intercept",
+                                          "Treatment Effect Slope"),
+                                Estimate = c(att_avg, NA, NA),
+                                Std.Error = c(att_avg_se, NA, NA),
+                                p_val = c(att_se$p_val[t_final + 1], NA, NA),
+                                lower_bound = c(att_se$lb[t_final + 1],
+                                            att_linear$ci_int[1],
+                                            att_linear$ci_slope[1]),
+                                upper_bound =  c(att_se$ub[t_final + 1],
+                                            att_linear$ci_int[2],
+                                            att_linear$ci_slope[2])
+          )
+        } else {
+          summ$average_att <- data.frame(
+                                Value = c("Average Post-Treatment Effect"),
+                                Estimate = att_avg,
+                                Std.Error = att_avg_se,
+                                p_val = att_se$p_val[t_final + 1],
+                                lower_bound = att_se$lb[t_final + 1],
+                                upper_bound =  att_se$ub[t_final + 1]
+          )
+
+        }
+        summ$alpha <-  att_se$alpha
       }
+    } else {
+              summ$average_att <- data.frame(Value = "Average Post-Treatment Effect",
+                              Estimate = att_avg, Std.Error = att_avg_se)
     }
     summ$t_int <- augsynth$t_int
     summ$call <- augsynth$call
@@ -413,7 +443,7 @@ print.summary.augsynth <- function(x, ...) {
 
 
     # print out average post treatment estimate
-    att_post <- summ$average_att$Estimate
+    att_post <- summ$average_att$Estimate[1]
     se_est <- summ$att$Std.Error
     if(summ$inf_type == "jackknife") {
       se_avg <- summ$average_att$Std.Error
@@ -424,12 +454,22 @@ print.summary.augsynth <- function(x, ...) {
                         format(round(se_avg,3)), ")\n")
       inf_type <- "Jackknife over units"
     } else if(summ$inf_type == "conformal") {
-      p_val <- summ$average_att$p_val
+      p_val <- summ$average_att$p_val[1]
       out_msg <- paste("Average ATT Estimate (p Value for Joint Null): ",
-                        format(round(att_post,3), nsmall=3), 
+                        format(att_post, digits = 3), 
                         "  (",
-                        format(round(p_val,3)), ")\n")
+                        format(p_val, digits = 2), ")\n")
       inf_type <- "Conformal inference"
+      if("Treatment Effect Slope" %in% summ$average_att$Value) {
+        lowers <- summ$average_att$lower_bound[2:3]
+        uppers <- summ$average_att$upper_bound[2:3]
+        out_msg_line2 <- paste0("Confidence intervals for linear-in-time treatment effects (Intercept + Slope * Time)\n",
+        "\tIntercept: [", format(lowers[1], digits = 3), ",",
+        format(uppers[1], digits = 3), "]\n",
+        "\tSlope: [", format(lowers[2], digits = 3), ",",
+        format(uppers[2], digits = 3), "]\n")
+        out_msg <- paste0(out_msg, out_msg_line2)
+      }
     } else if(summ$inf_type == "jackknife+") {
       out_msg <- paste("Average ATT Estimate: ",
                         format(round(att_post,3), nsmall=3), "\n")

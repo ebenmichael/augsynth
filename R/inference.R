@@ -236,8 +236,8 @@ conformal_inf_linear <- function(ascm, alpha = 0.05,
   grid_int <- seq(lm_out[1,1] - 2 * post_second,
                   lm_out[1,1] + 2 * post_second,
                   length.out = grid_size)
-  grid_slope <- seq(lm_out[2,1] - 2 * lm_out[2,2] * sqrt(tpost),
-                  lm_out[2,1] + 2 * lm_out[2,2] * sqrt(tpost),
+  grid_slope <- seq(lm_out[2,1] - 4 * lm_out[2,2] * sqrt(tpost),
+                  lm_out[2,1] + 4 * lm_out[2,2] * sqrt(tpost),
                   length.out = grid_size)
 
   # test a null post-treatment effect
