@@ -4,7 +4,7 @@
 \alias{plot.summary.augsynth}
 \title{Plot function for summary function for augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, inf_type = "conformal", ...)
+\method{plot}{summary.augsynth}(x, inf = NULL, inf_type = "conformal", ...)
 }
 \arguments{
 \item{x}{Summary object}

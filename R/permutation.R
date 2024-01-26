@@ -485,7 +485,7 @@ permutation_inf <- function(augsynth, inf_type) {
 #' @param augsynth Augsynth object to be plotted
 #' @param  measure Whether to plot the synthetic counterfactual or the raw average of donor units
 #' @export
-augsynth_gap_plot <- function(augsynth, measure = c("synth", "average")) {
+augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
 
   trt_index <- which(augsynth$data$trt == 1)
   df <- bind_cols(augsynth$data$X, augsynth$data$y)
@@ -516,7 +516,9 @@ augsynth_gap_plot <- function(augsynth, measure = c("synth", "average")) {
                   y = 'Outcome') +
     ggplot2::ylim(min_y, max_y) +
     ggplot2::theme_bw() +
-    ggplot2::theme(legend.position = c(0.75, 0.88))
+    ggplot2::theme(legend.position = c(0.75, 0.88),
+                   legend.key = element_rect(fill = alpha("white", 0.5)),
+                   legend.background = element_rect(fill = alpha("white", 0)))
 
   return(p)
 }

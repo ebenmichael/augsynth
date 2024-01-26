@@ -4,12 +4,12 @@
 \alias{plot.augsynth}
 \title{Plot function for augsynth}
 \usage{
-\method{plot}{augsynth}(x, ci = TRUE, cv = FALSE, inf_type = NULL, ...)
+\method{plot}{augsynth}(x, plot_type = NULL, inf = TRUE, cv = FALSE, inf_type = NULL, ...)
 }
 \arguments{
 \item{x}{Augsynth object to be plotted}
 
-\item{ci}{Boolean, whether to get confidence intervals around the point estimates}
+\item{inf}{Boolean, whether to get confidence intervals around the point estimates#'}
 
 \item{cv}{If True, plot cross validation MSE against hyper-parameter, otherwise plot effects}
 

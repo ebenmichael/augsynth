@@ -238,11 +238,10 @@ print.augsynth <- function(x, ...) {
               format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
 }
 
-
 #' Plot function for augsynth
 #' @importFrom graphics plot
 #'
-#' @param x Augsynth object to be plotted
+#' @param augsynth Augsynth object to be plotted
 #' @param ci Boolean, whether to get confidence intervals around the point estimates
 #' @param cv If True, plot cross validation MSE against hyper-parameter, otherwise plot effects
 #' @param inf_type Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
@@ -263,78 +262,87 @@ print.augsynth <- function(x, ...) {
 #'         }
 #' @param ... Optional arguments
 #' @export
-plot.augsynth <- function(x, ci = TRUE, cv = FALSE,
+plot.augsynth <- function(augsynth, cv = FALSE,
+                          plot_type = 'estimate',
                           inf_type = NULL, ...) {
-    augsynth <- x
 
-    if (is.null(inf_type)) {
-      if (!is.null(augsynth$results)) {
-        inf_type <- augsynth$results$inf_type
-      } else {
-        inf_type <- 'conformal'
-      }
-    }
+  if (is.null(inf_type) & !is.null(augsynth$results)) {
+    inf_type = augsynth$results$inf_type
+  }
 
-    if (tolower(inf_type) == 'none') {
-      inf <-  FALSE
-      ci <- FALSE
+  # if no inf_type is set to "none", then only return a raw treatment estimate or an outcomes plot (treated/synth trajectories)
+  if ((inf_type %in% c('None', 'none')) & (!grepl('outcomes', plot_type))) {
+    plot_type = 'estimate only'
+  }
+
+  if ((plot_type == 'placebo') & (!inf_type %in% c('permutation', 'permutation_rstat'))) {
+    message("Placebo plots are only available for permutation-based inference.")
+    return(augsynth_plot_from_results(augsynth, inf_type = 'none'))
+  }
+
+  if (is.null(inf_type)) {
+    if (!is.null(augsynth$results)) {
+      inf_type <- augsynth$results$inf_type
     } else {
-      inf <- TRUE
+      inf_type <- 'conformal'
     }
+  }
 
-    if (is.null(augsynth$results)) {
-      augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
+  if (is.null(augsynth$results)) {
+    augsynth <- add_inference(augsynth, inf_type = inf_type)
+  }
 
-    if (cv == T) {
-        errors = data.frame(lambdas = augsynth$lambdas,
-                            errors = augsynth$lambda_errors,
-                            errors_se = augsynth$lambda_errors_se)
-        p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
-              ggplot2::geom_point(size = 2) +
-              ggplot2::geom_errorbar(
-                ggplot2::aes(ymin = errors,
-                             ymax = errors + errors_se),
-                width=0.2, size = 0.5)
-        p <- p + ggplot2::labs(title = bquote("Cross Validation MSE over " ~ lambda),
-                              x = expression(lambda), y = "Cross Validation MSE",
-                              parse = TRUE)
-        p <- p + ggplot2::scale_x_log10()
+  if (cv == T) {
+    errors = data.frame(lambdas = augsynth$lambdas,
+                        errors = augsynth$lambda_errors,
+                        errors_se = augsynth$lambda_errors_se)
+    p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
+      ggplot2::geom_point(size = 2) +
+      ggplot2::geom_errorbar(
+        ggplot2::aes(ymin = errors,
+                     ymax = errors + errors_se),
+        width=0.2, size = 0.5)
+    p <- p + ggplot2::labs(title = bquote("Cross Validation MSE over " ~ lambda),
+                           x = expression(lambda), y = "Cross Validation MSE",
+                           parse = TRUE)
+    p <- p + ggplot2::scale_x_log10()
 
-        # find minimum and min + 1se lambda to plot
-        min_lambda <- choose_lambda(augsynth$lambdas,
-                                   augsynth$lambda_errors,
-                                   augsynth$lambda_errors_se,
-                                   F)
-        min_1se_lambda <- choose_lambda(augsynth$lambdas,
-                                       augsynth$lambda_errors,
-                                       augsynth$lambda_errors_se,
-                                       T)
-        min_lambda_index <- which(augsynth$lambdas == min_lambda)
-        min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
+    # find minimum and min + 1se lambda to plot
+    min_lambda <- choose_lambda(augsynth$lambdas,
+                                augsynth$lambda_errors,
+                                augsynth$lambda_errors_se,
+                                F)
+    min_1se_lambda <- choose_lambda(augsynth$lambdas,
+                                    augsynth$lambda_errors,
+                                    augsynth$lambda_errors_se,
+                                    T)
+    min_lambda_index <- which(augsynth$lambdas == min_lambda)
+    min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
 
-        p <- p + ggplot2::geom_point(
-            ggplot2::aes(x = min_lambda,
-                         y = augsynth$lambda_errors[min_lambda_index]),
-            color = "gold")
-        p + ggplot2::geom_point(
-              ggplot2::aes(x = min_1se_lambda,
-                           y = augsynth$lambda_errors[min_1se_lambda_index]),
-              color = "gold") +
-            ggplot2::theme_bw()
-        return(p)
-    } else if (ci == T & inf_type %in% c("permutation", "permutation_rstat")) {
-        p <- ci95_rstat_plot(augsynth, inf_type = inf_type)
-    } else if (ci == F & inf_type %in% c("permutation", "permutation_rstat")) {
-        p <- permutation_plot(augsynth, inf_type = inf_type, ...)
-    } else  {
-      if (ci == F & !(inf_type %in% c("permutation", "permutation_rstat"))) {
-        message(paste0("Setting ci = F with inf_type = '", inf_type, "' returns ATT Estimate only"))
-      }
-        p <- augsynth_plot_from_results(augsynth, inf = ci, inf_type = inf_type)
-    }
+    p <- p + ggplot2::geom_point(
+      ggplot2::aes(x = min_lambda,
+                   y = augsynth$lambda_errors[min_lambda_index]),
+      color = "gold")
+    p + ggplot2::geom_point(
+      ggplot2::aes(x = min_1se_lambda,
+                   y = augsynth$lambda_errors[min_1se_lambda_index]),
+      color = "gold") +
+      ggplot2::theme_bw()
     return(p)
+  } else if (plot_type == 'estimate only') {
+    p <- augsynth_plot_from_results(augsynth, inf_type = 'none')
+  } else if (plot_type == 'estimate') {
+    p <- augsynth_plot_from_results(augsynth, inf_type = inf_type)
+  } else if (grepl('placebo', plot_type)) {
+    p <- permutation_plot(augsynth, inf_type = inf_type)
+  } else if (plot_type == 'outcomes') {
+    p <- augsynth_outcomes_plot(augsynth, measure = 'synth')
+  } else if (plot_type == 'outcomes raw average') {
+    p <- augsynth_outcomes_plot(augsynth, measure = c('synth', 'average'))
+  }
+  return(p)
 }
+
 
 #' Function to add inference to augsynth object
 #' @param object augsynth object
@@ -624,7 +632,7 @@ print.summary.augsynth <- function(x, ...) {
 #' @param x Summary object
 #' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
+plot.summary.augsynth <- function(x, inf = NULL, inf_type = 'conformal', ...) {
   summ <- x
 
   if (tolower(inf_type) != 'none') {
@@ -660,6 +668,8 @@ plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
 #' @export
 augsynth_plot_from_results <- function(augsynth, inf_type = NULL, ...) {
 
+  stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
+
   if (is.null(inf_type)) {
     if (!is.null(augsynth$results)) {
       inf_type <- augsynth$results$inf_type
@@ -667,33 +677,37 @@ augsynth_plot_from_results <- function(augsynth, inf_type = NULL, ...) {
       inf_type <- 'conformal'
     }
   }
-  if (tolower(inf_type) != "none") {
-    inf = T
+
+  if (tolower(inf_type) == 'none') {
+    ci = F
   } else {
-    inf = F
+    ci = T
   }
 
-  if (is.null(augsynth$results) | (augsynth$results$inf_type != inf_type)) {
+  if (is.null(augsynth$results)) {
+    augsynth <- add_inference(augsynth, inf_type = inf_type)
+  } else if (augsynth$results$inf_type != inf_type) {
     augsynth <- add_inference(augsynth, inf_type = inf_type)
   }
 
   p <- augsynth$results$att %>%
-      ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
-  if(inf) {
+      ggplot2::ggplot(ggplot2::aes(x = Time, y = Estimate))
+
+  if (ci) {
       if(all(is.na(augsynth$results$att$lower_bound))) {
-          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                      ymax=Estimate+2*Std.Error),
-                  alpha=0.2)
+          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = Estimate - 2 * Std.Error,
+                      ymax = Estimate + 2 * Std.Error),
+                  alpha = 0.2)
       } else {
-          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
-                      ymax=upper_bound),
-                  alpha=0.2)
+          p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = lower_bound,
+                      ymax = upper_bound),
+                  alpha = 0.2)
       }
 
   }
   p <- p + ggplot2::geom_line() +
-      ggplot2::geom_vline(xintercept=augsynth$t_int, lty=2) +
-      ggplot2::geom_hline(yintercept=0, lty=2) +
+      ggplot2::geom_vline(xintercept = augsynth$t_int, lty = 2) +
+      ggplot2::geom_hline(yintercept = 0, lty = 2) +
       ggplot2::labs(x = augsynth$time_var) +
       ggplot2::theme_bw()
 
