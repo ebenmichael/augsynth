@@ -160,7 +160,7 @@ calculate_MDES_table = function( lest, treat_year, tx_col, time_col ) {
                      MDE_gap  = 2.49 * SE_gap ) %>%
     dplyr::select( !!as.name(time_col), SE_gap, t_gap, p_gap, MDE_gap )
 
-  main_results = left_join( main_results, SE_for_ATT, by=time_col )
+  main_results = left_join( main_results, SE_for_ATT, by = names(main_results)[names(main_results) %in% names(SE_for_ATT)])
 
 
   # Add in permutation p-values and add indicator of which years are
@@ -309,7 +309,7 @@ add_placebo_distribution <- function(augsynth){
   nn = nrow(lest)
   lest = left_join( lest,
                     df[ c(augsynth$unit_var, augsynth$time_var, "Yobs") ], # issue is that this is calling for original data
-                    by = c( augsynth$unit_var, augsynth$time_var ) )
+                    by = names(lest)[names(lest) %in% names(df[ c(augsynth$unit_var, augsynth$time_var, "Yobs") ])] )
   stopifnot( nrow( lest ) == nn )
 
 
@@ -338,7 +338,7 @@ add_placebo_distribution <- function(augsynth){
   res = calculate_MDES_table(lest, treat_year, augsynth$unit_var, augsynth$time_var)
 
   # Add RMSPE to donor list
-  units = left_join( units, res$RMSPEs, by = augsynth$unit_col)
+  units = left_join( units, res$RMSPEs, by = names(units)[names(units) %in% names(res$RMSPEs)])
 
   MDES_table = mutate( res$MDES_table,
                        raw_average = T_tract$raw_average,
