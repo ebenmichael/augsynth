@@ -242,7 +242,14 @@ print.augsynth <- function(x, ...) {
 #' @importFrom graphics plot
 #'
 #' @param augsynth Augsynth object to be plotted
-#' @param ci Boolean, whether to get confidence intervals around the point estimates
+#' @param plot_type The stylized plot type to be returned. Options include
+#'        \itemize{
+#'          \item{"estimate"}{The ATT and 95% confidence interval}
+#'          \item{"estimate only"}{The ATT without a confidence interval}
+#'          \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
+#'          \item{"outcomes raw average"}{The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.}
+#'          \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}
+#'        }
 #' @param cv If True, plot cross validation MSE against hyper-parameter, otherwise plot effects
 #' @param inf_type Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
 #'         \itemize{
@@ -262,22 +269,27 @@ print.augsynth <- function(x, ...) {
 #'         }
 #' @param ... Optional arguments
 #' @export
-plot.augsynth <- function(augsynth, cv = FALSE,
+plot.augsynth <- function(augsynth,
+                          cv = FALSE, # ND note — not sure what this does?
                           plot_type = 'estimate',
                           inf_type = NULL, ...) {
 
   if (is.null(inf_type) & !is.null(augsynth$results)) {
     inf_type = augsynth$results$inf_type
+  } else if (is.null(inf_type) & is.null(augsynth$results)) {
+    # if no inf_type given for a basic (backwards compatible) augsynth object, set inf_type to conformal
+    inf_type = 'conformal'
   }
 
-  # if no inf_type is set to "none", then only return a raw treatment estimate or an outcomes plot (treated/synth trajectories)
+  # if inf_type is set to "none", then only return a raw treatment estimate or an outcomes plot (treated/synth trajectories)
   if ((inf_type %in% c('None', 'none')) & (!grepl('outcomes', plot_type))) {
     plot_type = 'estimate only'
   }
 
+  # if the user specifies the "placebo" plot type without accompanying inference, default to placebo and show message
   if ((plot_type == 'placebo') & (!inf_type %in% c('permutation', 'permutation_rstat'))) {
-    message("Placebo plots are only available for permutation-based inference.")
-    return(augsynth_plot_from_results(augsynth, inf_type = 'none'))
+    message('Placebo plots are only available for permutation-based inference. The plot shows results from "inf_type = "permutation""')
+    return(permutation_plot(augsynth, inf_type = 'permutation'))
   }
 
   if (is.null(inf_type)) {

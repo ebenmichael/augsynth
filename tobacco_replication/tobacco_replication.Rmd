@@ -55,15 +55,20 @@ This notebook demonstrates the functionality of several extensions to the `augsy
 
 This project currently lives on the [n-delaney/augsynth_permutation](https://github.com/n-delaney/augsynth_permutation) GitHub repository. All changes should (ideally) be backwards compatible, although they are only currently implemented for cases where `single_augsynth()` is executed. The proposed extensions to the `augsynth` package do the following:
 
-* Add inference output by default to `augsynth` objects, stored in  `augsynth$results`.
-* Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include `permutation` and `permutation_rstat` (RMSPE-adjusted placebo tests). 
+* Add the option to include inference in `augsynth` objects (in addition to summary objects). Inference details are stored in  `augsynth$results`.
+* Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include placebo-based inference through the `inf_type = permutation` and `inf_type = permutation_rstat` (RMSPE-adjusted placebo tests). 
 * Modify  `summary.augsynth()` 
   * If an `augsynth` does not already have inference results, `summary.augsynth()` will calculate them. 
-  * It's also possible to use `summary.augsynth()` to re-do inference on an existing model with different characteristics (for example, switching from the default of `conformal` to `permutation`).
+  * It's also possible to use `summary.augsynth()` to re-do inference on an existing model with different characteristics (for example, switching from the default of "conformal" to "permutation" inference).
   * Moves inference calculations from `summary.augsynth()` to `add_inference()`, a function that handles inference calculations, whether executed as part of  `augsynth()` or  `summary.augsynth()`
 * Add flexibility to `plot.augsynth()` 
-  * Allow users to choose from inference types 
-  * Include flags to include confidence intervals, the ATT only, or ATT and placebo tests.
+  * Allow users to choose from or update inference types for a given `augsynth` model (ex. comparing plots using conformal and placebo inference).
+  * Allow users to select from a number of stylized plots using the `plot_type` argument (the default is the ATT estimate and 95% confidence intervavl):
+    * "estimate" — The ATT and 95% confidence interval
+    * "estimate only" — The ATT without a confidence interval
+    * "outcomes" — The level of the outcome variable for the treated and synthetic control units.
+    * "outcomes raw average" — The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.
+    * "placebo" — The ATTs resulting from placebo tests on the donor units.
   * `plot.summary.augsynth()` should still be backwards compatible but no longer handles most of the plotting. 
 * Add `augsynth_gap_plot()`, which shows the outcome trajectory of the treated unit, its synthetic counterfactual, and (optionally) the simple average of donor units.
 
@@ -281,27 +286,26 @@ syn_rstat$results$permutations$placebo_dist
 
 ### Plotting `augsynth` models
 
-The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing placebo tests, when appropriate.
+The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the ATTs from placebo tests, when appropriate. Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential feature. 
 
-Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential features
-
+If `plot()` is called on a model object, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
 
 ```{r fig.width=4.5, fig.height=3.25}
 plot(syn) + labs(title = 'Conformal inference (default)')
 ```
 
-Setting `ci = FALSE` with inference types of `permutation` or `permutation_rstat` will return a plot showing each placebo test. Otherwise, for other inference types, it will return only the ATT estimate. 
+Setting `plot_type = "placebo"` with inference types of `permutation` or `permutation_rstat` will return a plot showing each placebo test. Otherwise, for other inference types, it will return only the ATT estimate. 
 
 ```{r fig.width=4.5, fig.height=4}
 plot(syn, 
+     plot_type = 'placebo',
      inf_type = 'permutation',
-     ci = F # option to turn off 95% confidence intervals
      ) + ggtitle("Replication of Abadie et al. (2010), Figure 4")
 ```
 
 
 ```{r  fig.width=4.5, fig.height=3.25}
-p <- plot(syn, ci = F) + ggtitle("Replication of Abadie et al. (2010), Figure 3")
+p <- plot(syn, plot_type = 'estimate only') + ggtitle("Replication of Abadie et al. (2010), Figure 3")
 ```
 
 ```{r Format figures 3 comparison, echo=FALSE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
@@ -311,10 +315,10 @@ p
 
 
 
-If a gap plot is desired, the user can call `augsynth_gap_plot()` on an `ausynth` object.
+If an outcomes plot is desired, the user can call `plot(plot_type = 'outcomes')` on an `augsynth` object. The same result can be achieved using the `augsynth_outcomes_plot()` function.
 
 ```{r  fig.width=4.5, fig.height=4}
-p <- augsynth_gap_plot(syn_rstat, measure = 'synth') + 
+p <- plot(syn_rstat, plot_type = 'outcomes') + 
   ggtitle("Replication of Abadie et al. (2010), Figure 2")
 ```
 
@@ -323,10 +327,10 @@ path_plot
 p 
 ```
 
-By default, `augsynth_gap_plot()` will return both the raw average of donor units and the synthetic counterfactual.
+By default, `augsynth_outcomes_plot()` will return both the raw average of donor units and the synthetic counterfactual.
 
 ```{r Gap plot with average, echo=TRUE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
-augsynth_gap_plot(syn_rstat)
+augsynth_outcomes_plot(syn_rstat)
 ```
 
 ### Examining donor units and RMSPE
@@ -343,17 +347,18 @@ In addition, augsynth models can be customized to exclude certain donor units. I
 Updated augsynth models will inherit the inference type, formula, and data structure of the original model.
 
 ```{r Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
-
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
-  plot(ci = F, inf_type = 'permutation') + 
+  plot(plot_type = 'placebo', inf_type = 'permutation') + 
   ggtitle("Replication of Abadie et al. (2010), Figure 5") + ylim(-51, 91) + 
   annotate('text', y = -48, x = 1970, label = "Removes donors with 20x California's  pre-treatment RMSPE",
            hjust = 0, color = 'darkseagreen', size = 3) 
-update_augsynth(syn, drop = 5) %>% plot(ci = F, inf_type = 'permutation') + 
+update_augsynth(syn, drop = 5) %>% 
+  plot(plot_type = 'placebo', inf_type = 'permutation') + 
   ggtitle("Replication of Abadie et al. (2010), Figure 6") + ylim(-51, 91) + 
   annotate('text', y = -48, x = 1970, label = "Removes donors with 5x California's pre-treatment RMSPE",
          hjust = 0, color = 'darkseagreen', size = 3) 
-update_augsynth(syn, drop = 2) %>% plot(ci = F, inf_type = 'permutation') + 
+update_augsynth(syn, drop = 2) %>% 
+  plot(plot_type = 'placebo', inf_type = 'permutation') + 
   ggtitle("Replication of Abadie et al. (2010), Figure 7") + ylim(-51, 91) + 
   annotate('text', y = -48, x = 1970, label = "Removes donors with 2x California's pre-treatment  RMSPE",
            hjust = 0, color = 'darkseagreen', size = 3) 
@@ -366,6 +371,6 @@ drop_states <- c("Iowa", "Arizona", "Alabama", "Illinois", "Indiana", "Idaho", "
                  "New Mexico", "Texas", "Utah", "North Dakota", "South Dakota", "Vermont", 
                  "Wisconsin", "West Virginia", "Wyoming", "Tennessee", "Pennsylvania")
 
-update_augsynth(syn, drop = drop_states) %>% plot(ci = F, inf_type = 'permutation') 
+update_augsynth(syn, drop = drop_states) %>% plot(plot_type = 'placebo', inf_type = 'permutation') 
 ```
 
