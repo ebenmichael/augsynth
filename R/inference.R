@@ -467,6 +467,7 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
   post_att <- att[(t0 +1):t_final,, drop = F]
   post_sd <- apply(post_att, 2, function(x) sqrt(mean(x ^ 2, na.rm = T)))
   # iterate over post-treatment periods to get pointwise CIs
+  
   vapply(1:tpost,
          function(j) {
           # fit using t0 + j as a pre-treatment period and get residuals
@@ -508,8 +509,15 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
                 max(att[t0 + j, ]) + 2 * max(post_sd),
                 length.out = grid_size)
           }
-          compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
+          if(grid_size > 1) {
+            compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
                                     alpha, type, q, ns, lin_h0, stat_func)
+          } else {
+            rbind(matrix(0, ncol = k, nrow = 2),
+              compute_permute_pval_multiout(new_data_list, ascm_multi, numeric(k),
+                                          1, type, q, ns, stat_func))
+          }
+          
          },
          matrix(0, ncol = k, nrow=3)) -> cis
   # # test a null post-treatment effect

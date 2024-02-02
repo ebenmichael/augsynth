@@ -7,10 +7,6 @@
 #' @param progfunc What function to use to impute control outcomes
 #'                 Ridge=Ridge regression (allows for standard errors),
 #'                 None=No outcome model,
-#'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 MCP=MCPanel, CITS=CITS
-#'                 CausalImpact=Bayesian structural time series with CausalImpact
-#'                 seq2seq=Sequence to sequence learning with feedforward nets
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F 
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
@@ -133,8 +129,8 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #' @param wide_list List of lists of pre/post treatment data for each outcome
 #' @param combine_method How to combine outcomes
 #' @param fixedeff Whether to take out unit fixed effects or not
-#' @param k Number of principal directions to keep, default all
-#' @param ... Extra argumemnts for combination
+#' @param nu Weighting between concatenated and averaged objectives
+#' @param ... Extra arguments for combination
 #' @noRd
 #' @return \itemize{
 #'          \item{"X"}{Matrix of combined pre-treatment outcomes}
@@ -142,57 +138,54 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 #'          \item{"y"}{Matrix of combined post-treatment outcomes}
 #'         }
 combine_outcomes <- function(wide_list, combine_method, fixedeff,
-                             k= NULL, ...) {
-    n_outs <- length(wide_list$X)
-    total_pre <- Map(ncol, wide_list$X) %>% Reduce(`+`, .)
-    total_post <- Map(ncol, wide_list$y) %>% Reduce(`+`, .)
-    total_dim <- total_pre + total_post
-    n_units <- Map(nrow, wide_list$X) %>% Reduce(max, .)
-    # take out unit fixed effects
-    demean_j <- function(j) {
-        means <- rowMeans(wide_list$X[[j]], na.rm = TRUE)
+                             nu = NULL, ...) {
+  n_outs <- length(wide_list$X)
+  n_units <- Map(nrow, wide_list$X) %>% Reduce(max, .)
+  # take out unit fixed effects
+  demean_j <- function(j) {
+    means <- rowMeans(wide_list$X[[j]], na.rm = TRUE)
 
-        new_wide_data <- list()
-        new_X <- wide_list$X[[j]] - means
-        new_y <- wide_list$y[[j]] - means
+    new_wide_data <- list()
+    new_X <- wide_list$X[[j]] - means
+    new_y <- wide_list$y[[j]] - means
 
-        new_wide_data$X <- new_X
-        new_wide_data$y <- new_y
-        new_wide_data$mhat_pre <- replicate(ncol(wide_list$X[[j]]),
-                                            means)
-        new_wide_data$mhat_post <- replicate(ncol(wide_list$y[[j]]),
-                                            means)
-        return(new_wide_data)
-    }
-    if(fixedeff) {
-        new_wide_list <- lapply(1:n_outs, demean_j)
-        wide_list$X <- lapply(new_wide_list, function(x) x$X)
-        wide_list$y <- lapply(new_wide_list, function(x) x$y)
-        mhat_pre <- lapply(new_wide_list, function(x) x$mhat_pre)
-        mhat_post <- lapply(new_wide_list, function(x) x$mhat_post)
-    } else {
-        mhat_pre <- lapply(
-          1:n_outs,
-          function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$X[[j]])))
-        mhat_post <- lapply(
-          1:n_outs,
-          function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$y[[j]])))
-    }
+    new_wide_data$X <- new_X
+    new_wide_data$y <- new_y
+    new_wide_data$mhat_pre <- replicate(ncol(wide_list$X[[j]]),
+                                        means)
+    new_wide_data$mhat_post <- replicate(ncol(wide_list$y[[j]]),
+                                        means)
+    return(new_wide_data)
+  }
+  if(fixedeff) {
+    new_wide_list <- lapply(1:n_outs, demean_j)
+    wide_list$X <- lapply(new_wide_list, function(x) x$X)
+    wide_list$y <- lapply(new_wide_list, function(x) x$y)
+    mhat_pre <- lapply(new_wide_list, function(x) x$mhat_pre)
+    mhat_post <- lapply(new_wide_list, function(x) x$mhat_post)
+  } else {
+    mhat_pre <- lapply(
+      1:n_outs,
+      function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$X[[j]])))
+    mhat_post <- lapply(
+      1:n_outs,
+      function(j) matrix(0, nrow = n_units, ncol = ncol(wide_list$y[[j]])))
+  }
 
     # combine outcomes
     if(combine_method == "concat") {
-        # center X and scale by overall variance for outcome
-        # X <- lapply(wide_list$X, function(x) t(t(x) - colMeans(x)) / sd(x))
-        wide_bal <- list(X = do.call(cbind, lapply(wide_list$X, function(x) t(na.omit(t(x))))),
-                         y = do.call(cbind, lapply(wide_list$y, function(x) t(na.omit(t(x))))),
-                         trt = wide_list$trt)
+      # center X and scale by overall variance for outcome
+      # X <- lapply(wide_list$X, function(x) t(t(x) - colMeans(x)) / sd(x))
+      wide_bal <- list(X = do.call(cbind, lapply(wide_list$X, function(x) t(na.omit(t(x))))),
+                        y = do.call(cbind, lapply(wide_list$y, function(x) t(na.omit(t(x))))),
+                        trt = wide_list$trt)
 
-        # V matrix scales by inverse variance for outcome and number of periods
-        V <- do.call(c, 
-            lapply(wide_list$X, 
-                function(x) rep(1 / (sqrt(nrow(na.omit(t(x)))) * 
-                        sd(x[wide_list$trt == 0, , drop = F], na.rm=T)), 
-                        nrow(na.omit(t(x))))))
+      # V matrix scales by inverse variance for outcome and number of periods
+      V <- do.call(c, 
+          lapply(wide_list$X, 
+            function(x) rep(1 / (sqrt(nrow(na.omit(t(x)))) * 
+                    sd(x[wide_list$trt == 0, , drop = F], na.rm=T)),
+                    nrow(na.omit(t(x))))))
 
     # } else if(combine_method == "svd") {
     #     wide_bal <- list(X = do.call(cbind, wide_list$X),
@@ -209,25 +202,46 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
     #     X0 <- t((t(X0) - colMeans(X0)) / sds)
     #     k <- if(is.null(k)) ncol(X0) else k
     #     V <- diag(1 / sds) %*% svd(X0)$v[, 1:k, drop = FALSE]
-    } else if(combine_method == "avg") {
-        # average pre-treatment outcomes, dividing by standard deviation and removing missing values
-        X_avg <- rowMeans(simplify2array(lapply(wide_list$X,
-                                    function(x) (x - mean(x[wide_list$trt == 0,], na.rm = TRUE)) / sd(x[wide_list$trt == 0,], na.rm = TRUE))), dims = 2, na.rm = TRUE)
-        # remove any time periods with NAs
-        X_avg <- t(na.omit(t(X_avg)))
-      wide_bal <- list(X = X_avg,
-          y = rowMeans(simplify2array(wide_list$y), dims = 2, na.rm = TRUE),
-          trt = wide_list$trt)
+  } else if(combine_method == "avg") {
+      # average pre-treatment outcomes, dividing by standard deviation and removing missing values
+      X_avg <- rowMeans(simplify2array(lapply(wide_list$X,
+                                  function(x) (x - mean(x[wide_list$trt == 0,], na.rm = TRUE)) / sd(x[wide_list$trt == 0,], na.rm = TRUE))), dims = 2, na.rm = TRUE)
+      # remove any time periods with NAs
+      X_avg <- t(na.omit(t(X_avg)))
+    wide_bal <- list(X = X_avg,
+        y = rowMeans(simplify2array(wide_list$y), dims = 2, na.rm = TRUE),
+        trt = wide_list$trt)
 
-      V <- diag(ncol(wide_bal$X))
-      # mhat_pre <- Reduce(`+`, mhat_pre)
-      # mhat_post <- Reduce(`+`, mhat_post)
-      # mhat <- cbind(mhat_pre, mhat_post)
+    V <- diag(ncol(wide_bal$X))
+
+  } else if(combine_method == "avg_concat") {
+      # average pre-treatment outcomes, dividing by standard deviation and removing missing values
+      # standardize the outcomes
+      X_list_std<- lapply(wide_list$X,function(x) (x - mean(x[wide_list$trt == 0,], na.rm = TRUE)) / sd(x[wide_list$trt == 0,], na.rm = TRUE))
 
 
+      X_avg <- rowMeans(simplify2array(X_list_std), dims = 2, na.rm = TRUE)
+      # remove any time periods with NAs
+      X_avg <- t(na.omit(t(X_avg)))
 
+      X_concat <- do.call(cbind, lapply(X_list_std, function(x) t(na.omit(t(x)))))
+
+      # V matrix assigns weight nu to the averaged objective and (1 - nu) to the concatenated objective
+      # V <- c(rep(sqrt(nu), ncol(X_avg)),
+      #         sqrt(1 - nu) / sqrt(n_outs) * do.call(c, 
+      #             lapply(wide_list$X,
+      #               function(x) rep(1 / (sqrt(nrow(na.omit(t(x)))) * 
+      #                       sd(x[wide_list$trt == 0, , drop = F], na.rm=T)),
+      #                       nrow(na.omit(t(x))))))
+      # )
+      V <- c(rep(sqrt(nu), ncol(X_avg)), rep(sqrt(1 - nu) / sqrt(n_outs), ncol(X_concat)))
+      wide_bal <- list(
+        X = cbind(X_avg, X_concat),
+        y = do.call(cbind, lapply(wide_list$y, function(x) t(na.omit(t(x))))),
+        trt = wide_list$trt
+      )
     } else {
-        stop(paste("combine_method should be one of ('avg', 'concat'),", 
+        stop(paste("combine_method should be one of ('avg', 'concat', 'avg_concat'),", 
             combine_method, " is not a valid combining option"))
     }
 
@@ -309,23 +323,37 @@ print.augsynth_multiout <- function(x, ...) {
 
 #' Summary function for augsynth
 #' @param object augsynth_multiout object
+#' @param inf whether or not to perform inference
+#' @param inf_typ Type of inference, default is "conformal"
+#' @param grid_size Grid to compute prediction intervals over, default is 1 and only p-values are computed
 #' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' @export
-summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", ...) {
+summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", grid_size = 1, ...) {
     
 
     summ <- list()
 
     if(inf) {
-        if(inf_type == "jackknife") {
-            att_se <- jackknife_se_multiout(object)
-        } else if(inf_type == "jackknife+") {
-          att_se <- time_jackknife_plus_multiout(object, ...)
-        } else if(inf_type == "conformal") {
+        if(inf_type == "conformal") {
+          if(grid_size > 1) {
+            warning(paste0("A grid size of ", grid_size, " will require ",
+                           grid_size, "^", length(object$outcomes),
+                           " = ", grid_size ^ length(object$outcomes),
+                           " evaluations. This could take a while..."))
+          }
           att_se <- conformal_inf_multiout(object, ...)
         } else {
-            stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
+          stop("Only conformal inference is supported for multiple outcomes")
         }
+        # if(inf_type == "jackknife") {
+        #     att_se <- jackknife_se_multiout(object)
+        # } else if(inf_type == "jackknife+") {
+        #   att_se <- time_jackknife_plus_multiout(object, ...)
+        # } else if(inf_type == "conformal") {
+        #   att_se <- conformal_inf_multiout(object, ...)
+        # } else {
+        #     stop(paste(inf_type, "is not a valid choice of 'inf_type'"))
+        # }
 
         t_final <- nrow(att_se$att)
 
@@ -334,69 +362,76 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", .
         att_df$Time <- object$data$time
         att_df <- att_df %>% gather(Outcome, Estimate, -Time)
 
-        if(inf_type == "jackknife") {
-          se_df <- data.frame(att_se$se[1:(t_final - 1),, drop=F])
-          names(se_df) <- object$outcomes
-          se_df$Time <- object$data$time
-          se_df <- se_df %>% gather(Outcome, Std.Error, -Time)
+        # if(inf_type == "jackknife") {
+        #   se_df <- data.frame(att_se$se[1:(t_final - 1),, drop=F])
+        #   names(se_df) <- object$outcomes
+        #   se_df$Time <- object$data$time
+        #   se_df <- se_df %>% gather(Outcome, Std.Error, -Time)
 
-          att <- inner_join(att_df, se_df, by = c("Time", "Outcome"))
-        } else if(inf_type %in% c("conformal", "jackknife+")) {
+        #   att <- inner_join(att_df, se_df, by = c("Time", "Outcome"))
+        # } else if(inf_type %in% c("conformal", "jackknife+")) {
           
-          lb_df <- data.frame(att_se$lb[1:(t_final - 1),, drop=F])
-          names(lb_df) <- object$outcomes
-          lb_df$Time <- object$data$time
-          lb_df <- lb_df %>% gather(Outcome, lower_bound, -Time)
+        lb_df <- data.frame(att_se$lb[1:(t_final - 1),, drop=F])
+        names(lb_df) <- object$outcomes
+        lb_df$Time <- object$data$time
+        lb_df <- lb_df %>% gather(Outcome, lower_bound, -Time)
 
-          ub_df <- data.frame(att_se$ub[1:(t_final - 1),, drop=F])
-          names(ub_df) <- object$outcomes
-          ub_df$Time <- object$data$time
-          ub_df <- ub_df %>% gather(Outcome, upper_bound, -Time)
+        ub_df <- data.frame(att_se$ub[1:(t_final - 1),, drop=F])
+        names(ub_df) <- object$outcomes
+        ub_df$Time <- object$data$time
+        ub_df <- ub_df %>% gather(Outcome, upper_bound, -Time)
 
-          att <- inner_join(att_df, lb_df, by = c("Time", "Outcome")) %>%
-              inner_join(ub_df, by = c("Time", "Outcome")) 
-          if(inf_type == "conformal") {
+        att <- inner_join(att_df, lb_df, by = c("Time", "Outcome")) %>%
+            inner_join(ub_df, by = c("Time", "Outcome")) 
+          # if(inf_type == "conformal") {
 
-            pval_df <- data.frame(att_se$p_val[1:(t_final - 1),, drop=F])
-            names(pval_df) <- object$outcomes
-            pval_df$Time <- object$data$time
-            pval_df <- pval_df %>% gather(Outcome, p_val, -Time)
-            att <- inner_join(att, pval_df, by = c("Time", "Outcome")) 
-          }
+          pval_df <- data.frame(att_se$p_val[1:(t_final - 1),, drop=F])
+          names(pval_df) <- object$outcomes
+          pval_df$Time <- object$data$time
+          pval_df <- pval_df %>% gather(Outcome, p_val, -Time)
+          att <- inner_join(att, pval_df, by = c("Time", "Outcome")) 
+          # }
+        # }
+        if(grid_size == 1) {
+          att <- att %>% mutate(lower_bound = NA, upper_bound = NA)
         }
 
         att_avg <- data.frame(att_se$att[t_final,, drop = F])
         names(att_avg) <- object$outcomes
         att_avg <- gather(att_avg, Outcome, Estimate)
 
-        if(inf_type == "jackknife") {
-          att_avg_se <- data.frame(att_se$se[t_final,, drop = F])
-          names(att_avg_se) <- object$outcomes
-          att_avg_se <- gather(att_avg_se, Outcome, Std.Error)
-          average_att <- inner_join(att_avg, att_avg_se, by="Outcome")
-        } else if(inf_type %in% c("conformal", "jackknife+")){
-          att_avg_lb <- data.frame(att_se$lb[t_final,, drop = F])
-          names(att_avg_lb) <- object$outcomes
-          att_avg_lb <- gather(att_avg_lb, Outcome, lower_bound)
+        # if(inf_type == "jackknife") {
+        #   att_avg_se <- data.frame(att_se$se[t_final,, drop = F])
+        #   names(att_avg_se) <- object$outcomes
+        #   att_avg_se <- gather(att_avg_se, Outcome, Std.Error)
+        #   average_att <- inner_join(att_avg, att_avg_se, by="Outcome")
+        # } else if(inf_type %in% c("conformal", "jackknife+")){
+        att_avg_lb <- data.frame(att_se$lb[t_final,, drop = F])
+        names(att_avg_lb) <- object$outcomes
+        att_avg_lb <- gather(att_avg_lb, Outcome, lower_bound)
 
-          att_avg_ub <- data.frame(att_se$ub[t_final,, drop = F])
-          names(att_avg_ub) <- object$outcomes
-          att_avg_ub <- gather(att_avg_ub, Outcome, upper_bound)
+        att_avg_ub <- data.frame(att_se$ub[t_final,, drop = F])
+        names(att_avg_ub) <- object$outcomes
+        att_avg_ub <- gather(att_avg_ub, Outcome, upper_bound)
+        
+
+        average_att <- inner_join(att_avg, att_avg_lb, by="Outcome") %>%
+            inner_join(att_avg_ub, by = "Outcome")
           
+          # if(inf_type == "conformal") {
+        att_avg_pval <- data.frame(att_se$p_val[t_final,, drop = F])
+        names(att_avg_pval) <- object$outcomes
+        att_avg_pval <- gather(att_avg_pval, Outcome, p_val)
 
-          average_att <- inner_join(att_avg, att_avg_lb, by="Outcome") %>%
-              inner_join(att_avg_ub, by = "Outcome")
-          
-          if(inf_type == "conformal") {
-            att_avg_pval <- data.frame(att_se$p_val[t_final,, drop = F])
-            names(att_avg_pval) <- object$outcomes
-            att_avg_pval <- gather(att_avg_pval, Outcome, p_val)
+        average_att <- inner_join(average_att, att_avg_pval, by = "Outcome")
 
-             average_att <- inner_join(average_att, att_avg_pval, by = "Outcome")
-          }
-        } else {
-          average_att <- gather(att_avg, Outcome, Estimate)
+        if(grid_size == 1) {
+          average_att <- average_att %>% mutate(lower_bound = NA, upper_bound = NA)
         }
+          # }
+        # } else {
+        #   average_att <- gather(att_avg, Outcome, Estimate)
+        # }
         
 
     } else {
@@ -407,8 +442,9 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", .
         att <- att_df %>% gather(Outcome, Estimate, -Time)
         att$Std.Error <- NA
         t_int <- min(sapply(object$data_list$X, ncol))
-        att_avg <- data.frame(colMeans(
-            att_est[as.numeric(rownames(att)) >= t_int,, drop = F]))
+        att_avg <- data.frame(t(colMeans(
+            att_est[t_int:nrow(att_est),, drop = F])))
+        print(att_avg)
         names(att_avg) <- object$outcomes
         average_att <- gather(att_avg, Outcome, Estimate)
         average_att$Std.Error <- NA
