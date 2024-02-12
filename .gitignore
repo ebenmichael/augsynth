@@ -32,3 +32,5 @@ test.R
 
 # scratch folder
 \scratch
+tobacco_replication/tobacco_replication_cache/
+tobacco_replication/tobacco_replication_files/figure-html/

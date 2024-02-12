@@ -49,14 +49,14 @@ set.seed(1234)
 
 # Project Overview
 
-This notebook demonstrates the functionality of several extensions to the `augsynth` package, using the data and analytic context laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf). The package extensions include the option to use permutation-based with models generated using `augsynth()`. In addition, the changes expand the plotting options available for `augsynth()` objects.
+This notebook demonstrates the functionality of several extensions to the `augsynth` package, using the data and analytic context laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf). The package extensions include the option to use permutation-based inference with models generated using the `augsynth()` function. In addition, the changes expand the plotting options available for `augsynth` objects.
 
 ## Summary of changes
 
 This project currently lives on the [n-delaney/augsynth_permutation](https://github.com/n-delaney/augsynth_permutation) GitHub repository. All changes should (ideally) be backwards compatible, although they are only currently implemented for cases where `single_augsynth()` is executed. The proposed extensions to the `augsynth` package do the following:
 
 * Add the option to include inference in `augsynth` objects (in addition to summary objects). Inference details are stored in  `augsynth$results`.
-* Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include placebo-based inference through the `inf_type = permutation` and `inf_type = permutation_rstat` (RMSPE-adjusted placebo tests). 
+* Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include placebo-based inference through `inf_type = permutation` and `inf_type = permutation_rstat` (RMSPE-adjusted placebo tests). 
 * Modify  `summary.augsynth()` 
   * If an `augsynth` does not already have inference results, `summary.augsynth()` will calculate them. 
   * It's also possible to use `summary.augsynth()` to re-do inference on an existing model with different characteristics (for example, switching from the default of "conformal" to "permutation" inference).
@@ -70,7 +70,7 @@ This project currently lives on the [n-delaney/augsynth_permutation](https://git
     * "outcomes raw average" — The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.
     * "placebo" — The ATTs resulting from placebo tests on the donor units.
   * `plot.summary.augsynth()` should still be backwards compatible but no longer handles most of the plotting. 
-* Add `augsynth_gap_plot()`, which shows the outcome trajectory of the treated unit, its synthetic counterfactual, and (optionally) the simple average of donor units.
+* Add `augsynth_outcomes_plot()`, which shows the outcome trajectory of the treated unit, the synthetic counterfactual, and (optionally) the simple average of donor units.
 
 # Replication
 
@@ -197,7 +197,7 @@ ggsave(filename = here::here('./tobacco_replication/plots/synth_figure3.png'),
 
 We can now execute an `augsynth` model with or without inference. Inference options include those already included in the package (`conformal`, `jackknife`, `jackknife+`), but also `permutation` and `permutation_rstat` (RMSPE-adjusted permutation inference), which are calculated using placebo tests. 
 
-All inference results (similar to those previously returned by `summmary.augsynth()` are stored in `augsynth$results` by default when `augsynth(..., inf = TRUE)`. 
+All inference results, similar to those previously returned by `summmary.augsynth()`, are stored in `augsynth$results` by default when the `inf_type` argument is specified. 
 
 ```{r reformat tobacco data using tidyverse, echo=FALSE}
 tobacco <- Wk.data %>%
@@ -210,7 +210,7 @@ tobacco <- Wk.data %>%
 tobacco_70 <- tobacco %>% filter(year >= 1970) # subset data to 1970 forward to avoid issues due to missingess of outcomes
 ```
 
-```{r run tobacco model using augsynth, cache=TRUE}
+```{r run tobacco model using augsynth}
 # Basic SCM with covariates
 syn <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
                  unit = state,
@@ -288,7 +288,7 @@ syn_rstat$results$permutations$placebo_dist
 
 The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the ATTs from placebo tests, when appropriate. Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential feature. 
 
-If `plot()` is called on a model object, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
+If `plot()` is called on a model object without additional arguments, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
 
 ```{r fig.width=4.5, fig.height=3.25}
 plot(syn) + labs(title = 'Conformal inference (default)')
@@ -327,9 +327,9 @@ path_plot
 p 
 ```
 
-By default, `augsynth_outcomes_plot()` will return both the raw average of donor units and the synthetic counterfactual.
+By default, `augsynth_outcomes_plot()` and  `plot(augsynth, plot_type = 'outcommes')` will return both the raw average of donor units and the synthetic counterfactual.
 
-```{r Gap plot with average, echo=TRUE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
+```{r Outcomes plot with average, echo=TRUE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
 augsynth_outcomes_plot(syn_rstat)
 ```
 
