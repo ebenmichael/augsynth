@@ -70,7 +70,6 @@ This project currently lives on the [n-delaney/augsynth_permutation](https://git
     * "outcomes raw average" — The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.
     * "placebo" — The ATTs resulting from placebo tests on the donor units.
   * `plot.summary.augsynth()` should still be backwards compatible but no longer handles most of the plotting. 
-* Add `augsynth_outcomes_plot()`, which shows the outcome trajectory of the treated unit, the synthetic counterfactual, and (optionally) the simple average of donor units.
 
 # Replication
 
@@ -277,7 +276,7 @@ syn_new$results %>% attributes()
 
 ### Permutation inference
 
-Adding permutation inference (via `inf_type = "permutation"` or `inf_type = "permutation_rstat"`) will return information about the 95% confidence interval, as well as the raw placebo tests. Placebo results are stored in `syn_rstat$results$permutations`
+Adding permutation inference (via `inf_type = "permutation"` or `inf_type = "permutation_rstat"`) will return information about the 95% confidence interval, as well as other data generated from the raw placebo tests. Placebo results are stored in `augsynth$results$permutations`
 
 ```{r}
 syn_rstat$results$permutations$placebo_dist
@@ -286,7 +285,7 @@ syn_rstat$results$permutations$placebo_dist
 
 ### Plotting `augsynth` models
 
-The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the ATTs from placebo tests, when appropriate. Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential feature. 
+The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the permuted ATTs from placebo tests, when appropriate. Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential feature. 
 
 If `plot()` is called on a model object without additional arguments, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
 
@@ -342,9 +341,9 @@ donor_table(syn)
 ```
 
 
-In addition, augsynth models can be customized to exclude certain donor units. If `drop` is passed to `update_augsynth()` as a numeric, then donor units will be excluded if their RMSPE is greater than a certain multiple of the treated unit's pre-treatment RMSPE. For example, setting `drop = 2` will exclude any units with a pre-treatment RMSPE twice as large as California's. Otherwise, donor units can be specified using their unit identifiers (ex. "New Hampshire").
+In addition, augsynth models can be customized to be re-fitted after excluding certain donor units. If `drop` is passed to `update_augsynth()` as a numeric, then donor units will be excluded if their RMSPE is greater than a certain multiple of the treated unit's pre-treatment RMSPE. For example, setting `drop = 2` will exclude any units with a pre-treatment RMSPE twice as large as California's. Otherwise, donor units can be specified using their unit identifiers (ex. "New Hampshire").
 
-Updated augsynth models will inherit the inference type, formula, and data structure of the original model.
+Updated augsynth models inherit the inference type, formula, and data structure of the original model.
 
 ```{r Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
