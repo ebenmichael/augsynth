@@ -4,12 +4,18 @@
 \alias{summary.augsynth_multiout}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth_multiout}(object, inf = T, inf_type = "jackknife", ...)
+\method{summary}{augsynth_multiout}(object, inf = T, inf_type = "conformal", grid_size = 1, ...)
 }
 \arguments{
 \item{object}{augsynth_multiout object}
 
+\item{inf}{whether or not to perform inference}
+
+\item{grid_size}{Grid to compute prediction intervals over, default is 1 and only p-values are computed}
+
 \item{...}{Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}}
+
+\item{inf_typ}{Type of inference, default is "conformal"}
 }
 \description{
 Summary function for augsynth

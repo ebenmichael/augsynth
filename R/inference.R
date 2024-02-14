@@ -436,7 +436,7 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
-#' @param grid_size Number of grid points to use when inverting the hypothesis test
+#' @param grid_size Number of grid points to use when inverting the hypothesis test (default is 1, so only to test joint null)
 #' @return List that contains:
 #'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
@@ -449,7 +449,7 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 #'         }
 conformal_inf_multiout <- function(ascm_multi, alpha = 0.05, 
                                     stat_func = NULL, type = "iid",
-                                    q = 1, ns = 1000, grid_size = 50,
+                                    q = 1, ns = 1000, grid_size = 1,
                                     lin_h0 = NULL) {
   wide_data <- ascm_multi$data
   data_list <- ascm_multi$data_list
@@ -467,9 +467,10 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
   post_att <- att[(t0 +1):t_final,, drop = F]
   post_sd <- apply(post_att, 2, function(x) sqrt(mean(x ^ 2, na.rm = T)))
   # iterate over post-treatment periods to get pointwise CIs
+  
   vapply(1:tpost,
          function(j) {
-          # fit using t0 + j as a pre-treatment period and get reisduals
+          # fit using t0 + j as a pre-treatment period and get residuals
           new_data_list <- data_list
           new_data_list$X <- lapply(1:k,
               function(i) {
@@ -508,8 +509,15 @@ conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
                 max(att[t0 + j, ]) + 2 * max(post_sd),
                 length.out = grid_size)
           }
-          compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
+          if(grid_size > 1) {
+            compute_permute_ci_multiout(new_data_list, ascm_multi, grid, 1,
                                     alpha, type, q, ns, lin_h0, stat_func)
+          } else {
+            rbind(matrix(0, ncol = k, nrow = 2),
+              compute_permute_pval_multiout(new_data_list, ascm_multi, numeric(k),
+                                          1, type, q, ns, stat_func))
+          }
+          
          },
          matrix(0, ncol = k, nrow=3)) -> cis
   # # test a null post-treatment effect
@@ -615,7 +623,10 @@ compute_permute_test_stats_multiout <- function(data_list, ascm_multi, h0,
 
   # permute residuals and compute test statistic
   if(is.null(stat_func)) {
-    stat_func <- function(x) (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+    stat_func <- function(x) {
+      x <- na.omit(x)
+      (sum(abs(x) ^ q)  / sqrt(length(x))) ^ (1 / q)
+    }
   }
   if(type == "iid") {
     test_stats <- sapply(1:ns, 
@@ -664,8 +675,8 @@ compute_permute_pval_multiout <- function(data_list, ascm_multi, h0,
                                           post_length, type, q, ns, stat_func)
   k <- length(data_list$X)
 
-  comb_stat <- mean(apply(out$resids[(t0 + 1):tpost, , drop = F], 2, out$stat_func))
-  comb_test_stats <- apply(out$test_stats, 2, mean)
+  comb_stat <- mean(apply(out$resids[(t0 + 1):tpost, , drop = F], 2, out$stat_func), na.rm = TRUE)
+  comb_test_stats <- apply(out$test_stats, 2, mean, na.rm = TRUE)
   # if(h0 == 0) {
   #   hist(comb_test_stats)
   #   abline(v = comb_stat)

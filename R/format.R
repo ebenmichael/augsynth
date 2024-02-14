@@ -71,7 +71,8 @@ format_data_multi <- function(outcomes, trt, unit, time, t_int, data) {
 
     # X <- simplify2array(lapply(formats, function(x) x$X))
     # y <- simplify2array(lapply(formats, function(x) x$y))
-    X <- lapply(formats, function(x) t(na.omit(t(x$X))))
+    # X <- lapply(formats, function(x) t(na.omit(t(x$X))))
+    X <- lapply(formats, `[[`, "X")
     y <- lapply(formats, function(x) t(na.omit(t(x$y))))
     trt <- formats[[1]]$trt
     return(list(X = X, trt = trt, y = y))
@@ -334,7 +335,21 @@ check_data_stag <- function(wide, fixedeff, n_leads, n_lags) {
       "You are including a fixed effect with `fixedeff = T`, but the ",
       "following units only have one pre-treatment outcome: (",
       paste(n1, collapse = ","),
-      "). Either remove these units or set `fixedeff = F`."
+      "). Either remove these units or set `fixedeff = F`.\n"
+    )
+  }
+  # check if there are never treated units
+  if(max(wide$trt) < ncol(wide$X) + ncol(wide$y)) {
+    if(nchar(err_msg) > 0) {
+      err_msg <- paste0(err_msg, "  Also: ")
+    }
+    err_msg <- paste0(
+      err_msg,
+      "All units are eventually treated. The last treatment time is ",
+      wide$time[max(wide$trt)],
+      ". To run multisynth, remove all periods after this time. ",
+      "Units treated at this time will be considered 'never treated' in the ",
+      "narrowed sample.\n"
     )
   }
 

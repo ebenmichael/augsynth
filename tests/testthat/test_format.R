@@ -104,3 +104,15 @@ test_that("multisynth throws errors when there aren't enough pre-treatment times
     expect_equal(true_trt, sort(dat$trt[is.finite(dat$trt)]))
 
   })
+
+
+test_that("augsynth exits with error message if there are no never treated units",
+  {
+  basque2 <- basque %>%
+    # slice(sample(1:n())) %>%
+    mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
+                            (year >= 1997) ~ 1,
+                              TRUE ~ 0))
+  expect_error(augsynth(gdpcap ~ trt, regionno, year, basque2), "1996")
+
+  })

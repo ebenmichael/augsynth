@@ -11,7 +11,7 @@ conformal_inf_multiout(
   type = "iid",
   q = 1,
   ns = 1000,
-  grid_size = 50,
+  grid_size = 1,
   lin_h0 = NULL
 )
 }
@@ -26,7 +26,7 @@ conformal_inf_multiout(
 
 \item{ns}{Number of resamples for "iid" permutations}
 
-\item{grid_size}{Number of grid points to use when inverting the hypothesis test}
+\item{grid_size}{Number of grid points to use when inverting the hypothesis test (default is 1, so only to test joint null)}
 
 \item{ascm}{Fitted `augsynth` object}
 }
