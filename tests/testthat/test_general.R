@@ -9,12 +9,12 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
     filter(regionno != 1)
 
 
-                            
+
 test_that("SCM gives the right answer", {
 
     syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T, t_int=1975)
     ## average att estimate is as expected
-    expect_equal(-.3686, mean(summary(syn, inf = F)$att$Estimate), tolerance=1e-4)
+    expect_equal(-.3686, mean(summary(syn, inf_type = 'none')$att$Estimate), tolerance=1e-4)
 
 
     ## level of balance is as expected
@@ -30,12 +30,12 @@ test_that("SCM finds the correct t_int and gives the right answer", {
     syn2 <- augsynth(gdpcap ~ trt, regionno, year, basque,
                      progfunc = "None", scm = T, t_int = 1975)
     ## average att estimate is as expected
-    expect_equal(mean(summary(syn1, inf = F)$att$Estimate), 
-                 mean(summary(syn2, inf = F)$att$Estimate), tolerance=1e-4)
-    
+    expect_equal(mean(summary(syn1, inf_type = 'none')$att$Estimate),
+                 mean(summary(syn2, inf_type = 'none')$att$Estimate), tolerance=1e-4)
+
     ## level of balance is as expected
     expect_equal(syn1$l2_imbalance, syn2$l2_imbalance, tolerance=1e-3)
-    
+
 }
 )
 
@@ -46,7 +46,7 @@ test_that("Ridge ASCM gives the right answer", {
                      scm=T, lambda=8)
 
     ## average att estimate is as expected
-    expect_equal(-.3696, mean(summary(asyn, inf = F)$att$Estimate), tolerance=1e-3)
+    expect_equal(-.3696, mean(summary(asyn, inf_type = 'none')$att$Estimate), tolerance=1e-3)
 
     ## level of balance is as expected
     expect_equal(.373, asyn$l2_imbalance, tolerance=1e-3)
@@ -66,7 +66,7 @@ test_that("SCM after residualizing covariates gives the right answer", {
 
   ## average att estimate is as expected
   expect_equal(-.1443,
-                mean(summary(covsyn_resid, inf = F)$att$Estimate),
+                mean(summary(covsyn_resid, inf_type = 'none')$att$Estimate),
                 tolerance = 1e-3)
 
   ## level of balance is as expected
@@ -87,7 +87,7 @@ test_that("Ridge ASCM with covariates jointly gives the right answer", {
 
     ## average att estimate is as expected
     expect_equal(-.3345,
-                 mean(summary(covsyn_noresid, inf = F)$att$Estimate),
+                 mean(summary(covsyn_noresid, inf_type = 'none')$att$Estimate),
                  tolerance = 1e-3)
 
     ## level of balance is as expected
@@ -111,7 +111,7 @@ test_that("Ridge ASCM after residualizing covariates gives the right answer", {
 
     ## average att estimate is as expected
     expect_equal(-.123,
-                 mean(summary(covascm_resid, inf = F)$att$Estimate),
+                 mean(summary(covascm_resid, inf_type = 'none')$att$Estimate),
                  tolerance = 1e-3)
 
     ## level of balance is as expected
@@ -133,7 +133,7 @@ test_that("Ridge ASCM with covariates jointly gives the right answer", {
 
     ## average att estimate is as expected
     expect_equal(-.267,
-                 mean(summary(covascm_noresid, inf = F)$att$Estimate),
+                 mean(summary(covascm_noresid, inf_type = 'none')$att$Estimate),
                  tolerance = 1e-3)
 
     ## level of balance is as expected
@@ -149,8 +149,9 @@ test_that("Ridge ASCM with covariates jointly gives the right answer", {
 test_that("Warning given when inputting an unused argument", {
 
     expect_warning(
-      augsynth(gdpcap ~ trt| invest + popdens, regionno, year, basque, 
-               progfunc="Ridge", scm=T, lambda=8, t_int = 1975, 
+      augsynth(gdpcap ~ trt| invest + popdens, regionno, year, basque,
+               progfunc="Ridge", scm=T, lambda=8, t_int = 1975,
                bad_param = "Unused input parameter"),
     )
 })
+

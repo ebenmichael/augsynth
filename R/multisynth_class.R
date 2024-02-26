@@ -29,7 +29,7 @@
 #' @param eps_rel Relative error tolerance for osqp
 #' @param verbose Whether to print logs for osqp
 #' @param ... Extra arguments
-#' 
+#'
 #' @return multisynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
@@ -66,6 +66,11 @@ multisynth <- function(form, unit, time, data,
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
+
+    # if a user sets inf_type at time of model fit, return a warning
+    if("inf_type" %in% names(call_name)) {
+      warning("`inf_type` is not an argument for multisynth, so it is ignored")
+    }
 
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
@@ -142,10 +147,10 @@ multisynth <- function(form, unit, time, data,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
-                                eps_rel = eps_rel, verbose = verbose, long_df = long_df, 
+                                eps_rel = eps_rel, verbose = verbose, long_df = long_df,
                                 how_match = how_match, ...)
-    
-   
+
+
     units <- data %>% arrange(!!unit) %>% distinct(!!unit) %>% pull(!!unit)
     rownames(msynth$weights) <- units
 
@@ -166,7 +171,7 @@ multisynth <- function(form, unit, time, data,
                             V = V,
                             time_cohort = time_cohort,
                             donors = msynth$donors,
-                            eps_rel = eps_rel, 
+                            eps_rel = eps_rel,
                             eps_abs = eps_abs,
                             verbose = verbose)
         ## scaled global balance
@@ -211,11 +216,11 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        nu, lambda, V,
                        force,
                        n_factors,
-                       scm, time_cohort, 
+                       scm, time_cohort,
                        time_w, lambda_t,
                        fit_resids,
                        eps_abs, eps_rel,
-                       verbose, long_df, 
+                       verbose, long_df,
                        how_match, ...) {
     ## average together treatment groups
     ## grps <- unique(wide$trt) %>% sort()
@@ -246,23 +251,23 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         n_factors <- ncol(params$factor)
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
-        
+
     } else if (n_factors != 0) {
         ## if number of factors is provided don't do CV
         out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
                                 r=n_factors, CV=0, force=force)
         y0hat <- out$y0hat
-        params <- out$params        
-        
+        params <- out$params
+
         ## get residuals from outcome model
         residuals <- cbind(wide$X, wide$y) - y0hat
     } else if(force == 0 & n_factors == 0) {
-        # if no fixed effects or factors, just take out 
+        # if no fixed effects or factors, just take out
         # control averages at each time point
         # time fixed effects from pure controls
         pure_ctrl <- cbind(wide$X, wide$y)[!is.finite(wide$trt), , drop = F]
         y0hat <- matrix(colMeans(pure_ctrl, na.rm = TRUE),
-                          nrow = nrow(wide$X), ncol = ncol(pure_ctrl), 
+                          nrow = nrow(wide$X), ncol = ncol(pure_ctrl),
                           byrow = T)
         residuals <- cbind(wide$X, wide$y) - y0hat
         params <- NULL
@@ -297,13 +302,13 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         bal_mat <- wide$X - ctrl_avg
         bal_mat <- wide$X
     }
-    
+
 
     if(scm) {
 
         # get eligible set of donor units based on covariates
         donors <- get_donors(wide$X, wide$y, wide$trt,
-                             wide$Z[, colnames(wide$Z) %in% 
+                             wide$Z[, colnames(wide$Z) %in%
                                       wide$match_covariates, drop = F],
                              time_cohort, n_lags, n_leads, how = how_match,
                              exact_covariates = wide$exact_covariates, ...)
@@ -386,9 +391,9 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     msynth$time_w <- time_w
     msynth$lambda_t <- lambda_t
     msynth$fit_resids <- fit_resids
-    msynth$extra_pars <- c(list(eps_abs = eps_abs, 
-                                eps_rel = eps_rel, 
-                                verbose = verbose), 
+    msynth$extra_pars <- c(list(eps_abs = eps_abs,
+                                eps_rel = eps_rel,
+                                verbose = verbose),
                            list(...))
     msynth$long_df <- long_df
 
@@ -417,7 +422,7 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
 
     multisynth <- object
     relative <- T
-    
+
     time_cohort <- multisynth$time_cohort
     if(is.null(relative)) {
         relative <- multisynth$relative
@@ -436,19 +441,19 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
     }
 
     if(time_cohort) {
-        which_t <- lapply(grps, 
+        which_t <- lapply(grps,
                           function(tj) (1:n)[multisynth$data$trt == tj])
         mask <- unique(multisynth$data$mask)
     } else {
         which_t <- (1:n)[is.finite(multisynth$data$trt)]
         mask <- multisynth$data$mask
     }
-    
+
 
     n1 <- sapply(1:J, function(j) length(which_t[[j]]))
 
     fullmask <- cbind(mask, matrix(0, nrow = J, ncol = (ttot - d)))
-    
+
 
     ## estimate the post-treatment values to get att estimates
     mu1hat <- vapply(1:J,
@@ -502,11 +507,11 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
                              c(vec,
                                rep(NA, total_len - length(vec)),
                                mean(mu0hat[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j]))
-                               
+
                          },
                          numeric(total_len +1
                                  ))
-        
+
         tauhat <- vapply(1:J,
                          function(j) {
                              vec <- c(rep(NA, d-grps[j]),
@@ -536,11 +541,11 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
                             c(vec,
                               rep(NA, total_len - length(vec)),
                               mean(att_weight[(grps[j]+1):(min(grps[j] + n_leads, ttot)), j]))
-                              
+
                         },
                         numeric(total_len +1
                                 ))
-          
+
         ## get the overall average estimate
         avg <- apply(mu0hat, 1, function(z) sum(n1 * z, na.rm=T) / sum(n1 * !is.na(z)))
         avg <- sapply(1:nrow(mu0hat),
@@ -557,7 +562,7 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
             sum(n1 * (!is.na(tauhat[k,])) * att_weight_new[k, ], na.rm = T)
         })
         tauhat <- cbind(avg, tauhat)
-        
+
     } else {
 
         ## remove all estimates for t > T_j + n_leads
@@ -571,7 +576,7 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
                              rep(NA, max(0, ttot-(grps[j] + n_leads)))),
                numeric(ttot)) -> tauhat
 
-        
+
         ## only average currently treated units
         avg1 <- rowSums(t(fullmask) *  mu0hat * n1) /
                 rowSums(t(fullmask) *  n1)
@@ -590,7 +595,7 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
             replace_na(avg2,0) * apply(1 - fullmask, 2, max)
         cbind(avg, tauhat) -> tauhat
     }
-    
+
 
     if(att) {
         return(tauhat)
@@ -606,9 +611,9 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
 #' @export
 print.multisynth <- function(x, att_weight = NULL, ...) {
     multisynth <- x
-    
+
     ## straight from lm
-    cat("\nCall:\n", paste(deparse(multisynth$call), 
+    cat("\nCall:\n", paste(deparse(multisynth$call),
         sep="\n", collapse="\n"), "\n\n", sep="")
 
     # print att estimates
@@ -636,7 +641,7 @@ print.multisynth <- function(x, att_weight = NULL, ...) {
 #' @param ... Optional arguments
 #' @export
 plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
-                            levels = NULL, label = T, 
+                            levels = NULL, label = T,
                             weights = FALSE, ...) {
 
     if(weights) {
@@ -651,13 +656,13 @@ plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
       # plotting the weights
       weights %>%
         tidyr::pivot_longer(-unit, names_to = "trt_unit", values_to = "weight") %>%
-        ggplot2::ggplot(aes(x = trt_unit, y = unit, fill = round(weight, 3))) + 
+        ggplot2::ggplot(aes(x = trt_unit, y = unit, fill = round(weight, 3))) +
         ggplot2::geom_tile(color = "white", size=.5) +
         ggplot2::scale_fill_gradient(low = "white", high = "black", limits=c(-0.01,1.01)) +
         ggplot2::guides(fill = "none") +
         ggplot2::xlab("Treated Unit") +
         ggplot2::ylab("Donor Unit") +
-        ggplot2::theme_bw() + 
+        ggplot2::theme_bw() +
         ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
               axis.ticks.y = ggplot2::element_blank())
     }
@@ -679,7 +684,7 @@ plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
 #'    \item{jackknife}{Jackknife}
 #' }
 #' @param ... Optional arguments
-#' 
+#'
 #' @return summary.multisynth object that contains:
 #'         \itemize{
 #'          \item{"att"}{Dataframe with ATT estimates, standard errors for each treated unit}
@@ -693,7 +698,7 @@ plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
 summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL, ...) {
 
     multisynth <- object
-    
+
     relative <- T
 
     n_leads <- multisynth$n_leads
@@ -710,17 +715,17 @@ summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL
         grps <- trt[is.finite(trt)]
         which_t <- (1:n)[is.finite(trt)]
     }
-    
+
     # grps <- unique(multisynth$data$trt) %>% sort()
     J <- length(grps)
-    
+
     # which_t <- (1:n)[is.finite(multisynth$data$trt)]
     times <- multisynth$data$time
-    
+
     summ <- list()
     ## post treatment estimate for each group and overall
     # att <- predict(multisynth, relative, att=T)
-    
+
     if(inf_type == "jackknife") {
         attse <- jackknife_se_multi(multisynth, relative, att_weight = att_weight, ...)
     } else if(inf_type == "bootstrap") {
@@ -736,16 +741,16 @@ summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL
                       upper_bound = matrix(NA, nrow(att), ncol(att)),
                       lower_bound = matrix(NA, nrow(att), ncol(att)))
     }
-    
+
 
     if(relative) {
         att <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
                                 attse$att))
         if(time_cohort) {
-            col_names <- c("Time", "Average", 
+            col_names <- c("Time", "Average",
                             as.character(times[grps + 1]))
         } else {
-            col_names <- c("Time", "Average", 
+            col_names <- c("Time", "Average",
                             as.character(multisynth$data$units[which_t]))
         }
         names(att) <- col_names
@@ -754,7 +759,7 @@ summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL
             mutate(Time=Time-1) -> att
 
         se <- data.frame(cbind(c(-(d-1):min(n_leads, ttot-min(grps)), NA),
-                               attse$se))                            
+                               attse$se))
         names(se) <- col_names
         se %>% gather(Level, Std.Error, -Time) %>%
             rename("Time"=Time) %>%
@@ -775,11 +780,11 @@ summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL
 
     } else {
         att <- data.frame(cbind(times, attse$att))
-        names(att) <- c("Time", "Average", times[grps[1:J]])        
+        names(att) <- c("Time", "Average", times[grps[1:J]])
         att %>% gather(Level, Estimate, -Time) -> att
 
         se <- data.frame(cbind(times, attse$se))
-        names(se) <- c("Time", "Average", times[grps[1:J]])        
+        names(se) <- c("Time", "Average", times[grps[1:J]])
         se %>% gather(Level, Std.Error, -Time) -> se
 
     }
@@ -812,12 +817,12 @@ summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL
 print.summary.multisynth <- function(x, level = "Average", ...) {
 
     summ <- x
-    
+
     ## straight from lm
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n\n", sep="")
 
     first_lvl <- summ$att %>% filter(Level != "Average") %>% pull(Level) %>% min()
-    
+
     ## get ATT estimates for treatment level, post treatment
     if(summ$relative) {
         summ$att %>%
@@ -840,18 +845,18 @@ print.summary.multisynth <- function(x, level = "Average", ...) {
                   pull(Std.Error) %>%
                   round(3) %>% format(nsmall=3),
               ")\n\n", sep=""))
-    
+
     cat(paste("Global L2 Imbalance: ",
               format(round(summ$global_l2,3), nsmall=3), "\n",
               "Scaled Global L2 Imbalance: ",
               format(round(summ$scaled_global_l2,3), nsmall=3), "\n",
-              "Percent improvement from uniform global weights: ", 
+              "Percent improvement from uniform global weights: ",
               format(round(1-summ$scaled_global_l2,3)*100), "\n\n",
               "Individual L2 Imbalance: ",
               format(round(summ$ind_l2,3), nsmall=3), "\n",
-              "Scaled Individual L2 Imbalance: ", 
+              "Scaled Individual L2 Imbalance: ",
               format(round(summ$scaled_ind_l2,3), nsmall=3), "\n",
-              "Percent improvement from uniform individual weights: ", 
+              "Percent improvement from uniform individual weights: ",
               format(round(1-summ$scaled_ind_l2,3)*100), "\t",
               "\n\n",
               sep=""))
@@ -863,7 +868,7 @@ print.summary.multisynth <- function(x, level = "Average", ...) {
 
 #' Plot function for summary function for multisynth
 #' @importFrom ggplot2 aes
-#' 
+#'
 #' @param x summary object
 #' @param inf Whether to plot confidence intervals
 #' @param levels Which units/groups to plot, default is every group
@@ -887,19 +892,19 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
         # plotting the weights
         weights %>%
           tidyr::pivot_longer(-unit, names_to = "trt_unit", values_to = "weight") %>%
-          ggplot2::ggplot(aes(x = trt_unit, y = unit, fill = round(weight, 3))) + 
+          ggplot2::ggplot(aes(x = trt_unit, y = unit, fill = round(weight, 3))) +
           ggplot2::geom_tile(color = "white", size=.5) +
           ggplot2::scale_fill_gradient(low = "white", high = "black", limits=c(-0.01,1.01)) +
           ggplot2::guides(fill = "none") +
           ggplot2::xlab("Treated Unit") +
           ggplot2::ylab("Donor Unit") +
-          ggplot2::theme_bw() + 
+          ggplot2::theme_bw() +
           ggplot2::theme(axis.ticks.x = ggplot2::element_blank(),
                 axis.ticks.y = ggplot2::element_blank())
     }
 
     summ <- x
-    
+
     ## get the last time period for each level
     summ$att %>%
         filter(!is.na(Estimate),
@@ -921,11 +926,11 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
                                      alpha = is_avg)) +
             ggplot2::geom_line(size = 1) +
             ggplot2::geom_point(size = 1) -> p
-            
+
         if(label) {
           p <- p + ggrepel::geom_label_repel(ggplot2::aes(label = label),
                                       nudge_x = 1, na.rm = T)
-        } 
+        }
         p <- p + ggplot2::geom_hline(yintercept = 0, lty = 2)
 
     if(summ$relative) {
@@ -954,10 +959,10 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
                 ggplot2::aes(ymin=lower_bound,
                              ymax=upper_bound),
                 alpha = alph, color=clr,
-                data = summ$att %>% 
+                data = summ$att %>%
                         filter(Level == "Average",
                                Time >= 0))
-            
+
         } else {
             p <- p + error_plt(
                 ggplot2::aes(ymin=lower_bound,
@@ -969,7 +974,7 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
 
     p <- p + ggplot2::scale_alpha_manual(values=c(1, 0.5)) +
         ggplot2::scale_color_manual(values=c("#333333", "#818181")) +
-        ggplot2::guides(alpha=F, color=F) + 
+        ggplot2::guides(alpha=F, color=F) +
         ggplot2::theme_bw()
     return(p)
 

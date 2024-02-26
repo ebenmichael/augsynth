@@ -8,7 +8,7 @@
 #'                 Ridge=Ridge regression (allows for standard errors),
 #'                 None=No outcome model,
 #' @param scm Whether the SCM weighting function is used
-#' @param fixedeff Whether to include a unit fixed effect, default F 
+#' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #' @param combine_method How to combine outcomes: `concat` concatenates outcomes and `avg` averages them, default: 'avg'
 #' @param ... optional arguments for outcome model
@@ -31,10 +31,15 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
                               ...) {
     call_name <- match.call()
 
+    # if a user sets inf_type at time of model fit, return a warning
+    if("inf_type" %in% names(call_name)) {
+      warning("`inf_type` is not an argument for augsynth_multiout, so it is ignored")
+    }
+
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
-    
+
     ## format data
     outcome <- terms(formula(form, rhs=1))[[2]]
     trt <- terms(formula(form, rhs=1))[[3]]
@@ -43,9 +48,9 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
     outcomes <- sapply(outcomes_str, quo)
     # get outcomes as a list
     wide_list <- format_data_multi(outcomes, trt, unit, time, t_int, data)
-    
 
-    
+
+
 
     ## add covariates
     if(length(form)[2] == 2) {
@@ -69,11 +74,11 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
     # add some extra data
     augsynth$data$time <- data %>% distinct(!!time) %>% pull(!!time)
     augsynth$call <- call_name
-    augsynth$t_int <- t_int 
+    augsynth$t_int <- t_int
     augsynth$combine_method <- combine_method
 
     treated_units <- data %>% filter(!!trt == 1) %>% distinct(!!unit) %>% pull(!!unit)
-    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>% 
+    control_units <- data %>% filter(!(!!unit %in% treated_units)) %>%
                         distinct(!!unit) %>% pull(!!unit)
     augsynth$weights <- matrix(augsynth$weights)
     rownames(augsynth$weights) <- control_units
@@ -92,7 +97,7 @@ augsynth_multiout <- function(form, unit, time, t_int, data,
 #' @param ... Extra args for outcome model
 #' @noRd
 fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
-                                           progfunc, scm, fixedeff, 
+                                           progfunc, scm, fixedeff,
                                            outcomes_str, ...) {
 
 
@@ -111,7 +116,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
     synth_data$Y1plot <- colMeans(cbind(X, y)[trt == 1,, drop = F])
 
 
-    augsynth <- fit_augsynth_internal(wide_bal, synth_data, Z, progfunc, 
+    augsynth <- fit_augsynth_internal(wide_bal, synth_data, Z, progfunc,
                                       scm, fixedeff, V = V, ...)
 
     # potentially add back in fixed effects
@@ -174,6 +179,7 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
 
     # combine outcomes
     if(combine_method == "concat") {
+
       # center X and scale by overall variance for outcome
       # X <- lapply(wide_list$X, function(x) t(t(x) - colMeans(x)) / sd(x))
       wide_bal <- list(X = do.call(cbind, lapply(wide_list$X, function(x) t(na.omit(t(x))))),
@@ -193,8 +199,8 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
     #                      trt = wide_list$trt)
 
     #     # first get the standard deviations of the outcomes to put on the same scale
-    #     sds <- do.call(c, 
-    #         lapply(wide_list$X, 
+    #     sds <- do.call(c,
+    #         lapply(wide_list$X,
     #             function(x) rep((sqrt(ncol(x)) * sd(x, na.rm=T)), ncol(x))))
 
     #     # do an SVD on centered and scaled outcomes
@@ -271,33 +277,33 @@ predict.augsynth_multiout <- function(object, ...) {
 
     # separate out by outcome
     n_outs <- length(object$data_list$X)
-    max_t <- max(sapply(1:n_outs, 
+    max_t <- max(sapply(1:n_outs,
       function(k) ncol(object$data_list$X[[k]]) + ncol(object$data_list$y[[k]])))
-    pred_reshape <- matrix(NA, ncol = n_outs, 
+    pred_reshape <- matrix(NA, ncol = n_outs,
                                nrow = max_t)
-    colnames <- lapply(1:n_outs, 
-      function(k) colnames(cbind(object$data_list$X[[k]], 
+    colnames <- lapply(1:n_outs,
+      function(k) colnames(cbind(object$data_list$X[[k]],
                                  object$data_list$y[[k]])))
     rownames(pred_reshape) <- colnames[[which.max(sapply(colnames, length))]]
     colnames(pred_reshape) <- object$outcomes
     # get outcome names for predictions
 
-    pre_outs <- do.call(c, 
-                        sapply(1:n_outs, 
+    pre_outs <- do.call(c,
+                        sapply(1:n_outs,
                                function(j) {
                                    rep(object$outcomes[j],
                                        ncol(object$data_list$X[[j]]))
                                }, simplify = FALSE))
-    
+
     post_outs <- do.call(c,
-                         sapply(1:n_outs, 
+                         sapply(1:n_outs,
                                 function(j) {
                                     rep(object$outcomes[j],
                                         ncol(object$data_list$y[[j]]))
                                }, simplify = FALSE))
     # print(pred)
     # print(cbind(names(pred), c(pre_outs, post_outs)))
-    
+
     pred_reshape[cbind(names(pred), c(pre_outs, post_outs))] <- pred
     return(pred_reshape)
 }
@@ -328,8 +334,10 @@ print.augsynth_multiout <- function(x, ...) {
 #' @param grid_size Grid to compute prediction intervals over, default is 1 and only p-values are computed
 #' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
 #' @export
+
 summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", grid_size = 1, ...) {
-    
+  
+  
 
     summ <- list()
 
@@ -428,11 +436,7 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", g
         if(grid_size == 1) {
           average_att <- average_att %>% mutate(lower_bound = NA, upper_bound = NA)
         }
-          # }
-        # } else {
-        #   average_att <- gather(att_avg, Outcome, Estimate)
-        # }
-        
+
 
     } else {
         att_est <- predict(object, att = T)
@@ -487,9 +491,9 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", g
         summ$bias_est <- NA
     }
 
-    
 
-    
+
+
     class(summ) <- "summary.augsynth_multiout"
     return(summ)
 }
@@ -502,10 +506,10 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", g
 print.summary.augsynth_multiout <- function(x, ...) {
     ## straight from lm
     cat("\nCall:\n", paste(deparse(x$call), sep="\n", collapse="\n"), "\n\n", sep="")
-    
+
     att_est <- x$att$Estimate
     ## get pre-treatment fit by outcome
-    imbal <- x$att %>% 
+    imbal <- x$att %>%
         filter(Time < x$t_int) %>%
         group_by(Outcome) %>%
         summarise(Pre.RMSE = sqrt(mean(Estimate ^ 2, na.rm = TRUE)))
@@ -528,7 +532,7 @@ print.summary.augsynth_multiout <- function(x, ...) {
 #' @param inf Boolean, whether to plot uncertainty intervals, default TRUE
 #' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
 #' @param ... Optional arguments for summary function
-#' 
+#'
 #' @export
 plot.augsynth_multiout  <- function(x, inf = T, plt_avg = F, ...) {
   plot(summary(x, ...), inf =  inf, plt_avg = plt_avg)
@@ -538,7 +542,7 @@ plot.augsynth_multiout  <- function(x, inf = T, plt_avg = F, ...) {
 #' @param x summary.augsynth_multiout object
 #' @param inf Boolean, whether to plot uncertainty intervals, default TRUE
 #' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
-#' 
+#'
 #' @export
 plot.summary.augsynth_multiout <- function(x, inf = T, plt_avg = F, ...) {
     if(plt_avg) {
@@ -546,7 +550,7 @@ plot.summary.augsynth_multiout <- function(x, inf = T, plt_avg = F, ...) {
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
     } else {
       p <- x$att %>%
-        filter(Outcome != "Average") %>% 
+        filter(Outcome != "Average") %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
     }
     if(inf) {
