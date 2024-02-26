@@ -8,7 +8,7 @@ conformal_inf(
   ascm,
   alpha = 0.05,
   stat_func = NULL,
-  type = "block",
+  type = "iid",
   q = 1,
   ns = 1000,
   grid_size = 50

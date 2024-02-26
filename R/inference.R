@@ -135,7 +135,7 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
 conformal_inf <- function(ascm, alpha = 0.05, 
-                          stat_func = NULL, type = "block",
+                          stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
