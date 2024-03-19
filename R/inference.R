@@ -211,7 +211,7 @@ conformal_inf <- function(ascm, alpha = 0.05,
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
 conformal_inf_linear <- function(ascm, alpha = 0.05, 
-                          stat_func = NULL, type = "block",
+                          stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
