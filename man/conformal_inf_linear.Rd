@@ -21,7 +21,7 @@ conformal_inf_linear(
 
 \item{stat_func}{Function to compute test statistic}
 
-\item{type}{Either "iid" for iid permutations or "block" for moving block permutations; default is "block"}
+\item{type}{Either "iid" for iid permutations or "block" for moving block permutations; default is "iid"}
 
 \item{q}{The norm for the test static `((sum(x ^ q))) ^ (1/q)`}
 

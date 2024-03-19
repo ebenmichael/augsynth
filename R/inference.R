@@ -196,7 +196,7 @@ conformal_inf <- function(ascm, alpha = 0.05,
 #' @param ascm Fitted `augsynth` object
 #' @param alpha Confidence level
 #' @param stat_func Function to compute test statistic
-#' @param type Either "iid" for iid permutations or "block" for moving block permutations; default is "block"
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations; default is "iid"
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
 #' @param grid_size Number of grid points to use when inverting the hypothesis test
