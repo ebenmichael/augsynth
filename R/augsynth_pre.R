@@ -1,3 +1,4 @@
+
 ################################################################################
 ## Main function for the augmented synthetic controls Method
 ################################################################################
@@ -15,7 +16,7 @@
 #'     \itemize{
 #'       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
 #'       \item{"scm"}{Whether the SCM weighting function is used}
-#'       \item{"fixedeff"}{Whether to include a unit fixed effect, default F }
+#'       \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
 #'       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 #'     }
 #'   \item Multi period (staggered) augsynth
@@ -29,14 +30,14 @@
 #'          \item{"n_factors"}{Number of factors for interactive fixed effects, default does CV}
 #'         }
 #' }
-#' 
+#'
 #' @return augsynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
 #' @export
-#' 
+#'
 augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
 
   call_name <- match.call()
@@ -44,7 +45,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   form <- Formula::Formula(form)
   unit_quosure <- enquo(unit)
   time_quosure <- enquo(time)
-  
+
 
   ## format data
   outcome <- terms(formula(form, rhs=1))[[2]]
@@ -69,7 +70,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
     if("progfunc" %in% names(list(...))) {
       warning("`progfunc` is not an argument for multisynth, so it is ignored")
     }
-    return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
+    return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...))
   } else {
     if (is.null(t_int)) {
       t_int <- trt_time %>% filter(is.finite(trt_time)) %>%

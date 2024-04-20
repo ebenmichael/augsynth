@@ -220,8 +220,8 @@ calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
 #'   estimating the SE.
 #' @param k Number of obs to drop from each tail (so 2k obs dropped
 #'   total)
-#' @param beta Proportion of obs to drop from each tail. E.g., 95% to
-#'   drop 5% most extreme.  Only one of beta or k can be non-null.
+#' @param beta Proportion of obs to drop from each tail. E.g., 95\% to
+#'   drop 5\% most extreme.  Only one of beta or k can be non-null.
 #' @param round_beta TRUE means adjust beta to the nearest integer
 #'   number of units to drop (the Howard method).  FALSE means
 #'   interpolate quantiles using R's quantile function.
@@ -263,7 +263,7 @@ estimate_robust_SE = function( placebo_estimates, k = NULL, beta=NULL,
 
 
 
-add_placebo_distribution <- function(augsynth){
+add_placebo_distribution <- function(augsynth) {
 
   # Run permutations
   ests <- get_placebo_gaps(augsynth, att = FALSE)
@@ -355,6 +355,7 @@ add_placebo_distribution <- function(augsynth){
 #' Generate permutation plots
 #'
 #' @param results Results from calling augsynth()
+#'
 #' @param inf_type Inference type (takes a value of 'permutation' or 'permutation_rstat')
 #' Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
 #'         \itemize{
@@ -401,7 +402,7 @@ permutation_plot <- function(augsynth, inf_type = 'permutation') {
 }
 
 
-#' Generate augsynth plot with 95% CI based on inference preference
+#' Generate augsynth plot with 95\% CI based on inference preference
 #'
 #' @param results Results from calling xxx
 #' @param inf_type Inference type (takes a value of 'permutation' or 'permutation_rstat')
@@ -450,6 +451,8 @@ ci95_rstat_plot <- function(augsynth, inf_type) {
   return(outplot)
 }
 
+
+
 #' Generate formatted outputs for statistical inference using permutation inference
 #'
 #' @param augsynth An augsynth object.
@@ -462,15 +465,15 @@ permutation_inf <- function(augsynth, inf_type) {
   out <- list()
   out$att <- augsynth$results$permutations$MDES_table$ATT
 
+  SEg = NA
   if (inf_type == 'permutation') {
-    out$lb <- augsynth$results$permutations$MDES_table$ATT + (qnorm(0.025) * augsynth$results$permutations$MDES_table$SE_gap)
-    out$ub <- augsynth$results$permutations$MDES_table$ATT + (qnorm(0.975) * augsynth$results$permutations$MDES_table$SE_gap)
-    out$p_val <- c(rep(0, t0), augsynth$results$permutations$MDES_table$p_gap[c(t0 + 1: tpost)])
+    SEg = augsynth$results$permutations$MDES_table$SE_gap
   } else if (inf_type == 'permutation_rstat') {
-    out$lb <- augsynth$results$permutations$MDES_table$ATT + (qnorm(0.025) * augsynth$results$permutations$MDES_table$SE_rstat)
-    out$ub <- augsynth$results$permutations$MDES_table$ATT + (qnorm(0.975) * augsynth$results$permutations$MDES_table$SE_rstat)
-    out$p_val <- c(rep(0, t0), augsynth$results$permutations$MDES_table$p[c(t0 + 1: tpost)])
+    SEg = augsynth$results$permutations$MDES_table$SE_rstat
   }
+  out$lb <- out$att + (qnorm(0.025) * SEg)
+  out$ub <- out$att + (qnorm(0.975) * SEg)
+  out$p_val <- augsynth$results$permutations$MDES_table$p
 
   out$lb[c(1:t0)] <- NA
   out$ub[c(1:t0)] <- NA
@@ -481,117 +484,3 @@ permutation_inf <- function(augsynth, inf_type) {
 }
 
 
-#' Plot function returning the original level of the outcome variable for the treated unit and its synthetic counterfactual
-#' @param augsynth Augsynth object to be plotted
-#' @param  measure Whether to plot the synthetic counterfactual or the raw average of donor units
-#' @export
-augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
-
-  trt_index <- which(augsynth$data$trt == 1)
-  df <- bind_cols(augsynth$data$X, augsynth$data$y)
-  synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
-  average_unit <- df[-trt_index, ] %>% colMeans()
-  treated_unit <- t(df[trt_index, ])
-
-  max_y <- max(c(synth_unit, average_unit, treated_unit))
-  min_y <- min(c(synth_unit, average_unit, treated_unit))
-
-  p <- ggplot2::ggplot() +
-    ggplot2::geom_line(aes(x = augsynth$data$time, y = treated_unit, linetype = augsynth$trt_unit))
-
-  if ('synth' %in% measure) {
-    p <- p +
-      ggplot2::geom_line(aes(x = augsynth$data$time, y = synth_unit, linetype = 'Synthetic counterfactual'))
-  }
-
-  if ('average' %in% measure) {
-    p <- p +
-      ggplot2::geom_line(aes(x = augsynth$data$time, y = average_unit, linetype = 'Donor raw average'))
-  }
-
-  p <- p +
-    ggplot2::scale_y_continuous(limits = c(0, 140)) +
-    ggplot2::labs(linetype = NULL,
-                  x = augsynth$time_var,
-                  y = 'Outcome') +
-    ggplot2::ylim(min_y, max_y) +
-    ggplot2::theme_bw() +
-    ggplot2::theme(legend.position = c(0.75, 0.88),
-                   legend.key = element_rect(fill = alpha("white", 0.5)),
-                   legend.background = element_rect(fill = alpha("white", 0)))
-
-  return(p)
-}
-
-
-#' Return a summary data frame donor units used in the model, along with their RMSPEs and synthetic weights
-#' @param augsynth Augsynth object to be plotted
-#' @export
-donor_table <- function(augsynth) {
-
-  if (is.null(augsynth$results)) {
-    augsynth <- add_inference(augsynth, inf_type = 'permutation')
-  } else if ((!augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) | is.null(augsynth$results)) {
-    augsynth <- add_inference(augsynth, inf_type = 'permutation')
-  }
-
-  trt_index <- which(augsynth$data$trt == 1)
-  unit_var <- augsynth$unit_var
-  RMSPEs <- augsynth$results$permutations$placebo_dist %>%
-    select(!!unit_var, RMSPE) %>%
-    distinct()
-  donor_df <- RMSPEs %>% filter(!!as.name(unit_var) != augsynth$trt_unit) %>%
-    mutate(synth_weight = augsynth$weights)
-
-  return(donor_df)
-
-}
-
-
-#' Return a new augsynth object with specified donor units removed
-#' @param augsynth Augsynth object to be plotted
-#' @param drop Drop donor units, based on pre-treatment RMSPE or unit name(s)
-#' @export
-update_augsynth <- function(augsynth, drop = 20){
-
-  if (is.null(augsynth$results)){
-    inf_type = 'none'
-  } else {
-    inf_type <- augsynth$results$inf_type
-  }
-
-  # run placebo tests if necessary
-  if (!inf_type %in% c('permutation', 'permutation_rstat')) {
-    augsynth <- add_inference(augsynth, inf_type = 'permutation')
-  }
-
-  unit_var <- augsynth$unit_var
-  # pre-treatment RMSPE among donors
-  donor_RMSPE <- augsynth$results$permutations$placebo_dist %>%
-    filter(!!as.name(augsynth$time_var) < augsynth$t_int) %>%
-    group_by(!!as.name(augsynth$unit_var)) %>%
-    summarise(RMSPE = sqrt(mean(ATT ^ 2)), .groups = "drop")
-  # pre-treatment RMSPE for treated unit
-  trt_RMSPE <- add_inference(augsynth, inf_type = 'permutation')$results$permutations$placebo_dist %>%
-    filter(!!as.name(augsynth$time_var) < augsynth$t_int) %>%
-    filter(!!as.name(unit_var) == augsynth$trt_unit) %>%
-    pull(RMSPE) %>% unique()
-
-  if (is.numeric(drop)) {
-    keep_units <- donor_RMSPE %>% filter(RMSPE / trt_RMSPE <= drop) %>% pull(!!unit_var)
-  } else if (is.character(drop)) {
-    keep_units <- donor_RMSPE %>% filter((!!as.name(unit_var) %in% drop) == FALSE) %>% pull(!!unit_var) %>% unique()
-  }
-  keep_units <- c(keep_units, augsynth$trt_unit)
-
-  form <- as.formula(paste(as.character(augsynth$form)[2], as.character(augsynth$form)[1], as.character(augsynth$form)[3]))
-  new_data <- as_tibble(augsynth$raw_data, .name_repair = 'unique') %>% filter(!!as.name(unit_var) %in% keep_units)
-  new_augsynth <- augsynth(form = form,
-                           unit = !!as.name(augsynth$unit_var),
-                           time = !!as.name(augsynth$time_var),
-                           data = new_data,
-                           inf_type = inf_type
-  )
-
-  return(new_augsynth)
-}

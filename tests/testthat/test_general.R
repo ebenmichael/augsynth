@@ -1,5 +1,7 @@
+
 context("Generally testing the workflow for augsynth")
 
+library( tidyverse )
 
 library(Synth)
 data(basque)
@@ -8,11 +10,12 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                                             regionno == 17 ~ 1)) %>%
     filter(regionno != 1)
 
-
+# fake_aug( gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T, t_int=1975 )
 
 test_that("SCM gives the right answer", {
 
     syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T, t_int=1975)
+
     ## average att estimate is as expected
     expect_equal(-.3686, mean(summary(syn, inf_type = 'none')$att$Estimate), tolerance=1e-4)
 
@@ -20,6 +23,9 @@ test_that("SCM gives the right answer", {
     ## level of balance is as expected
     expect_equal(.377, syn$l2_imbalance, tolerance=1e-3)
 
+    expect_equal( dim( syn ), c( 17, 43 ) )
+    expect_equal( n_unit( syn ), 17 )
+    expect_equal( n_time( syn ), 43 )
 }
 )
 

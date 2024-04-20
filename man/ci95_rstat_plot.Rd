@@ -2,7 +2,7 @@
 % Please edit documentation in R/permutation.R
 \name{ci95_rstat_plot}
 \alias{ci95_rstat_plot}
-\title{Generate augsynth plot with 95% CI based on inference preference}
+\title{Generate augsynth plot with 95\% CI based on inference preference}
 \usage{
 ci95_rstat_plot(augsynth, inf_type)
 }
@@ -12,5 +12,5 @@ ci95_rstat_plot(augsynth, inf_type)
 \item{results}{Results from calling xxx}
 }
 \description{
-Generate augsynth plot with 95% CI based on inference preference
+Generate augsynth plot with 95\% CI based on inference preference
 }

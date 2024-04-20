@@ -2,30 +2,34 @@
 % Please edit documentation in R/augsynth.R
 \name{summary.augsynth}
 \alias{summary.augsynth}
-\title{Summary function for augsynth (returns fields calculated by `add_inference()`)}
+\title{Summary function for augsynth (returns fields calculated by
+`add_inference()`)}
 \usage{
 \method{summary}{augsynth}(object, inf_type = NULL, ...)
 }
 \arguments{
 \item{object}{augsynth object}
 
-\item{inf_type}{Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
-\itemize{
- \item{"conformal"}{Conformal inference (default)}
- \item{"jackknife+"}{Jackknife+ algorithm over time periods}
- \item{"jackknife"}{Jackknife over units}
- \item{"permutation"}{Placebo permutation, raw ATT}
- \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
-}}
+\item{inf_type}{Type of inference algorithm. Inherits inf_type from
+`object` or otherwise defaults to "conformal". Options are
+      \itemize{
+       \item{"conformal"}{Conformal inference (default)}
+       \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+       \item{"jackknife"}{Jackknife over units}
+       \item{"permutation"}{Placebo permutation, raw ATT}
+       \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+      }}
 
-\item{...}{Optional arguments for inference, for more details for each `inf_type` see
-\itemize{
- \item{"conformal"}{`conformal_inf`}
- \item{"jackknife+"}{`time_jackknife_plus`}
- \item{"jackknife"}{`jackknife_se_single`}
- \item{"permutation"}{`permutation_inf`}
-}}
+\item{...}{Optional arguments for inference, for more details for
+each `inf_type` see
+      \itemize{
+       \item{"conformal"}{`conformal_inf`}
+       \item{"jackknife+"}{`time_jackknife_plus`}
+       \item{"jackknife"}{`jackknife_se_single`}
+       \item{"permutation"}{`permutation_inf`}
+      }}
 }
 \description{
-Summary function for augsynth (returns fields calculated by `add_inference()`)
+Summary function for augsynth (returns fields calculated by
+`add_inference()`)
 }

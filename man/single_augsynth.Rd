@@ -14,7 +14,7 @@ single_augsynth(
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
-  inf_type = "None",
+  inf_type = "none",
   ...
 )
 }

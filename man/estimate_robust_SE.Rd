@@ -18,8 +18,8 @@ estimating the SE.}
 \item{k}{Number of obs to drop from each tail (so 2k obs dropped
 total)}
 
-\item{beta}{Proportion of obs to drop from each tail. E.g., 95% to
-drop 5% most extreme.  Only one of beta or k can be non-null.}
+\item{beta}{Proportion of obs to drop from each tail. E.g., 95\% to
+drop 5\% most extreme.  Only one of beta or k can be non-null.}
 
 \item{round_beta}{TRUE means adjust beta to the nearest integer
 number of units to drop (the Howard method).  FALSE means

@@ -1,5 +1,6 @@
 context("Generally testing the workflow for multisynth")
 
+library( tidyverse )
 library(Synth)
 data(basque)
 basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
@@ -8,14 +9,16 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
     filter(regionno != 1)
 
 
-                            
+
 test_that("augsynth and multisynth give the same answer for a single treated unit and no augmentation", {
 
     syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
                     progfunc="None", scm=T, fixedeff = F)
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque, nu = 0,
                        fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
-    
+
+    expect_equal( dim( msyn ), dim( syn ) )
+
     # weights are the same-ish
     expect_equal(c(syn$weights), c(msyn$weights[-16]), tolerance=3e-4)
 
@@ -39,6 +42,11 @@ test_that("Pooling doesn't matter for a single treated unit", {
     allpool <- multisynth(gdpcap ~ trt, regionno, year, basque, nu = 1,
                           scm=T, eps_rel=1e-5, eps_abs=1e-5)
 
+
+    expect_equal( dim( nopool ), dim( allpool ) )
+    expect_equal( n_treated(nopool), n_treated(allpool) )
+    expect_equal( n_treated(nopool), 1 )
+
     # weights are the same
     expect_equal(nopool$weights, allpool$weights)
 
@@ -56,7 +64,7 @@ test_that("Pooling doesn't matter for a single treated unit", {
 
 
 
-                            
+
 test_that("Separate synth is the same as fitting separate synths", {
 
 
@@ -66,23 +74,27 @@ test_that("Separate synth is the same as fitting separate synths", {
         filter(regionno != 1)
 
 
-    basque2  %>% filter(regionno != 16) %>% 
+    basque2  %>% filter(regionno != 16) %>%
         single_augsynth(gdpcap ~ trt, regionno, year, 1975, .,
                     progfunc="None", scm=T) -> scm17
-    basque2  %>% filter(regionno != 17) %>% 
+    basque2  %>% filter(regionno != 17) %>%
         single_augsynth(gdpcap ~ trt, regionno, year, 1975, .,
                     progfunc="None", scm=T) -> scm16
-    
+
     msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
                        scm=T, eps_rel=1e-5, eps_abs=1e-5, fixedeff = F)
-    
+
+    expect_equal( dim( scm17 ), c(16,43) )
+    expect_equal( n_treated(scm17), 1 )
+    expect_equal( n_treated(msyn), 2 )
+
     # weights are the same-ish
     sscm_weights <- unname(c(scm17$weights))
     mscm_weights <- unname(c(msyn$weights[-c(15, 16), 2]))
     expect_equal(sscm_weights, mscm_weights, tolerance=3e-2)
     expect_equal(rownames(scm17$weights), rownames(as.matrix(msyn$weights[-c(15, 16), 2])))
     # expect_equal(c(scm16$weights), c(msyn$weights[-c(15, 16), 1]), tolerance=3e-2)
-    
+
     # estimates are the same-ish
     pred_msyn <- predict(msyn, att=F)
     pred_msyn <- pred_msyn[-nrow(pred_msyn), ]
@@ -101,7 +113,7 @@ test_that("Limiting number of lags works", {
 
     expect_error(
       multisynth(gdpcap ~ trt, regionno, year, basque2, nu = 0,
-                 scm=T, eps_rel=1e-5, eps_abs=1e-5, n_lags =3),
+                 scm=T, eps_rel=1e-5, eps_abs=1e-5, n_lags = 3),
       NA
     )
 }
@@ -165,7 +177,7 @@ test_that("V matrix is the same for single and multi synth", {
 )
 
 
-                            
+
 test_that("multisynth doesn't depend on unit order", {
 
     basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
@@ -180,7 +192,7 @@ test_that("multisynth doesn't depend on unit order", {
                        basque2 %>% arrange(desc(regionno)), nu = 0,
                        fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
 
-    
+
     # weights are the same
     expect_equal(c(msyn$weights), c(msyn2$weights))
 
@@ -191,7 +203,7 @@ test_that("multisynth doesn't depend on unit order", {
 )
 
 
-                            
+
 test_that("multisynth doesn't depend on time order", {
 
     basque2 <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
@@ -206,7 +218,7 @@ test_that("multisynth doesn't depend on time order", {
                        basque2 %>% arrange(desc(year)), nu = 0,
                        fixedeff = F, scm=T, eps_rel=1e-5, eps_abs=1e-5)
 
-    
+
     # weights are the same
     expect_equal(c(msyn$weights), c(msyn2$weights))
 

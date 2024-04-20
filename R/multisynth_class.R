@@ -1,3 +1,5 @@
+
+
 ################################################################################
 ## Fitting, plotting, summarizing staggered synth
 ################################################################################
@@ -184,6 +186,10 @@ multisynth <- function(form, unit, time, data,
     }
 
     msynth$call <- call_name
+    msynth$trt_unit <- msynth$data$units[ msynth$data$trt < Inf ]
+    msynth$time_var <- quo_name(time)
+    msynth$unit_var <- quo_name(unit)
+    msynth$form <- form
 
     return(msynth)
 
@@ -979,3 +985,53 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
     return(p)
 
 }
+
+
+
+
+#'
+#' @return dim: Dimension of data as pair of (# units, # time points).
+#'
+#' @rdname multisynth_class
+#' @export
+#'
+dim.multisynth <- function(x, ... ) {
+    n_unit = length( unique( x$long_df[[ x$unit_var ]] ) )
+    n_time = x$n_leads + x$n_lags
+    return( c( n_unit, n_time ) )
+}
+
+
+
+#' @title Number of units in multisynth
+#'
+#' @return Single number (of unique units).
+#'
+#' @rdname multisynth_class
+#'
+#' @export
+#'
+n_unit.multisynth <- function(x, ... ) {
+    dim.multisynth(x)[[1]]
+}
+
+#' @title Number of time points in multisynth
+#'
+#' @rdname multisynth_class
+#'
+#' @return Single number (of unique time points).
+#' @export
+n_time.multisynth <- function(x, ... ) {
+    dim.multisynth(x)[[2]]
+}
+
+
+#'
+#' @rdname multisynth_class
+#'
+#' @return Number of treated units (always 1 for multisynth)
+#' @export
+n_treated.multisynth <- function(x, ... ) {
+    return( length( x$trt_unit ) )
+}
+

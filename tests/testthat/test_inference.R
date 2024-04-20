@@ -1,3 +1,6 @@
+
+
+
 context("Test inference features of single augsynth objects")
 
 basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
