@@ -6,7 +6,8 @@
 #' @param augsynth Augsynth object to be plotted
 #' @param  measure Whether to plot the synthetic counterfactual or the
 #'   raw average of donor units
-#' @export
+#'
+#' @noRd
 augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
 
   trt_index <- which(augsynth$data$trt == 1)

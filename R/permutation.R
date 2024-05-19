@@ -11,6 +11,8 @@
 #'   time point.  Each entry is the estimated impact for that unit at
 #'   that time, after fitting augsynth on that unit as the tx unit and
 #'   the other units as possible controls.
+#'
+#' @noRd
 get_placebo_gaps = function( ascm, att = TRUE ) {
 
   tx_id <- ascm$trt_unit
@@ -226,6 +228,7 @@ calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
 #'   number of units to drop (the Howard method).  FALSE means
 #'   interpolate quantiles using R's quantile function.
 #'
+#' @noRd
 estimate_robust_SE = function( placebo_estimates, k = NULL, beta=NULL,
                                round_beta = FALSE ) {
 
@@ -457,6 +460,7 @@ ci95_rstat_plot <- function(augsynth, inf_type) {
 #'
 #' @param augsynth An augsynth object.
 #'
+#' @noRd
 permutation_inf <- function(augsynth, inf_type) {
 
   t0 <- dim(augsynth$data$synth_data$Z0)[1]

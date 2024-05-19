@@ -562,12 +562,17 @@ plot.summary.augsynth <- function(x, inf = NULL, inf_type = 'conformal', ...) {
 
 }
 
+
+
 #' Plot function for summary function for augsynth
 #'
 #' @param x Summary object
 #' @param ... Optional arguments
-#' @export
-augsynth_plot_from_results <- function(augsynth, inf_type = NULL, ...) {
+#'
+#' @noRd
+augsynth_plot_from_results <- function(augsynth,
+                                       plot_type = 'estimate',
+                                       inf_type = NULL, ...) {
 
   stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
 
