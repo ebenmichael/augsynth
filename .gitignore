@@ -31,6 +31,6 @@ test.R
 .Rproj.user
 
 # scratch folder
-\scratch
-tobacco_replication/tobacco_replication_cache/
-tobacco_replication/tobacco_replication_files/figure-html/
+/scratch
+tobacco_replication/tobacco_replication_cache
+tobacco_replication/tobacco_replication_files/figure-html

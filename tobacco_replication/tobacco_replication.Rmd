@@ -1,11 +1,10 @@
 ---
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{MultiSynth Vignette}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 title: "Permutation inference for the `augsynth` package"
-author: "Nora Delaney"
-date: "`r Sys.Date()`"
-output:
-  html_document:
-    df_print: paged
-  pdf_document: default
 subtitle: Replicating Abadie et al. (2010)
 editor_options: 
   chunk_output_type: console
@@ -28,7 +27,6 @@ library(kableExtra)
 library(magrittr)
 library(dplyr)
 library(ggplot2)
-library(haven)
 library(reshape2)
 library(tidyr)
 library(rlang)
@@ -162,9 +160,6 @@ path_plot <- ggplot(f2_plot_df, aes(x = year, y = per_cap_cigs, linetype = treat
   replication_theme
 
 path_plot
-
-ggsave(filename = here::here('./tobacco_replication/plots/synth_figure2.png'),
-       height = 4, width = 4.6, units = 'in', dpi = 100)
 ```
 
 ```{r Abadie Figure 3, echo=FALSE, include=FALSE, fig.height=4, fig.width=4.6}
@@ -190,9 +185,6 @@ gap_plot <- ggplot(plot_df, aes(x = year, y = gap)) +
   replication_theme
 
 gap_plot
-
-ggsave(filename = here::here('./tobacco_replication/plots/synth_figure3.png'),
-       height = 4, width = 4.6, units = 'in', dpi = 100)
 ```
 
 ### Model setup
