@@ -5,11 +5,18 @@
 
 
 #' Fit Augmented SCM
+#'
+#' The general `augsynth()` method dispatches to `single_augsynth`,
+#' `augsynth_multiout`, or `multisynth` based on the number of
+#' outcomes and treatment times.  See documentation for these methods
+#' for further detail.
+#'
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
-#' @param t_int Time of intervention (used for single-period treatment only)
+#' @param t_int Time of intervention (used for single-period treatment
+#'   only)
 #' @param ... Optional arguments
 #' \itemize{
 #'   \item Single period augsynth with/without multiple outcomes
@@ -31,11 +38,13 @@
 #'         }
 #' }
 #'
-#' @return augsynth object that contains:
+#' @return augsynth or multisynth object (depending on dispatch) that contains (among other things):
 #'         \itemize{
 #'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
+#'
+#' @seealso `single_augsynth`, `augsynth_multiout`, `multisynth`
 #' @export
 #'
 augsynth <- function(form, unit, time, data, t_int=NULL, ...) {

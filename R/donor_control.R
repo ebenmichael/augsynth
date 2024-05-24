@@ -1,7 +1,17 @@
 
+# This file contains methods to monitor and modify set of donor units
+# in augmented synthetic control method
 
-#' Return a summary data frame donor units used in the model, along with their RMSPEs and synthetic weights
+
+#' Return a summary data frame donor units used in the model, along
+#' with their RMSPEs and synthetic weights
+#'
+#' If the augsynth object does not have permutation-based inference
+#' results, the function will call that form of inference, in order to
+#' calculate the RMSPEs for each donor unit in turn.
+#'
 #' @param augsynth Augsynth object to be plotted
+#'
 #' @export
 donor_table <- function(augsynth) {
 

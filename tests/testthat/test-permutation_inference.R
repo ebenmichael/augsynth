@@ -19,10 +19,20 @@ basque <- basque %>%
 table( basque$trt, basque$regionno )
 
 
-if ( FALSE ) {
-test_that("placebo gaps works", {
+
+test_that( "MDES_table corresponds to default treatment table", {
+
     syn <- augsynth(gdpcap ~ trt, regionno, year,
-                           data=basque, scm = TRUE, inf_type = "permutation" )
+                    data=basque, scm = TRUE, inf_type = "permutation" )
+
+    mm <- syn$results$permutations$MDES_table[1:7] %>%
+        select( sort( names(.)))
+    mm
+    tt <- treated_table(syn) %>%
+        select( sort( names(.)))
+    tt
+    expect_equal( as.data.frame(tt), as.data.frame(mm) )
+
 
     syn
     expect_equivalent(!is.null(syn$results), TRUE)
@@ -40,8 +50,12 @@ test_that("placebo gaps works", {
     expect_equal( names(rs), c("placebo_dist", "MDES_table") )
     expect_equal( nrow( rs$placebo_dist ), n_year * n_unit )
 
-    syn$unit_var
-    syn$time_var
+    expect_equal( syn$unit_var, "regionno" )
+    expect_equal( syn$time_var, "year" )
 })
 
-}
+
+
+
+
+

@@ -15,7 +15,8 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
 
 \item{data}{Panel data as dataframe}
 
-\item{t_int}{Time of intervention (used for single-period treatment only)}
+\item{t_int}{Time of intervention (used for single-period treatment
+only)}
 
 \item{...}{Optional arguments
 \itemize{
@@ -39,12 +40,18 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
 }}
 }
 \value{
-augsynth object that contains:
+augsynth or multisynth object (depending on dispatch) that contains (among other things):
         \itemize{
          \item{"weights"}{weights}
          \item{"data"}{Panel data as matrices}
         }
 }
 \description{
-Fit Augmented SCM
+The general `augsynth()` method dispatches to `single_augsynth`,
+`augsynth_multiout`, or `multisynth` based on the number of
+outcomes and treatment times.  See documentation for these methods
+for further detail.
+}
+\seealso{
+`single_augsynth`, `augsynth_multiout`, `multisynth`
 }

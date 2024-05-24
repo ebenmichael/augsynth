@@ -2,7 +2,8 @@
 % Please edit documentation in R/donor_control.R
 \name{donor_table}
 \alias{donor_table}
-\title{Return a summary data frame donor units used in the model, along with their RMSPEs and synthetic weights}
+\title{Return a summary data frame donor units used in the model, along
+with their RMSPEs and synthetic weights}
 \usage{
 donor_table(augsynth)
 }
@@ -10,5 +11,7 @@ donor_table(augsynth)
 \item{augsynth}{Augsynth object to be plotted}
 }
 \description{
-Return a summary data frame donor units used in the model, along with their RMSPEs and synthetic weights
+If the augsynth object does not have permutation-based inference
+results, the function will call that form of inference, in order to
+calculate the RMSPEs for each donor unit in turn.
 }

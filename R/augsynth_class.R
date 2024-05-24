@@ -242,3 +242,52 @@ n_treated.augsynth <- function(x, ... ) {
     return( 1 )
 }
 
+
+#' RMSPE for treated unit
+#'
+#' @param augsynth Augsynth object
+#' @return RMSPE (Root mean squared predictive error) for the treated unit in pre-treatment era
+#'
+#' @export
+RMSPE <- function( augsynth ) {
+    stopifnot( is.augsynth(augsynth) )
+
+    pd = predict( augsynth, att = TRUE )
+    sqrt( mean( pd[1:ncol(augsynth$data$X)]^2 ) )
+}
+
+
+
+#' Return a summary data frame for the treated unit
+#'
+#' @param augsynth Augsynth object of interest
+#'
+#' @return Dataframe of information about the treated unit, one row
+#'   per time point.  This includes the measured outcome, predicted
+#'   outcome from the synthetic unit, the average of all donor units
+#'   (as reference, called `raw_average`), and the estimated impact
+#'   (`ATT`), and the r-statistic (ATT divided by RMSPE).
+#'
+#' @seealso [donor_table()]
+#' @export
+treated_table <- function(augsynth) {
+
+    df <- get_long_data(augsynth)
+
+    lvls <- df %>%
+        group_by( year, ever_Tx ) %>%
+        summarise( Yavg = mean( Yobs ), .groups="drop" ) %>%
+        pivot_wider( names_from = ever_Tx, values_from = Yavg )
+    colnames(lvls)[2:3] <- c("raw_average", "Yobs")
+
+    t0 <- ncol(augsynth$data$X)
+    tpost <- ncol(augsynth$data$y)
+    lvls$tx = rep( c(0,1), c( t0, tpost ) )
+    lvls$Yhat = predict( augsynth )
+    lvls$ATT = lvls$Yobs - lvls$Yhat
+    lvls$rstat = lvls$ATT / sqrt( mean( lvls$ATT[ lvls$tx == 0 ]^2 ) )
+
+    return( lvls )
+}
+
+

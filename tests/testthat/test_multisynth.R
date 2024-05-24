@@ -42,7 +42,6 @@ test_that("Pooling doesn't matter for a single treated unit", {
     allpool <- multisynth(gdpcap ~ trt, regionno, year, basque, nu = 1,
                           scm=T, eps_rel=1e-5, eps_abs=1e-5)
 
-
     expect_equal( dim( nopool ), dim( allpool ) )
     expect_equal( n_treated(nopool), n_treated(allpool) )
     expect_equal( n_treated(nopool), 1 )
@@ -128,6 +127,14 @@ test_that("L2 imbalance computed correctly", {
 
   msyn <- multisynth(gdpcap ~ trt, regionno, year, basque2,
                 scm=T, eps_rel=1e-5, eps_abs=1e-5)
+
+  expect_true( "weights" %in% names( msyn ) )
+
+  ntx = length( unique( basque2$regionno[ basque2$trt == 1 ] ) )
+  expect_equal( dim( msyn$weights ), c( 17, ntx ) )
+
+  expect_true( "data" %in% names( msyn ) )
+  #msyn$data
 
   glbl <- sqrt(mean(msyn$imbalance[,1]^2))
   ind <- sqrt(mean(
