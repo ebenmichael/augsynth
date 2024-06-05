@@ -275,7 +275,7 @@ treated_table <- function(augsynth) {
     df <- get_long_data(augsynth)
 
     lvls <- df %>%
-        group_by( year, ever_Tx ) %>%
+        group_by( !!sym(augsynth$time_var ), ever_Tx) %>%
         summarise( Yavg = mean( Yobs ), .groups="drop" ) %>%
         pivot_wider( names_from = ever_Tx, values_from = Yavg )
     colnames(lvls)[2:3] <- c("raw_average", "Yobs")

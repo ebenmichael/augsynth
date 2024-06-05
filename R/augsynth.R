@@ -98,6 +98,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
     augsynth$unit_var <- quo_name(unit)
     augsynth$raw_data <- data
     augsynth$form <- form
+    augsynth$cov_agg <- cov_agg
 
     if (tolower(inf_type) != 'none') {
         augsynth <- add_inference(augsynth, inf_type = inf_type)
@@ -414,8 +415,6 @@ print.summary.augsynth <- function(x, ...) {
                   summ$n_tx,
                   summ$time_var,
                   summ$att$Time[[summ$time_tx+1]]) )
-    cat( sprintf( "    RMSPE range from %.2f to %.2f\n",
-                  min( summ$donor_table$RMSPE ), max( summ$donor_table$RMSPE ) ) )
     cat( "\n" )
 
     ## distinction between pre and post treatment
@@ -458,6 +457,10 @@ print.summary.augsynth <- function(x, ...) {
         inf_type <- ifelse(summ$inf_type == 'permutation',
                            "Permutation inference",
                            "Permutation inference (RMSPE-adjusted)")
+        out_msg <-paste0( out_msg, "\n",
+                         ( sprintf( "Donor RMSPE range from %.2f to %.2f\n",
+                                    min( summ$donor_table$RMSPE ), max( summ$donor_table$RMSPE ) ) ) )
+
     } else {
         out_msg <- paste("Average ATT Estimate: ",
                          format(round(att_post,3), nsmall=3), "\n")
@@ -471,6 +474,7 @@ print.summary.augsynth <- function(x, ...) {
                      "Percent improvement from uniform weights: ",
                      format(round(1 - summ$scaled_l2_imbalance,3)*100), "%\n\n",
                      sep="")
+
     if(!is.null(summ$covariate_l2_imbalance)) {
 
         out_msg <- paste(out_msg,
@@ -491,7 +495,12 @@ print.summary.augsynth <- function(x, ...) {
                      inf_type,
                      "\n\n",
                      sep="")
+
+    rng = range( summ$donor_table$weight[ summ$donor_table$weight > 1/(1000*summ$n_unit) ] )
+    cat( sprintf( "%d donor units used with weights of %.3f to %.3f\n",
+                  sum( summ$donor_table$weight > 1/(1000*summ$n_unit) ), rng[[1]], rng[[2]] ) )
     cat(out_msg)
+
 
     if(summ$inf_type == "jackknife") {
         out_att <- summ$att[t_int:t_final,] %>%
@@ -524,8 +533,10 @@ print.summary.augsynth <- function(x, ...) {
         mutate_at(vars(-Time), ~ round(., 3)) %>%
         print(row.names = F)
 
-
+    invisible( summ )
 }
+
+
 
 #' Plot function for summary function for augsynth
 #' @param x Summary object
