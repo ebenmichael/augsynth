@@ -134,8 +134,9 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
 #'         }
-conformal_inf <- function(ascm, alpha = 0.05,
-                          stat_func = NULL, type = "block",
+
+conformal_inf <- function(ascm, alpha = 0.05, 
+                          stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
   synth_data <- ascm$data$synth_data
@@ -179,7 +180,6 @@ conformal_inf <- function(ascm, alpha = 0.05,
   new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
   null_p <- compute_permute_pval(new_wide_data, ascm, 0, ncol(wide_data$y),
                                  type, q, ns, stat_func)
-
   out <- list()
   att <- predict(ascm, att = T)
   out$att <- c(att, mean(att[(t0 + 1):t_final]))
@@ -191,6 +191,70 @@ conformal_inf <- function(ascm, alpha = 0.05,
   out$alpha <- alpha
   return(out)
 }
+
+
+#' Conformal inference procedure to compute a confidence interval for a linear in time effect
+#' @param ascm Fitted `augsynth` object
+#' @param alpha Confidence level
+#' @param stat_func Function to compute test statistic
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations; default is "iid"
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' @param grid_size Number of grid points to use when inverting the hypothesis test
+#' @return List that contains:
+#'         \itemize{
+#'          \item{"att"}{Vector of ATT estimates}
+#'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
+#'          \item{"se"}{Standard error, always NA but returned for compatibility}
+#'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
+#'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
+#'          \item{"p_val"}{p-value for test of no post-treatment effect}
+#'          \item{"alpha"}{Level of confidence interval}
+#'         }
+conformal_inf_linear <- function(ascm, alpha = 0.05, 
+                          stat_func = NULL, type = "iid",
+                          q = 1, ns = 1000, grid_size = 50) {
+  wide_data <- ascm$data
+  synth_data <- ascm$data$synth_data
+  n <- nrow(wide_data$X)
+  n_c <- dim(synth_data$Z0)[2]
+  Z <- wide_data$Z
+
+  t0 <- dim(synth_data$Z0)[1]
+  tpost <- ncol(wide_data$y)
+  t_final <- dim(synth_data$Y0plot)[1]
+
+  # grid of nulls
+  att <- predict(ascm, att = T)
+  post_att <- att[(t0 +1):t_final]
+  post_second <- sqrt(mean(post_att^2))
+
+  # grid for slope
+  # use ols to get pilot estimate
+  ts <- 1:tpost
+  lm_out <- summary(lm(post_att ~ ts))$coefficients
+  # grid for intercept
+  grid_int <- seq(lm_out[1,1] - 2 * post_second,
+                  lm_out[1,1] + 2 * post_second,
+                  length.out = grid_size)
+  grid_slope <- seq(lm_out[2,1] - 4 * lm_out[2,2] * sqrt(tpost),
+                  lm_out[2,1] + 4 * lm_out[2,2] * sqrt(tpost),
+                  length.out = grid_size)
+
+  # test a null post-treatment effect
+  new_wide_data <- wide_data
+  new_wide_data$X <- cbind(wide_data$X, wide_data$y)
+  new_wide_data$y <- matrix(1, nrow = n, ncol = 1)
+  null_p <- compute_permute_pval(new_wide_data, ascm, 0, ncol(wide_data$y), 
+                                 type, q, ns, stat_func)
+
+  # confidence interval for linear in time treatment effects
+  cis <- compute_permute_ci_linear(new_wide_data, ascm, grid_int, grid_slope,
+                                   ncol(wide_data$y), alpha, type, q, ns, stat_func)
+
+  return(cis)
+}
+
 
 #' Compute conformal test statistics
 #' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
@@ -308,6 +372,44 @@ compute_permute_ci <- function(wide_data, ascm, grid,
                                      post_length, type, q, ns, stat_func)
               })
   c(min(grid[ps >= alpha]), max(grid[ps >= alpha]), ps[grid == 0])
+}
+
+
+
+#' Compute conformal confidence interval for a linear model for effects
+#' int + slope * time
+#' @param wide_data List containing pre- and post-treatment outcomes and outcome vector
+#' @param ascm Fitted `augsynth` object
+#' @param grid_int Set of null hypothesis values for the intercept
+#' @param grid_slope Set of null hypothesis values for the slope
+#' @param post_length Number of post-treatment periods
+#' @param type Either "iid" for iid permutations or "block" for moving block permutations
+#' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
+#' @param ns Number of resamples for "iid" permutations
+#' @param stat_func Function to compute test statistic
+#' 
+#' @return (lower bound of interval, upper bound of interval, p-value for null of 0 effect)
+#' @noRd
+compute_permute_ci_linear <- function(wide_data, ascm, grid_int, grid_slope,
+                               post_length, alpha, type,
+                               q, ns, stat_func) {
+  # make sure 0 is in both grids
+  # grid_int <- c(grid_int, 0)
+  # grid_slope <- c(grid_slope, 0)
+  # make the combined grid
+  grid_comb <- expand.grid(grid_int, grid_slope)
+  grid_comb$p_val <-apply(grid_comb, 1,
+              function(x) {
+                compute_permute_pval(wide_data, ascm, x[1] + x[2] * (1:post_length), 
+                                     post_length, type, q, ns, stat_func)
+              })
+  ci_int <- c(min(grid_comb[grid_comb$p_val >= alpha, 1]),
+              max(grid_comb[grid_comb$p_val >= alpha, 1]))
+  ci_slope <- c(min(grid_comb[grid_comb$p_val >= alpha, 2]),
+                   max(grid_comb[grid_comb$p_val >= alpha, 2]))
+  int_slope_est <- as.numeric(grid_comb[which.max(grid_comb$p_val), 1:2])
+  return(list(est_int = int_slope_est[1], ci_int = ci_int,
+              est_slope = int_slope_est[2], ci_slope = ci_slope))
 }
 
 
