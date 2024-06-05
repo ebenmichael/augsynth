@@ -427,7 +427,7 @@ summary.augsynth <- function(object, inf_type = NULL, ...) {
 
     summ$n_unit = n_unit(augsynth)
     summ$n_time = n_time(augsynth)
-    summ$n_tx = n_treated(augsynth)
+    summ$n_tx = n_treated(augsynth)[1]
     summ$time_tx = t0
     summ$donor_table = donor_table( augsynth )
 
@@ -448,7 +448,7 @@ print.summary.augsynth <- function(x, ...) {
     cat("\nCall:\n", paste(deparse(summ$call), sep="\n", collapse="\n"), "\n", sep="")
 
     t_final <- nrow(summ$att)
-    cat( sprintf( "    Fit to %d units and %d+%d = %d time points; %d treated at %s %d.\n",
+    cat( sprintf( "    Fit to %d units and %d+%d = %d time points; %g treated at %s %g.\n",
                   summ$n_unit, summ$time_tx, t_final - summ$time_tx, t_final,
                   summ$n_tx,
                   summ$time_var,
