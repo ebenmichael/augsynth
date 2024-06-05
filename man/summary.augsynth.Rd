@@ -5,7 +5,11 @@
 \title{Summary function for augsynth (returns fields calculated by
 `add_inference()`)}
 \usage{
+<<<<<<< master
 \method{summary}{augsynth}(object, inf_type = NULL, ...)
+=======
+\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_effect = F, ...)
+>>>>>>> master
 }
 \arguments{
 \item{object}{augsynth object}
@@ -20,6 +24,7 @@
        \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
       }}
 
+<<<<<<< master
 \item{...}{Optional arguments for inference, for more details for
 each `inf_type` see
       \itemize{
@@ -28,6 +33,23 @@ each `inf_type` see
        \item{"jackknife"}{`jackknife_se_single`}
        \item{"permutation"}{`permutation_inf`}
       }}
+=======
+\item{inf_type}{Type of inference algorithm. Options are
+\itemize{
+ \item{"conformal"}{Conformal inference (default)}
+ \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+ \item{"jackknife"}{Jackknife over units}
+}}
+
+\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
+
+\item{...}{Optional arguments for inference, for more details for each `inf_type` see
+\itemize{
+ \item{"conformal"}{`conformal_inf`}
+ \item{"jackknife+"}{`time_jackknife_plus`}
+ \item{"jackknife"}{`jackknife_se_single`}
+}}
+>>>>>>> master
 }
 \description{
 Summary function for augsynth (returns fields calculated by
