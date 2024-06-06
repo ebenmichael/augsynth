@@ -351,6 +351,11 @@ add_placebo_distribution <- function(augsynth) {
 #' @export
 permutation_plot <- function(augsynth, inf_type = 'permutation') {
 
+    if ( is.augsynth( augsynth ) ) {
+        augsynth = summary( augsynth, inf_type = inf_type )
+    }
+
+    inf_type = augsynth$inf_type
     stopifnot(inf_type %in% c('permutation', 'permutation_rstat'))
 
     if(inf_type == 'permutation') {
@@ -359,15 +364,11 @@ permutation_plot <- function(augsynth, inf_type = 'permutation') {
         measure = 'rstat'
     }
 
-    if (is.null(augsynth$results$permutations)) {
-        augsynth <- add_placebo_distribution(augsynth)
-    }
-
-    plot_df <- augsynth$results$permutations$placebo_dist %>%
+    plot_df <- augsynth$permutations$placebo_dist %>%
         mutate(trt_status = factor(trt, levels = c(0, 1), labels = c('Control', 'Treatment')))
 
-    t0 <- ncol(augsynth$data$X)
-    treat_year = augsynth$data$time[t0 + 1]
+    t0 <- augsynth$time_tx
+    treat_year = augsynth$t_int
 
     out_plot <- ggplot2::ggplot(plot_df,
                                 aes(x = !!as.name(augsynth$time_var), y = !!as.name(measure),
@@ -391,6 +392,7 @@ permutation_plot <- function(augsynth, inf_type = 'permutation') {
 #' @param results Results from calling xxx
 #' @param inf_type Inference type (takes a value of 'permutation' or 'permutation_rstat')
 #'
+#' @noRd
 ci95_rstat_plot <- function(augsynth, inf_type) {
 
     stopifnot(inf_type %in% c('permutation', 'permutation_rstat'))
@@ -428,7 +430,7 @@ ci95_rstat_plot <- function(augsynth, inf_type) {
         ggplot2::geom_line(aes(y = ATT)) +
         ggplot2::geom_vline(lty = 2, xintercept = treat_year) +
         ggplot2::geom_hline(lty = 2, yintercept = 0) +
-        ggplot2::scale_color_manual(values = c('Control' = 'gray', 'Treatment' = 'black')) +
+        #ggplot2::scale_color_manual(values = c('Control' = 'gray', 'Treatment' = 'black')) +
         ggplot2::labs(color = NULL, y = 'Estimate') +
         ggplot2::theme_bw()
 

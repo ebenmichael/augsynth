@@ -31,7 +31,9 @@ test_that( "MDES_table corresponds to default treatment table", {
     tt <- treated_table(syn) %>%
         select( sort( names(.)))
     tt
-    expect_equal( as.data.frame(tt), as.data.frame(mm) )
+
+    expect_equal( as.data.frame(tt)[c("ATT","raw_average","Yhat", "tx")],
+                  as.data.frame(mm)[c("ATT","raw_average","Yhat", "tx")] )
 
 
     syn

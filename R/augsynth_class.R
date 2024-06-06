@@ -94,55 +94,8 @@ plot.augsynth <- function(augsynth,
         augsynth <- add_inference(augsynth, inf_type = inf_type)
     }
 
-    if (cv == T) {
-        errors = data.frame(lambdas = augsynth$lambdas,
-                            errors = augsynth$lambda_errors,
-                            errors_se = augsynth$lambda_errors_se)
-        p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
-            ggplot2::geom_point(size = 2) +
-            ggplot2::geom_errorbar(
-                ggplot2::aes(ymin = errors,
-                             ymax = errors + errors_se),
-                width=0.2, size = 0.5)
-        p <- p + ggplot2::labs(title = bquote("Cross Validation MSE over " ~ lambda),
-                               x = expression(lambda), y = "Cross Validation MSE",
-                               parse = TRUE)
-        p <- p + ggplot2::scale_x_log10()
+    plot_augsynth_results( augsynth=augsynth, cv=cv, plot_type=plot_type, inf_type=inf_type, ... )
 
-        # find minimum and min + 1se lambda to plot
-        min_lambda <- choose_lambda(augsynth$lambdas,
-                                    augsynth$lambda_errors,
-                                    augsynth$lambda_errors_se,
-                                    F)
-        min_1se_lambda <- choose_lambda(augsynth$lambdas,
-                                        augsynth$lambda_errors,
-                                        augsynth$lambda_errors_se,
-                                        T)
-        min_lambda_index <- which(augsynth$lambdas == min_lambda)
-        min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
-
-        p <- p + ggplot2::geom_point(
-            ggplot2::aes(x = min_lambda,
-                         y = augsynth$lambda_errors[min_lambda_index]),
-            color = "gold")
-        p + ggplot2::geom_point(
-            ggplot2::aes(x = min_1se_lambda,
-                         y = augsynth$lambda_errors[min_1se_lambda_index]),
-            color = "gold") +
-            ggplot2::theme_bw()
-        return(p)
-    } else if (plot_type == 'estimate only') {
-        p <- augsynth_plot_from_results(augsynth, inf_type = 'none')
-    } else if (plot_type == 'estimate') {
-        p <- augsynth_plot_from_results(augsynth, inf_type = inf_type)
-    } else if (grepl('placebo', plot_type)) {
-        p <- permutation_plot(augsynth, inf_type = inf_type)
-    } else if (plot_type == 'outcomes') {
-        p <- augsynth_outcomes_plot(augsynth, measure = 'synth')
-    } else if (plot_type == 'outcomes raw average') {
-        p <- augsynth_outcomes_plot(augsynth, measure = c('synth', 'average'))
-    }
-    return(p)
 }
 
 
@@ -272,20 +225,39 @@ RMSPE <- function( augsynth ) {
 #' @export
 treated_table <- function(augsynth) {
 
-    df <- get_long_data(augsynth)
+    if ( is.summary.augsynth( augsynth ) ) {
+        return( augsynth$treated_table )
+    }
 
-    lvls <- df %>%
-        group_by( !!sym(augsynth$time_var ), ever_Tx) %>%
-        summarise( Yavg = mean( Yobs ), .groups="drop" ) %>%
-        pivot_wider( names_from = ever_Tx, values_from = Yavg )
-    colnames(lvls)[2:3] <- c("raw_average", "Yobs")
+    # Calculate the time series of the treated, the synthetic control,
+    # and the overall donor pool average
+    trt_index <- which(augsynth$data$trt == 1)
+    df <- bind_cols(augsynth$data$X, augsynth$data$y)
+    synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
+    average_unit <- df[-trt_index, ] %>% colMeans()
+    treated_unit <- t(df[trt_index, ])
+    lvls = tibble(
+        time = as.numeric( colnames(df) ),
+        Yobs = as.numeric( treated_unit ),
+        Yhat = as.numeric( synth_unit ),
+        raw_average = as.numeric( average_unit )
+    )
+
+    #lvls <- df %>%
+    #    group_by( !!sym(augsynth$time_var ), ever_Tx) %>%
+    #    summarise( Yavg = mean( Yobs ), .groups="drop" ) %>%
+    #    pivot_wider( names_from = ever_Tx, values_from = Yavg )
+    #colnames(lvls)[2:3] <- c("raw_average", "Yobs")
 
     t0 <- ncol(augsynth$data$X)
     tpost <- ncol(augsynth$data$y)
     lvls$tx = rep( c(0,1), c( t0, tpost ) )
-    lvls$Yhat = predict( augsynth )
+    #lvls$Yhat = predict( augsynth )
     lvls$ATT = lvls$Yobs - lvls$Yhat
     lvls$rstat = lvls$ATT / sqrt( mean( lvls$ATT[ lvls$tx == 0 ]^2 ) )
+
+    lvls <- dplyr::relocate( lvls,
+                             time, tx, Yobs, Yhat, raw_average, ATT, rstat )
 
     return( lvls )
 }

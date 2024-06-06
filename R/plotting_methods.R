@@ -30,43 +30,19 @@
 #'          \item{"permutation"}{`permutation_inf`}
 #'         }
 #' @param ... Optional arguments
-#' @noRd
-plot_augsynth_results <- function(augsynth,
+plot_augsynth_results <- function( augsynth,
                           cv = FALSE, # ND note — not sure what this does?
                           plot_type = 'estimate',
                           inf_type = NULL, ...) {
 
-    if (is.null(inf_type) & !is.null(augsynth$results)) {
-        inf_type = augsynth$results$inf_type
-    } else if (is.null(inf_type) & is.null(augsynth$results)) {
-        # if no inf_type given for a basic (backwards compatible) augsynth object, set inf_type to conformal
-        inf_type = 'conformal'
+    stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
+
+    # Summarize object if needed.
+    if ( is.augsynth(augsynth) ) {
+        augsynth = summary(augsynth, inf_type=inf_type)
     }
 
-    # if inf_type is set to "none", then only return a raw treatment estimate or an outcomes plot (treated/synth trajectories)
-    if ((inf_type %in% c('None', 'none')) & (!grepl('outcomes', plot_type))) {
-        plot_type = 'estimate only'
-    }
-
-    # if the user specifies the "placebo" plot type without accompanying inference, default to placebo and show message
-    if ((plot_type == 'placebo') & (!inf_type %in% c('permutation', 'permutation_rstat'))) {
-        message('Placebo plots are only available for permutation-based inference. The plot shows results from "inf_type = "permutation""')
-        return(permutation_plot(augsynth, inf_type = 'permutation'))
-    }
-
-    if (is.null(inf_type)) {
-        if (!is.null(augsynth$results)) {
-            inf_type <- augsynth$results$inf_type
-        } else {
-            inf_type <- 'conformal'
-        }
-    }
-
-    if (is.null(augsynth$results)) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
-
-    if (cv == T) {
+    if (cv == TRUE) {
         errors = data.frame(lambdas = augsynth$lambdas,
                             errors = augsynth$lambda_errors,
                             errors_se = augsynth$lambda_errors_se)
@@ -104,11 +80,11 @@ plot_augsynth_results <- function(augsynth,
             ggplot2::theme_bw()
         return(p)
     } else if (plot_type == 'estimate only') {
-        p <- augsynth_plot_from_results(augsynth, inf_type = 'none')
+        p <- augsynth_plot_from_results(augsynth, ci = FALSE)
     } else if (plot_type == 'estimate') {
-        p <- augsynth_plot_from_results(augsynth, inf_type = inf_type)
+        p <- augsynth_plot_from_results(augsynth, ci = TRUE)
     } else if (grepl('placebo', plot_type)) {
-        p <- permutation_plot(augsynth, inf_type = inf_type)
+        p <- permutation_plot(augsynth, inf_type = augsynth$inf_type)
     } else if (plot_type == 'outcomes') {
         p <- augsynth_outcomes_plot(augsynth, measure = 'synth')
     } else if (plot_type == 'outcomes raw average') {
@@ -124,41 +100,27 @@ plot_augsynth_results <- function(augsynth,
 
 #' Plot function for summary function for augsynth
 #'
-#' @param x Summary object
+#' @param augsynth Summary object
 #' @param ... Optional arguments
 #'
 #' @noRd
 augsynth_plot_from_results <- function(augsynth,
-                                       plot_type = 'estimate',
-                                       inf_type = NULL, ...) {
+                                       ci = TRUE,
+                                       ...) {
 
-    stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
-
-    if (is.null(inf_type)) {
-        if (!is.null(augsynth$results)) {
-            inf_type <- augsynth$results$inf_type
-        } else {
-            inf_type <- 'conformal'
-        }
-    }
-
-    if (tolower(inf_type) == 'none') {
-        ci = F
+    pdat = NA
+    if ( is.augsynth(augsynth) ) {
+        pdat <- augsynth$results$att
     } else {
-        ci = T
+        # Summary object
+        pdat <- augsynth$att
     }
 
-    if (is.null(augsynth$results)) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    } else if (augsynth$results$inf_type != inf_type) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
-
-    p <- augsynth$results$att %>%
+    p <- pdat %>%
         ggplot2::ggplot(ggplot2::aes(x = Time, y = Estimate))
 
     if (ci) {
-        if(all(is.na(augsynth$results$att$lower_bound))) {
+        if(all(is.na(pdat$lower_bound))) {
             p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = Estimate - 2 * Std.Error,
                                                        ymax = Estimate + 2 * Std.Error),
                                           alpha = 0.2)
@@ -178,3 +140,58 @@ augsynth_plot_from_results <- function(augsynth,
     return(p)
 
 }
+
+
+
+
+
+
+
+
+#' Plot the original level of the outcome variable for the treated
+#' unit and its synthetic counterfactual
+#'
+#' @param augsynth Augsynth object to be plotted
+#' @param  measure Whether to plot the synthetic counterfactual or the
+#'   raw average of donor units.  Can list both if desired.
+#'
+#' @noRd
+augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
+
+    series = augsynth$treated_table
+
+    all_y = c(series$Yobs, series$Yhat, series$raw_average)
+    max_y <- max(all_y)
+    min_y <- min(all_y)
+
+    pt = which( series$tx == 1 )[[1]]
+    cut_time = (series$time[pt] + series$time[pt + 1]) / 2
+
+    p <- ggplot2::ggplot( series ) +
+        ggplot2::geom_line(aes(x = time, y = Yobs, linetype = as.character(augsynth$trt_unit)))
+
+    if ('synth' %in% measure) {
+        p <- p +
+            ggplot2::geom_line(aes(x = time, y = Yhat, linetype = 'Synthetic counterfactual'))
+    }
+
+    if ('average' %in% measure) {
+        p <- p +
+            ggplot2::geom_line(aes(x = time, y = raw_average, linetype = 'Donor raw average'))
+    }
+
+    p <- p +
+        ggplot2::labs(linetype = NULL,
+                      x = augsynth$time_var,
+                      y = 'Outcome') +
+        ggplot2::ylim(min_y, max_y) +
+        ggplot2::theme_bw() +
+        ggplot2::geom_vline(xintercept = cut_time, linetype = 'dashed') +
+        ggplot2::theme(legend.position = c(0.75, 0.88),
+                       legend.key = element_rect(fill = alpha("white", 0.5)),
+                       legend.background = element_rect(fill = alpha("white", 0)))
+
+    return(p)
+}
+
+

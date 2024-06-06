@@ -438,8 +438,26 @@ summary.augsynth <- function(object, inf_type = NULL, ...) {
     summ$time_tx = t0
     summ$donor_table = donor_table( augsynth )
 
+    summ$treated_table = treated_table( augsynth )
+
     class(summ) <- "summary.augsynth"
     return(summ)
+}
+
+
+
+
+#' Methods for accessing details of summary.augsynth object
+#'
+#' @param x summary.augsynth result object
+#'
+#' @rdname summary.augsynth_class
+#'
+#' @return is.summary.augsynth: TRUE if object is a augsynth object.
+#'
+#' @export
+is.summary.augsynth <- function(x) {
+    inherits(x, "summary.augsynth")
 }
 
 
@@ -599,43 +617,17 @@ print.summary.augsynth <- function(x, ...) {
 
 #' Plot function for summary function for augsynth
 #'
+#' @param x summary.augsynth object
+#' @inheritParams plot_augsynth_results
 #'
-#' @param x Summary object
-#' @param inf_type Type of inference to plot. If left NULL, inherits
-#'   from summary object.  If different from passed summary's stored
-#'   inference, will recalculate inference.
-#' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
+plot.summary.augsynth <- function(x,
+                                  plot_type = 'estimate',
+                                  ...) {
 
-    #plot.augsynth( x, inf_type=inf_type )
     summ <- x
 
-    if (tolower(inf_type) != 'none') {
-        inf = TRUE
-    } else{
-        inf = FALSE
-    }
-
-    p <- summ$att %>%
-        ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
-
-    if(inf) {
-        if(all(is.na(summ$att$lower_bound))) {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=Estimate-2*Std.Error,
-                                                       ymax=Estimate+2*Std.Error),
-                                          alpha=0.2)
-        } else {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin=lower_bound,
-                                                       ymax=upper_bound),
-                                          alpha=0.2)
-        }
-
-    }
-    p + ggplot2::geom_line() +
-        ggplot2::geom_vline(xintercept=summ$t_int, lty=2) +
-        ggplot2::geom_hline(yintercept=0, lty=2) +
-        ggplot2::theme_bw()
+    plot_augsynth_results( summ, plot_type = plot_type, ... )
 
 }
 
