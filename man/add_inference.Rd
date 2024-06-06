@@ -4,7 +4,7 @@
 \alias{add_inference}
 \title{Function to add inference to augsynth object}
 \usage{
-add_inference(object, inf_type = "conformal", ...)
+add_inference(object, inf_type = "conformal", linear_effect = F, ...)
 }
 \arguments{
 \item{object}{augsynth object}
@@ -17,6 +17,8 @@ add_inference(object, inf_type = "conformal", ...)
  \item{"permutation"}{Placebo permutation, raw ATT}
  \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
 }}
+
+\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
 
 \item{...}{Optional arguments for inference, for more details for each `inf_type` see
 \itemize{

@@ -57,6 +57,7 @@ test_that("Ridge ASCM gives the right answer", {
     ## level of balance is as expected
     expect_equal(.373, asyn$l2_imbalance, tolerance=1e-3)
 
+
 }
 )
 

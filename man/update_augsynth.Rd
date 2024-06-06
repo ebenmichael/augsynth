@@ -9,7 +9,10 @@ update_augsynth(augsynth, drop = 20)
 \arguments{
 \item{augsynth}{Augsynth object to be plotted}
 
-\item{drop}{Drop donor units, based on pre-treatment RMSPE or unit name(s)}
+\item{drop}{Drop donor units, based on pre-treatment RMSPE or unit
+name(s). Default of 20 means drop units with an RMSPE 20x higher
+than the treated unit.  Can also be a character vector of unit
+IDs to drop.}
 }
 \description{
 Return a new augsynth object with specified donor units removed

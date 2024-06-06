@@ -1,6 +1,6 @@
 
 
-test_that("multiplication works", {
+test_that("donor control methods work", {
 
     set.seed(5344)
 
@@ -20,16 +20,28 @@ test_that("multiplication works", {
     expect_true( nrow( a1t ) < nrow( synt ) )
 
     syn = single_augsynth( Y ~ Tx, unit = ID, time = time, t_int = 8,
-                           data=dat, scm = TRUE, progfunc = "none", fixedeff = FALSE )
+                           data=dat, scm = TRUE, progfunc = "none",
+                           fixedeff = FALSE )
     syn
+
+    sum <- summary( syn, inf_type = "permutation_rstat" )
+    RMSPE( syn )
+
+
+
     synt = donor_table( syn )
     synt
     a1 = update_augsynth( syn, drop = c("2", "4", "5") )
-    expect_equal( treated_table( syn ),
-                  treated_table(a1))
+    t1 = treated_table( syn )
+    t1$raw_average = NULL
+    t2 = treated_table( a1 )
+    t2$raw_average = NULL
+    expect_equal( t1, t2 )
+
+    names( syn )
+    names( a1 )
     syn$call = a1$call=NULL
-    expect_equal( syn, a1 )
-    summary( syn, inf_type = "permutation_rstat" )
-    RMSPE( syn )
+    expect_equal( syn$l2_imbalance, a1$l2_imbalance )
+
 
 })

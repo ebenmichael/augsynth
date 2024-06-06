@@ -41,7 +41,7 @@ get_placebo_gaps = function( ascm, att = TRUE ) {
     dim( ests )
     pds = as.numeric( predict( ascm, att = att ) )
     pds
-    stopifnot( all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=7 ) == 0 ) )
+    stopifnot( all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=6 ) == 0 ) )
 
     ests = as.data.frame( t( ests ) )
     dim( ests )

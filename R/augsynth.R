@@ -359,13 +359,19 @@ add_inference <- function(object, inf_type = "conformal", linear_effect = F, ...
 #### Summary methods ####
 
 
-#' Summary function for augsynth (returns fields calculated by
-#' `add_inference()`)
+#' Summary function for augsynth
+#'
+#' Summary summarizes an augsynth result by (usually) adding an
+#' inferential result, if that has not been calculated already, and
+#' calculating a few other summary statistics such as estimated bias.
+#' This method does this via `add_inference()`, if inference is
+#' needed.
 #'
 #' @param object augsynth object
 #'
-#' @param inf_type Type of inference algorithm. Inherits inf_type from
-#'   `object` or otherwise defaults to "conformal". Options are
+#' @param inf_type Type of inference algorithm. If left NULL, inherits
+#'   inf_type from `object` or otherwise defaults to "conformal."
+#'   Options are
 #'         \itemize{
 #'          \item{"conformal"}{Conformal inference (default)}
 #'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
@@ -379,7 +385,7 @@ add_inference <- function(object, inf_type = "conformal", linear_effect = F, ...
 #'          \item{"conformal"}{`conformal_inf`}
 #'          \item{"jackknife+"}{`time_jackknife_plus`}
 #'          \item{"jackknife"}{`jackknife_se_single`}
-#'          \item{"permutation"}{`permutation_inf`}
+#'          \item{"permutation", "permutation_rstat"}{`permutation_inf`}
 #'         }
 #' @export
 summary.augsynth <- function(object, inf_type = NULL, ...) {
@@ -439,6 +445,7 @@ summary.augsynth <- function(object, inf_type = NULL, ...) {
 
 
 #' Print function for summary function for augsynth
+#'
 #' @param x summary object
 #' @param ... Optional arguments
 #' @export
@@ -591,16 +598,23 @@ print.summary.augsynth <- function(x, ...) {
 
 
 #' Plot function for summary function for augsynth
+#'
+#'
 #' @param x Summary object
+#' @param inf_type Type of inference to plot. If left NULL, inherits
+#'   from summary object.  If different from passed summary's stored
+#'   inference, will recalculate inference.
 #' @param ... Optional arguments
 #' @export
-plot.summary.augsynth <- function(x, inf = NULL, inf_type = 'conformal', ...) {
+plot.summary.augsynth <- function(x, inf_type = 'conformal', ...) {
+
+    #plot.augsynth( x, inf_type=inf_type )
     summ <- x
 
     if (tolower(inf_type) != 'none') {
-        inf = T
+        inf = TRUE
     } else{
-        inf = F
+        inf = FALSE
     }
 
     p <- summ$att %>%
@@ -626,63 +640,6 @@ plot.summary.augsynth <- function(x, inf = NULL, inf_type = 'conformal', ...) {
 }
 
 
-
-#' Plot function for summary function for augsynth
-#'
-#' @param x Summary object
-#' @param ... Optional arguments
-#'
-#' @noRd
-augsynth_plot_from_results <- function(augsynth,
-                                       plot_type = 'estimate',
-                                       inf_type = NULL, ...) {
-
-    stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
-
-    if (is.null(inf_type)) {
-        if (!is.null(augsynth$results)) {
-            inf_type <- augsynth$results$inf_type
-        } else {
-            inf_type <- 'conformal'
-        }
-    }
-
-    if (tolower(inf_type) == 'none') {
-        ci = F
-    } else {
-        ci = T
-    }
-
-    if (is.null(augsynth$results)) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    } else if (augsynth$results$inf_type != inf_type) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
-
-    p <- augsynth$results$att %>%
-        ggplot2::ggplot(ggplot2::aes(x = Time, y = Estimate))
-
-    if (ci) {
-        if(all(is.na(augsynth$results$att$lower_bound))) {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = Estimate - 2 * Std.Error,
-                                                       ymax = Estimate + 2 * Std.Error),
-                                          alpha = 0.2)
-        } else {
-            p <- p + ggplot2::geom_ribbon(ggplot2::aes(ymin = lower_bound,
-                                                       ymax = upper_bound),
-                                          alpha = 0.2)
-        }
-
-    }
-    p <- p + ggplot2::geom_line() +
-        ggplot2::geom_vline(xintercept = augsynth$t_int, lty = 2) +
-        ggplot2::geom_hline(yintercept = 0, lty = 2) +
-        ggplot2::labs(x = augsynth$time_var) +
-        ggplot2::theme_bw()
-
-    return(p)
-
-}
 
 
 
