@@ -211,6 +211,41 @@ RMSPE <- function( augsynth ) {
 
 
 
+
+
+#' Get placebo distribution
+#'
+#' @param augsynth Augsynth object or summery object with permutation inference of some sort.
+#'
+#' @return Data frame holding the placebo distribution, one row per placebo unit and time point.
+#'
+#' @export
+placebo_distribution <- function( augsynth ) {
+    inf_type = NA
+    if ( is.summary.augsynth(augsynth) ) {
+        inf_type = augsynth$inf_type
+    } else if ( is.augsynth(augsynth) ) {
+        inf_type = augsynth$results$inf_type
+    } else {
+        stop( "Object must be an Augsynth object or summary object" )
+    }
+    if ( !is.null( inf_type ) && inf_type %in% c( "permutation", "permutation_rstat" ) ) {
+        if ( is.augsynth(augsynth) ) {
+            return( augsynth$results$permutations$placebo_dist )
+        } else {
+            return( augsynth$permutations$placebo_dist )
+        }
+    } else {
+        stop( "Placebo distribution only available for permutation inference" )
+    }
+}
+
+
+
+
+
+
+
 #' Return a summary data frame for the treated unit
 #'
 #' @param augsynth Augsynth object of interest
