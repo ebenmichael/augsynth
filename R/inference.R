@@ -236,9 +236,18 @@ conformal_inf_linear <- function(ascm, alpha = 0.05,
   grid_int <- seq(lm_out[1,1] - 2 * post_second,
                   lm_out[1,1] + 2 * post_second,
                   length.out = grid_size)
-  grid_slope <- seq(lm_out[2,1] - 4 * lm_out[2,2] * sqrt(tpost),
+  if(tpost == 2) {
+    warning(paste0("There are 2 post-treatment time periods, so a linear model has a perfect fit. A confidence interval for the slope may not be reasonable here."))
+    grid_slope <- seq(lm_out[2,1] - abs(lm_out[2,1]),
+                  lm_out[2,1] + abs(lm_out[2,1]),
+                  length.out = grid_size)
+  } else if(tpost <= 1) {
+    stop("There is only one post-treatment time period, so an intercept and a slope cannot be computed.")
+  } else {
+    grid_slope <- seq(lm_out[2,1] - 4 * lm_out[2,2] * sqrt(tpost),
                   lm_out[2,1] + 4 * lm_out[2,2] * sqrt(tpost),
                   length.out = grid_size)
+  }
 
   # test a null post-treatment effect
   new_wide_data <- wide_data
