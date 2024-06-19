@@ -1,21 +1,29 @@
+
 ################################################################################
 ## Main function for the augmented synthetic controls Method
 ################################################################################
 
 
 #' Fit Augmented SCM
+#'
+#' The general `augsynth()` method dispatches to `single_augsynth`,
+#' `augsynth_multiout`, or `multisynth` based on the number of
+#' outcomes and treatment times.  See documentation for these methods
+#' for further detail.
+#'
 #' @param form outcome ~ treatment | auxillary covariates
 #' @param unit Name of unit column
 #' @param time Name of time column
 #' @param data Panel data as dataframe
-#' @param t_int Time of intervention (used for single-period treatment only)
+#' @param t_int Time of intervention (used for single-period treatment
+#'   only)
 #' @param ... Optional arguments
 #' \itemize{
 #'   \item Single period augsynth with/without multiple outcomes
 #'     \itemize{
 #'       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
 #'       \item{"scm"}{Whether the SCM weighting function is used}
-#'       \item{"fixedeff"}{Whether to include a unit fixed effect, default F }
+#'       \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
 #'       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 #'     }
 #'   \item Multi period (staggered) augsynth
@@ -29,14 +37,16 @@
 #'          \item{"n_factors"}{Number of factors for interactive fixed effects, default does CV}
 #'         }
 #' }
-#' 
-#' @return augsynth object that contains:
+#'
+#' @return augsynth or multisynth object (depending on dispatch) that contains (among other things):
 #'         \itemize{
 #'          \item{"weights"}{weights}
 #'          \item{"data"}{Panel data as matrices}
 #'         }
+#'
+#' @seealso `single_augsynth`, `augsynth_multiout`, `multisynth`
 #' @export
-#' 
+#'
 augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
 
   call_name <- match.call()
@@ -44,7 +54,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
   form <- Formula::Formula(form)
   unit_quosure <- enquo(unit)
   time_quosure <- enquo(time)
-  
+
 
   ## format data
   outcome <- terms(formula(form, rhs=1))[[2]]
@@ -69,7 +79,7 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
     if("progfunc" %in% names(list(...))) {
       warning("`progfunc` is not an argument for multisynth, so it is ignored")
     }
-    return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...)) 
+    return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...))
   } else {
     if (is.null(t_int)) {
       t_int <- trt_time %>% filter(is.finite(trt_time)) %>%

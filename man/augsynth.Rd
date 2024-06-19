@@ -15,7 +15,8 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
 
 \item{data}{Panel data as dataframe}
 
-\item{t_int}{Time of intervention (used for single-period treatment only)}
+\item{t_int}{Time of intervention (used for single-period treatment
+only)}
 
 \item{...}{Optional arguments
 \itemize{
@@ -23,7 +24,7 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
     \itemize{
       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
       \item{"scm"}{Whether the SCM weighting function is used}
-      \item{"fixedeff"}{Whether to include a unit fixed effect, default F }
+      \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
     }
   \item Multi period (staggered) augsynth
@@ -39,12 +40,18 @@ augsynth(form, unit, time, data, t_int = NULL, ...)
 }}
 }
 \value{
-augsynth object that contains:
+augsynth or multisynth object (depending on dispatch) that contains (among other things):
         \itemize{
          \item{"weights"}{weights}
          \item{"data"}{Panel data as matrices}
         }
 }
 \description{
-Fit Augmented SCM
+The general `augsynth()` method dispatches to `single_augsynth`,
+`augsynth_multiout`, or `multisynth` based on the number of
+outcomes and treatment times.  See documentation for these methods
+for further detail.
+}
+\seealso{
+`single_augsynth`, `augsynth_multiout`, `multisynth`
 }

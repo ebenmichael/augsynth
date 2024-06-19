@@ -2,15 +2,38 @@
 % Please edit documentation in R/augsynth.R
 \name{summary.augsynth}
 \alias{summary.augsynth}
-\title{Summary function for augsynth}
+\title{Summary function for augsynth (returns fields calculated by
+`add_inference()`)}
 \usage{
+<<<<<<< master
+\method{summary}{augsynth}(object, inf_type = NULL, ...)
+=======
 \method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_effect = F, ...)
+>>>>>>> master
 }
 \arguments{
 \item{object}{augsynth object}
 
-\item{inf}{Boolean, whether to get confidence intervals around the point estimates}
+\item{inf_type}{Type of inference algorithm. Inherits inf_type from
+`object` or otherwise defaults to "conformal". Options are
+      \itemize{
+       \item{"conformal"}{Conformal inference (default)}
+       \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+       \item{"jackknife"}{Jackknife over units}
+       \item{"permutation"}{Placebo permutation, raw ATT}
+       \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+      }}
 
+<<<<<<< master
+\item{...}{Optional arguments for inference, for more details for
+each `inf_type` see
+      \itemize{
+       \item{"conformal"}{`conformal_inf`}
+       \item{"jackknife+"}{`time_jackknife_plus`}
+       \item{"jackknife"}{`jackknife_se_single`}
+       \item{"permutation"}{`permutation_inf`}
+      }}
+=======
 \item{inf_type}{Type of inference algorithm. Options are
 \itemize{
  \item{"conformal"}{Conformal inference (default)}
@@ -26,7 +49,9 @@
  \item{"jackknife+"}{`time_jackknife_plus`}
  \item{"jackknife"}{`jackknife_se_single`}
 }}
+>>>>>>> master
 }
 \description{
-Summary function for augsynth
+Summary function for augsynth (returns fields calculated by
+`add_inference()`)
 }

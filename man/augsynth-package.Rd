@@ -7,3 +7,7 @@
 \description{
 A package implementing the Augmented Synthetic Controls Method
 }
+\author{
+\strong{Maintainer}: Eli Ben-Michael \email{ebenmichael@berkeley.edu}
+
+}
