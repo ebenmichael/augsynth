@@ -13,9 +13,7 @@ Type of inference algorithm. Inherits inf_type from `object` or otherwise defaul
          \item{"If numeric"}{A multiple of the treated unit's RMSPE above which donor units will be dropped}
          \item{"If a character"}{The name or names of donor units to be dropped based on the `unit` parameter
           in the augsynth model}
-        }
-
-with an RMSPE of more than `drop` times the treated units' RMSPE from the donor plot. Defaults to 20x.}
+        }}
 
 \item{results}{Results from calling augsynth()}
 }

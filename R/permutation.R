@@ -41,7 +41,7 @@ get_placebo_gaps = function( ascm, att = TRUE ) {
     dim( ests )
     pds = as.numeric( predict( ascm, att = att ) )
     pds
-    stopifnot( all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=6 ) == 0 ) )
+    stopifnot( all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=7 ) == 0 ) )
 
     ests = as.data.frame( t( ests ) )
     dim( ests )
@@ -346,29 +346,36 @@ add_placebo_distribution <- function(augsynth) {
 #'          \item{"If a character"}{The name or names of donor units to be dropped based on the `unit` parameter
 #'           in the augsynth model}
 #'         }
-#'
-#' with an RMSPE of more than `drop` times the treated units' RMSPE from the donor plot. Defaults to 20x.
 #' @export
 permutation_plot <- function(augsynth, inf_type = 'permutation') {
 
-    if ( is.augsynth( augsynth ) ) {
-        augsynth = summary( augsynth, inf_type = inf_type )
+    if (!inf_type %in% c('permutation', 'permutation_rstat')) {
+        warning("Permutation plots are only available for `permutation` and `permutation_rstat` inference types")
+        return(NULL)
     }
-
-    inf_type = augsynth$inf_type
-    stopifnot(inf_type %in% c('permutation', 'permutation_rstat'))
 
     if(inf_type == 'permutation') {
         measure = "ATT"
+        y_lab = "Estimate (ATT)"
     } else {
         measure = 'rstat'
+        y_lab = "Estimate (RMPSE-adjusted ATT)"
     }
 
-    plot_df <- augsynth$permutations$placebo_dist %>%
+    if (is.summary.augsynth(augsynth)) {
+        placebo_dist <- augsynth$permutations$placebo_dist
+    } else if (is.null(augsynth$results$permutations)) {
+        augsynth <- add_placebo_distribution(augsynth)
+        placebo_dist <- augsynth$results$permutations$placebo_dist
+    } else {
+        placebo_dist <- augsynth$results$permutations$placebo_dist
+    }
+
+    plot_df <- placebo_dist %>%
         mutate(trt_status = factor(trt, levels = c(0, 1), labels = c('Control', 'Treatment')))
 
-    t0 <- augsynth$time_tx
-    treat_year = augsynth$t_int
+    t0 <- ncol(augsynth$data$X)
+    treat_year = augsynth$data$time[t0 + 1]
 
     out_plot <- ggplot2::ggplot(plot_df,
                                 aes(x = !!as.name(augsynth$time_var), y = !!as.name(measure),
@@ -378,63 +385,12 @@ permutation_plot <- function(augsynth, inf_type = 'permutation') {
         ggplot2::geom_hline(lty = 2, yintercept = 0) +
         ggplot2::scale_color_manual(values = c('Control' = 'gray', 'Treatment' = 'black')) +
         ggplot2::scale_linetype_manual(values = rep('solid', length(unique(plot_df %>% pull(!!as.name(augsynth$unit_var)))))) +
-        ggplot2::labs(color = NULL, y = 'Estimate') +
+        ggplot2::labs(color = NULL, y = y_lab) +
         ggplot2::guides(linetype = 'none') +
         ggplot2::theme_bw() +
         ggplot2::theme(legend.position = 'bottom')
 
     return(out_plot)
-}
-
-
-#' Generate augsynth plot with 95\% CI based on inference preference
-#'
-#' @param results Results from calling xxx
-#' @param inf_type Inference type (takes a value of 'permutation' or 'permutation_rstat')
-#'
-#' @noRd
-ci95_rstat_plot <- function(augsynth, inf_type) {
-
-    stopifnot(inf_type %in% c('permutation', 'permutation_rstat'))
-
-    if(inf_type == 'permutation') {
-        measure = "ATT"
-    } else {
-        measure = 'rstat'
-    }
-
-    if (is.null(augsynth$results$permutations)) {
-        augsynth <- add_placebo_distribution(augsynth)
-    }
-
-    plot_df <- augsynth$results$permutations$MDES_table
-
-    if (measure == 'ATT') {
-        plot_df <- plot_df %>%
-            mutate(lower = ATT + (qnorm(0.025) * SE_gap),
-                   upper = ATT + (qnorm(0.975) * SE_gap),
-            )
-    } else if (measure == 'rstat') {
-        plot_df <- plot_df %>%
-            mutate(lower = ATT + (qnorm(0.025) * SE_rstat),
-                   upper = ATT + (qnorm(0.975) * SE_rstat),
-            )
-    }
-
-    t0 <- ncol(augsynth$data$X)
-    treat_year = augsynth$data$time[t0 + 1]
-
-    outplot <- ggplot2::ggplot(data = plot_df, aes(x = !!as.name(augsynth$time_var))) +
-        ggplot2::geom_ribbon(data = plot_df %>% filter(!!as.name(augsynth$time_var) >= treat_year),
-                             aes(ymin = lower, ymax = upper), alpha = 0.2) +
-        ggplot2::geom_line(aes(y = ATT)) +
-        ggplot2::geom_vline(lty = 2, xintercept = treat_year) +
-        ggplot2::geom_hline(lty = 2, yintercept = 0) +
-        #ggplot2::scale_color_manual(values = c('Control' = 'gray', 'Treatment' = 'black')) +
-        ggplot2::labs(color = NULL, y = 'Estimate') +
-        ggplot2::theme_bw()
-
-    return(outplot)
 }
 
 

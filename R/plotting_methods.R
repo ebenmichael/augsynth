@@ -31,7 +31,7 @@
 #'         }
 #' @param ... Optional arguments
 plot_augsynth_results <- function( augsynth,
-                          cv = FALSE, # ND note — not sure what this does?
+                          cv = FALSE,
                           plot_type = 'estimate',
                           inf_type = NULL, ...) {
 
@@ -151,12 +151,16 @@ augsynth_plot_from_results <- function(augsynth,
 #' Plot the original level of the outcome variable for the treated
 #' unit and its synthetic counterfactual
 #'
-#' @param augsynth Augsynth object to be plotted
+#' @param augsynth Augsynth object or augsynth summary object to be plotted
 #' @param  measure Whether to plot the synthetic counterfactual or the
 #'   raw average of donor units.  Can list both if desired.
 #'
 #' @noRd
 augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
+
+    if (!is.summary.augsynth(augsynth)) {
+        augsynth <- summary(augsynth)
+    }
 
     series = augsynth$treated_table
 
@@ -187,9 +191,10 @@ augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
         ggplot2::ylim(min_y, max_y) +
         ggplot2::theme_bw() +
         ggplot2::geom_vline(xintercept = cut_time, linetype = 'dashed') +
-        ggplot2::theme(legend.position = c(0.75, 0.88),
-                       legend.key = element_rect(fill = alpha("white", 0.5)),
-                       legend.background = element_rect(fill = alpha("white", 0)))
+        ggplot2::theme(legend.position = 'bottom',
+                       legend.key = ggplot2::element_rect(fill = scales::alpha("white", 0.5)),
+                       legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0))
+                       )
 
     return(p)
 }

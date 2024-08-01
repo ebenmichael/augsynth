@@ -60,9 +60,11 @@ print.augsynth <- function(x, ...) {
 #' @param ... Optional arguments
 #' @export
 plot.augsynth <- function(augsynth,
-                          cv = FALSE, # ND note — not sure what this does?
+                          cv = FALSE,
                           plot_type = 'estimate',
                           inf_type = NULL, ...) {
+
+    message("Plotting augsynth objects may slow execution time. For faster results, plot from an augsynth summary object using plot.summary.augsynth()")
 
     if (is.null(inf_type) & !is.null(augsynth$results)) {
         inf_type = augsynth$results$inf_type

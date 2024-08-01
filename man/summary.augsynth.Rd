@@ -4,7 +4,7 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(object, inf_type = NULL, ...)
+\method{summary}{augsynth}(object, inf_type = "conformal", ...)
 }
 \arguments{
 \item{object}{augsynth object}

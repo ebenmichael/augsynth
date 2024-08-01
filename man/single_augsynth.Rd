@@ -14,7 +14,6 @@ single_augsynth(
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
-  inf_type = "none",
   ...
 )
 }
@@ -42,15 +41,6 @@ causalimpact=Bayesian structural time series with CausalImpact}
 \item{fixedeff}{Whether to include a unit fixed effect, default F}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
-
-\item{inf_type}{Type of inference algorithm. Options are
-\itemize{
- \item{"conformal"}{Conformal inference (default)}
- \item{"jackknife+"}{Jackknife+ algorithm over time periods}
- \item{"jackknife"}{Jackknife over units}
- \item{"permutation"}{Placebo permutation, raw ATT}
- \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
-}}
 
 \item{...}{optional arguments for outcome model}
 

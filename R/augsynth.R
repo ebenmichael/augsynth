@@ -21,21 +21,6 @@
 #' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #' @param plot Whether or not to return a plot of the augsynth model
-#' @param inf_type Type of inference algorithm. Options are
-#'         \itemize{
-#'          \item{"conformal"}{Conformal inference (default)}
-#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
-#'          \item{"jackknife"}{Jackknife over units}
-#'          \item{"permutation"}{Placebo permutation, raw ATT}
-#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
-#'         }
-#' @param ... Optional arguments for inference, for more details for each `inf_type` see
-#'         \itemize{
-#'          \item{"conformal"}{`conformal_inf`}
-#'          \item{"jackknife+"}{`time_jackknife_plus`}
-#'          \item{"jackknife"}{`jackknife_se_single`}
-#'          \item{"permutation"}{`permutation_inf`}
-#'         }
 #' @return augsynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -51,7 +36,6 @@ single_augsynth <- function(form, unit, time, t_int, data,
                             scm=T,
                             fixedeff = FALSE,
                             cov_agg=NULL,
-                            inf_type= 'none', #c( 'none', "conformal", "jackknife+", "jackknife", "permutation", "permutation_rstat"),
                             ...) {
 
     call_name <- match.call()
@@ -99,10 +83,6 @@ single_augsynth <- function(form, unit, time, t_int, data,
     augsynth$raw_data <- data
     augsynth$form <- form
     augsynth$cov_agg <- cov_agg
-
-    if (tolower(inf_type) != 'none') {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
 
     return(augsynth)
 }
@@ -388,31 +368,19 @@ add_inference <- function(object, inf_type = "conformal", linear_effect = F, ...
 #'          \item{"permutation", "permutation_rstat"}{`permutation_inf`}
 #'         }
 #' @export
-summary.augsynth <- function(object, inf_type = NULL, ...) {
+summary.augsynth <- function(object, inf_type = 'conformal', ...) {
     augsynth <- object
 
     t0 <- ncol(augsynth$data$X)
     t_final <- t0 + ncol(augsynth$data$y)
 
-    if (is.null(inf_type)) {
-        if (!is.null(augsynth$results)) {
-            inf_type <- augsynth$results$inf_type
-        } else {
-            inf_type <- 'conformal'
-        }
-    }
-    if (is.null(augsynth$results)) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    } else if (augsynth$results$inf_type != inf_type) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
+    augsynth <- add_inference(augsynth, inf_type = inf_type)
 
     # Copy over all of OG object except for data
     nms = names(augsynth)
     nms = nms[!nms %in% c("data", "raw_data", "results")]
     summ <- augsynth$results
     summ <- c( summ, augsynth[nms] )
-
 
     ## get estimated bias
 

@@ -5,7 +5,7 @@
 \title{Return a summary data frame donor units used in the model with
 their synthetic weights.}
 \usage{
-donor_table(augsynth, include_RMSPE = FALSE, zap_weights = 1e-07)
+donor_table(augsynth, include_RMSPE = TRUE, zap_weights = 1e-07)
 }
 \arguments{
 \item{augsynth}{Augsynth object to be plotted}

@@ -19,7 +19,7 @@
 #' @param zap_weights all weights smaller than this value will be set
 #'   to zero. Set to NULL to keep all weights.
 #' @export
-donor_table <- function(augsynth, include_RMSPE = FALSE, zap_weights = 0.0000001 ) {
+donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 ) {
 
     trt_index <- which(augsynth$data$trt == 1)
     unit_var <- augsynth$unit_var
