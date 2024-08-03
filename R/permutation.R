@@ -350,8 +350,7 @@ add_placebo_distribution <- function(augsynth) {
 permutation_plot <- function(augsynth, inf_type = 'permutation') {
 
     if (!inf_type %in% c('permutation', 'permutation_rstat')) {
-        warning("Permutation plots are only available for `permutation` and `permutation_rstat` inference types")
-        return(NULL)
+        stop("Permutation plots are only available for `permutation` and `permutation_rstat` inference types")
     }
 
     if(inf_type == 'permutation') {

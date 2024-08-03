@@ -13,36 +13,28 @@ syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc = "Ridge", scm = 
 
 test_that("All plot types for plot.summary.augsynth() are working", {
 
-    test_results <- c()
-
     for (it in c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat')){
         s_syn <- summary(syn, inf_type = it)
         for (pt in c('estimate only', 'estimate', 'placebo', 'outcomes', 'outcomes raw average')) {
             if((!it %in% c('permutation', 'permutation_rstat')) & (pt == 'placebo')) {
-                invisible()
+                expect_error(plot(s_syn, plot_type = pt))
             } else {
                 p <- plot(s_syn, plot_type = pt)
-                result <- 'ggplot' %in% class(p)
-                test_results <- c(test_results, result)
+                expect_true('ggplot' %in% class(p))
             }
         }
     }
 
-    expect_true(all(test_results))
 })
 
 test_that("All plot types for plot.augsynth() are working", {
 
-    test_results <- c()
-
     for (it in c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat')){
         for (pt in c('estimate only', 'estimate', 'placebo', 'outcomes', 'outcomes raw average')) {
             p <- plot(syn, plot_type = pt, inf_type = it)
-            result <- 'ggplot' %in% class(p)
-            test_results <- c(test_results, result)
+            expect_true('ggplot' %in% class(p))
         }
     }
 
-    expect_true(all(test_results))
 })
 

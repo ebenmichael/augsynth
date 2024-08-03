@@ -100,8 +100,7 @@ update_augsynth <- function(augsynth, drop = 20){
                              progfunc = augsynth$progfunc,
                              scm = augsynth$scm,
                              fixedeff = augsynth$fixedeff,
-                             cov_agg = augsynth$cov_agg,
-                             inf_type = inf_type
+                             cov_agg = augsynth$cov_agg
     )
 
     return(new_augsynth)

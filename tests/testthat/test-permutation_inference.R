@@ -23,9 +23,11 @@ table( basque$trt, basque$regionno )
 test_that( "MDES_table corresponds to default treatment table", {
 
     syn <- augsynth(gdpcap ~ trt, regionno, year,
-                    data=basque, scm = TRUE, inf_type = "permutation" )
+                    data=basque, scm = TRUE)
 
-    mm <- syn$results$permutations$MDES_table[1:7] %>%
+    summ <- summary(syn, inf_type = 'permutation')
+
+    mm <- summ$permutations$MDES_table[1:7] %>%
         select( sort( names(.)))
     mm
     tt <- treated_table(syn) %>%
@@ -36,8 +38,6 @@ test_that( "MDES_table corresponds to default treatment table", {
                   as.data.frame(mm)[c("ATT","raw_average","Yhat", "tx")] )
 
 
-    syn
-    expect_equivalent(!is.null(syn$results), TRUE)
     gaps <- augsynth:::get_placebo_gaps(syn)
 
     n_unit = length(unique(basque$regionno))
