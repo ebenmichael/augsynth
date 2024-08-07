@@ -4,29 +4,35 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_effect = F, ...)
+\method{summary}{augsynth}(object, inf_type = "conformal", ...)
 }
 \arguments{
 \item{object}{augsynth object}
 
-\item{inf}{Boolean, whether to get confidence intervals around the point estimates}
+\item{inf_type}{Type of inference algorithm. If left NULL, inherits
+inf_type from `object` or otherwise defaults to "conformal."
+Options are
+      \itemize{
+       \item{"conformal"}{Conformal inference (default)}
+       \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+       \item{"jackknife"}{Jackknife over units}
+       \item{"permutation"}{Placebo permutation, raw ATT}
+       \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
+      }}
 
-\item{inf_type}{Type of inference algorithm. Options are
-\itemize{
- \item{"conformal"}{Conformal inference (default)}
- \item{"jackknife+"}{Jackknife+ algorithm over time periods}
- \item{"jackknife"}{Jackknife over units}
-}}
-
-\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
-
-\item{...}{Optional arguments for inference, for more details for each `inf_type` see
-\itemize{
- \item{"conformal"}{`conformal_inf`}
- \item{"jackknife+"}{`time_jackknife_plus`}
- \item{"jackknife"}{`jackknife_se_single`}
-}}
+\item{...}{Optional arguments for inference, for more details for
+each `inf_type` see
+      \itemize{
+       \item{"conformal"}{`conformal_inf`}
+       \item{"jackknife+"}{`time_jackknife_plus`}
+       \item{"jackknife"}{`jackknife_se_single`}
+       \item{"permutation", "permutation_rstat"}{`permutation_inf`}
+      }}
 }
 \description{
-Summary function for augsynth
+Summary summarizes an augsynth result by (usually) adding an
+inferential result, if that has not been calculated already, and
+calculating a few other summary statistics such as estimated bias.
+This method does this via `add_inference()`, if inference is
+needed.
 }

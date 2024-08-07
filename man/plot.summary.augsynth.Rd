@@ -4,12 +4,18 @@
 \alias{plot.summary.augsynth}
 \title{Plot function for summary function for augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, inf = T, ...)
+\method{plot}{summary.augsynth}(x, plot_type = "estimate", ...)
 }
 \arguments{
-\item{x}{Summary object}
+\item{x}{summary.augsynth object}
 
-\item{inf}{Boolean, whether to plot confidence intervals}
+\item{plot_type}{The stylized plot type to be returned. Options include
+\itemize{
+  \item{"estimate"}{The ATT and 95\% confidence interval}
+  \item{"estimate only"}{The ATT without a confidence interval}
+  \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
+  \item{"outcomes raw average"}{The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.}
+  \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}  }}
 
 \item{...}{Optional arguments}
 }

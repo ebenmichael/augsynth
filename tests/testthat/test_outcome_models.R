@@ -10,7 +10,7 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
     filter(regionno != 1)
 
 
-                            
+
 test_that("Augmenting synth with glmnet runs", {
 
     if(!requireNamespace("glmnet", quietly = TRUE)) {
@@ -24,7 +24,7 @@ test_that("Augmenting synth with glmnet runs", {
 
     ## should run because glmnet is installed
     expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="EN", scm=T),
-                 NA)    
+                 NA)
 }
 )
 
@@ -43,7 +43,7 @@ test_that("Augmenting synth with random forest runs", {
 
     ## should run because randomForest is installed
     expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="RF", scm=T),
-                 NA)    
+                 NA)
 }
 )
 
@@ -54,7 +54,7 @@ test_that("Augmenting synth with gsynth runs and produces the correct result", {
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         ## should fail because gsynth isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, 
+        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque,
                               progfunc="GSYN", scm=T),
                      "you must install the gsynth package")
 
@@ -64,13 +64,13 @@ test_that("Augmenting synth with gsynth runs and produces the correct result", {
 
     ## should run because gsynth is installed
     expect_error(
-      augsynth(gdpcap ~ trt, regionno, year, basque, 
+      augsynth(gdpcap ~ trt, regionno, year, basque,
                                 progfunc = "GSYN", scm = T, CV = 0, r = 4),
       NA)
     asyn_gsyn <- augsynth(gdpcap ~ trt, regionno, year, basque,
                           progfunc = "GSYN", scm = F, CV = 0, r = 4)
-    expect_equal(summary(asyn_gsyn, inf = F)$average_att$Estimate, 
-                 -0.1444637, tolerance=1e-4) 
+    expect_equal(summary(asyn_gsyn, inf_type = 'none')$average_att$Estimate,
+                 -0.1444637, tolerance=1e-4)
 }
 )
 
@@ -85,10 +85,10 @@ test_that("Augmenting synth with MCPanel runs", {
     } else {
         ## should run because MCPanel is installed
         expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
-                     NA)    
+                     NA)
     }
 
-    
+
 }
 )
 
@@ -108,6 +108,6 @@ test_that("Augmenting synth with CausalImpact runs", {
 
     ## should run because CausalImpact is installed
     expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="CausalImpact", scm=T),
-                 NA)    
+                 NA)
 }
 )

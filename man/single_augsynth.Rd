@@ -32,7 +32,7 @@ single_augsynth(
 ridge=Ridge regression (allows for standard errors),
 none=No outcome model,
 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-mcp=MCPanel, 
+mcp=MCPanel,
 cits=Comparitive Interuppted Time Series
 causalimpact=Bayesian structural time series with CausalImpact}
 
@@ -43,6 +43,8 @@ causalimpact=Bayesian structural time series with CausalImpact}
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 
 \item{...}{optional arguments for outcome model}
+
+\item{plot}{Whether or not to return a plot of the augsynth model}
 }
 \value{
 augsynth object that contains:
