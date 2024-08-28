@@ -11,13 +11,15 @@ test_that("Donor control - high RMSPE multiple doesn't drop any units", {
 })
 
 test_that("Donor control drops the correct units based on 1.5x RMSPE", {
+
     dtable <- donor_table(syn)
     trt_RMSPE <- add_inference(syn, inf_type = 'permutation')$results$permutations$placebo_dist %>%
         filter(time < syn$t_int) %>%
         filter(ID == 1) %>%
         pull(RMSPE) %>% unique()
 
-    drop_units <- dtable %>% filter(RMSPE > trt_RMSPE * 1.5) %>% # should drop units with ID 3, 8, and 11 based on 1.5x treated RMSPE
+    drop_units <- dtable %>%
+        filter(RMSPE > trt_RMSPE * 1.5) %>% # should drop units with ID 3, 8, and 11 based on 1.5x treated RMSPE
         pull(ID)
 
     syn3 <- update_augsynth(syn, drop = 1.5)
