@@ -155,6 +155,9 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
     ## get weights
     total_ctrls <- n0 * J
     weights <- matrix(out$x[1:total_ctrls], nrow = n0)
+    # manually enforce non-negativity constraint
+    # (osqp solver only enforces constraint up to a tolerance)
+    weights <- pmax(weights, 0)
     nj0 <- as.numeric(lapply(Xc, nrow))
     nj0cumsum <- c(0, cumsum(nj0))
     imbalance <- vapply(1:J,
