@@ -112,7 +112,7 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
 
 
     augsynth <- fit_augsynth_internal(wide_bal, synth_data, Z, progfunc, 
-                                      scm, fixedeff, V = V, ...)
+                                      scm, fixedeff = F, V = V, ...)
 
     # potentially add back in fixed effects
     augsynth$mhat <- mhat# + augsynth$mhat
@@ -336,12 +336,12 @@ summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", g
     if(inf) {
         if(inf_type == "conformal") {
           if(grid_size > 1) {
-            warning(paste0("A grid size of ", grid_size, " will require ",
+            cat(paste0("A grid size of ", grid_size, " will require ",
                            grid_size, "^", length(object$outcomes),
                            " = ", grid_size ^ length(object$outcomes),
                            " evaluations. This could take a while..."))
           }
-          att_se <- conformal_inf_multiout(object, ...)
+          att_se <- conformal_inf_multiout(object, grid_size = grid_size, ...)
         } else {
           stop("Only conformal inference is supported for multiple outcomes")
         }
@@ -540,7 +540,7 @@ plot.augsynth_multiout  <- function(x, inf = T, plt_avg = F, ...) {
 #' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
 #' 
 #' @export
-plot.summary.augsynth_multiout <- function(x, inf = T, plt_avg = F, ...) {
+plot.summary.augsynth_multiout <- function(x, inf = F, plt_avg = F, ...) {
     if(plt_avg) {
       p <- x$att %>%
         ggplot2::ggplot(ggplot2::aes(x=Time, y=Estimate))
