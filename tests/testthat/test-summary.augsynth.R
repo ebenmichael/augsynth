@@ -5,7 +5,7 @@ n_units <- 12
 n_time <- 10
 
 dat = augsynth:::make_synth_data( n_time = n_time, n_U = 5, N = n_units, long_form = TRUE, tx_impact = 2, tx_shift = 1 )
-syn = augsynth( Y ~ Tx | X1 + X2 + X3 + X4 + X5, unit = ID, time = time, data = dat)
+syn = augsynth( Y ~ Tx | X1 + X2 + X3 + X4 + X5, unit = ID, time = time, data = dat, progfunc="none")
 
 test_that("summary.augsynth works", {
 

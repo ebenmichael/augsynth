@@ -2,7 +2,7 @@
 % Please edit documentation in R/augsynth.R
 \name{plot.summary.augsynth}
 \alias{plot.summary.augsynth}
-\title{Plot function for summary function for augsynth}
+\title{Plot results from summarized augsynth}
 \usage{
 \method{plot}{summary.augsynth}(x, plot_type = "estimate", ...)
 }
@@ -20,5 +20,10 @@
 \item{...}{Optional arguments}
 }
 \description{
-Plot function for summary function for augsynth
+Make a variety of plots, depending on plot_type.  Default is to
+plot impacts with associated uncertainty (if present).  Other
+options are estimates with no uncertainty ("estimate only"), the
+level of outcome ("outcomes"), level of outcomes with the raw trend
+as well ("outcomes raw average"), and the classic spagetti plot
+("placebo").
 }

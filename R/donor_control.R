@@ -21,6 +21,8 @@
 #' @export
 donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 ) {
 
+    stopifnot( is.augsynth(augsynth) )
+
     trt_index <- which(augsynth$data$trt == 1)
     unit_var <- augsynth$unit_var
 
@@ -29,7 +31,9 @@ donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 
         weight = as.numeric(augsynth$weights) )
     names(tbl)[[1]] = unit_var
 
+    # If RMPSEs already exist, or flag says to calculate them, then calculate them
     if ( include_RMSPE || (!is.null(augsynth$results) && augsynth$results$inf_type %in% c("permutation", "permutation_rstat")) ) {
+
         if (is.null(augsynth$results) || (!(augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) ) ) {
             augsynth <- add_inference(augsynth, inf_type = 'permutation')
         }

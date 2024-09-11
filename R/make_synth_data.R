@@ -6,7 +6,9 @@
 #' A synthetic data simulator
 #'
 #' This generates data with time shocks that interact with the unit
-#' latent factors.  It also gives a unit fixed effect and a time fixed
+#' latent factors.
+#'
+#' It also gives a unit fixed effect and a time fixed
 #' effect.
 #'
 #' @param n_time Number of time periods
@@ -34,21 +36,25 @@ make_synth_data = function(n_U, N, n_time, N_tx = 1, n_post = 3,
     stopifnot( N_tx < N )
     stopifnot( n_post < n_time )
 
+    ## (1) Make latent factors for units
+
     # Make correlation structure for latent factors
     Sigma = matrix(0.15, nrow = n_U, ncol = n_U)
     diag(Sigma) = 1
     #solve(Sigma)
     U = MASS::mvrnorm(N, mu = rep(1, n_U), Sigma = Sigma)
-    U = abs( U )
+    #U = abs( U )
     U = cbind( U, 1 )
-    U[1,] = sd_unit_fe * U[1,]
+    U[,1] = sd_unit_fe * U[,1]
     #U
     #summary(U)
     U[1:N_tx,1:n_U] = U[1:N_tx,1:n_U] + tx_shift
 
-    # The time varying component, with the first row being an intercept
+
+    # (2) Make the time varying component, with the first row being an
+    # intercept
     shocks = matrix(rnorm(n_U * n_time, sd=sd_time), nrow = n_U)
-    shocks = abs( shocks )
+    #shocks = abs( shocks )
     shocks = rbind( 1, shocks )
     #shocks[1, ] = 2 * sort(shocks[1, ])
     #shocks[2, ] = sort(shocks[2, ])

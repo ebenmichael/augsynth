@@ -543,7 +543,7 @@ print.summary.augsynth <- function(x, ...) {
 
     rng = range( summ$donor_table$weight[ summ$donor_table$weight > 1/(1000*summ$n_unit) ] )
     cat( sprintf( "%d donor units used with weights of %.3f to %.3f\n",
-                  sum( summ$donor_table$weight > 1/(1000*summ$n_unit) ), rng[[1]], rng[[2]] ) )
+                  sum( abs(summ$donor_table$weight) > 1/(1000*summ$n_unit) ), rng[[1]], rng[[2]] ) )
     cat(out_msg)
 
 
@@ -583,7 +583,14 @@ print.summary.augsynth <- function(x, ...) {
 
 
 
-#' Plot function for summary function for augsynth
+#' Plot results from summarized augsynth
+#'
+#' Make a variety of plots, depending on plot_type.  Default is to
+#' plot impacts with associated uncertainty (if present).  Other
+#' options are estimates with no uncertainty ("estimate only"), the
+#' level of outcome ("outcomes"), level of outcomes with the raw trend
+#' as well ("outcomes raw average"), and the classic spagetti plot
+#' ("placebo").
 #'
 #' @param x summary.augsynth object
 #' @inheritParams plot_augsynth_results
