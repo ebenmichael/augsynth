@@ -21,6 +21,14 @@
 #' @export
 donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 ) {
 
+    if ( is.summary.augsynth( augsynth ) ) {
+        if ( !is.null( augsynth$donor_table ) ) {
+            return( augsynth$donor_table )
+        } else {
+            stop( "Call donor_table on original result from augsynth() or a permutation-inference summary" )
+        }
+    }
+
     stopifnot( is.augsynth(augsynth) )
 
     trt_index <- which(augsynth$data$trt == 1)

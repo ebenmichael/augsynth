@@ -1,10 +1,10 @@
 ---
 output: rmarkdown::html_vignette
 vignette: >
-    %\VignetteIndexEntry{MultiSynth Vignette}
+%\VignetteIndexEntry{MultiSynth Vignette}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
-title: "Permutation inference for the `augsynth` package"
+    title: "Permutation inference for the `augsynth` package"
 subtitle: Replicating Abadie et al. (2010)
 editor_options: 
   chunk_output_type: console
@@ -50,7 +50,7 @@ set.seed(1234)
 
 # Project Overview
 
-This notebook demonstrates the functionality of several extensions to the `augsynth` package, using the data and analytic context laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf). The package extensions include the option to use permutation-based inference with models generated using the `augsynth()` function. In addition, the changes expand the plotting options available for `augsynth` objects.
+This vignette demonstrates the functionality of several extensions to the `augsynth` package, using the data and analytic context laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf). The package extensions include the option to use permutation-based inference with models generated using the `augsynth()` function. In addition, the changes expand the plotting options available for `augsynth` objects.
 
 ## Summary of changes
 
@@ -125,7 +125,7 @@ synth.out <- synth(
     Maxiter.ipop = 1e10,
     Margin.ipop = 0.05,
     Sigf.ipop = 8,
-    genoud = T
+    genoud = TRUE
 )
 ```
 
@@ -213,17 +213,7 @@ syn <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
                 time = year,
                 data = tobacco_70
                 #progfunc = "none", scm=TRUE
-                )
-
-# Basic SCM with inference added during model execution
-syn_rstat <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
-                      unit = state,
-                      time = year,
-                      data = tobacco_70,
-                      inf_type = 'permutation_rstat' # "conformal", "jackknife", "jackknife+", "permutation",
-                      #progfunc = "none", scm = TRUE
 )
-
 ```
 
 ### Summmarizing results
@@ -259,44 +249,32 @@ ggplot(all_results, aes(x = Time, y = Estimate, color = name)) +
 ```
 
 
-If an `augsynth` already has inference details stored in `augsynth$results` and an inference type is not specified, the summary method will return the existing inference. Otherwise, the summary will default to using conformal inference (`inf_type = 'conformal'`)
-
-```{r, cache=TRUE}
-summary(syn_rstat)$inf_type
-summary(syn)$inf_type
-summary(syn, inf_type = 'jackknife')$inf_type
-```
-
-In addition to using `summary()`, a user can update or replace the inference type of an augsynth model using `add_inference()`.
-
-```{r add_inference demo, cache=TRUE}
-syn_new <- add_inference(syn, inf_type = 'jackknife')
-syn_new$results %>% attributes()
-```
-
 ### Permutation inference
 
 Adding permutation inference (via `inf_type = "permutation"` or `inf_type = "permutation_rstat"`) will return information about the 95% confidence interval, as well as other data generated from the raw placebo tests. Placebo results can be gotten via the `placebo_distribution()` method:
 
 ```{r show_perm_inference}
+syn_rstat = summary( syn, inf_type = "permutation_rstat" )
 placebo_distribution( syn_rstat )
 ```
 
 
 ### Plotting `augsynth` models
 
-The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the permuted ATTs from placebo tests, when appropriate. Like the updates to `summary.augsynth()`, changes to `plot.augsynth()` use the inferential features of the provided `augsynth` object, or otherwise allow users to specify the desired inferential feature. 
+Generally one should plot the summarized `augsynth` model, as the summary has the inferenence. 
+The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the permuted ATTs from placebo tests, when appropriate.
 
-If `plot()` is called on a model object without additional arguments, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
+If `plot()` is called on a summarized model object without additional arguments, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
+You can directly call plot on the original, pre-summarized, result, but this is not recommended as it will then have to calculate the inference on the fly:
 
 ```{r fig.width=4.5, fig.height=3.25}
 plot(syn) + labs(title = 'Conformal inference (default)')
 ```
 
-Setting `plot_type = "placebo"` with inference types of `permutation` or `permutation_rstat` will return a plot showing each placebo test. Otherwise, for other inference types, it will return only the ATT estimate. 
+Setting `plot_type = "placebo"` on a summary with inference types of `permutation` or `permutation_rstat` will return a plot showing each placebo test. Otherwise, for other inference types, it will return only the ATT estimate. 
 
 ```{r fig.width=4.5, fig.height=4}
-plot(syn, 
+plot(syn_rstat, 
      plot_type = 'placebo',
      inf_type = 'permutation',
 ) + ggtitle("Replication of Abadie et al. (2010), Figure 4")
@@ -304,7 +282,7 @@ plot(syn,
 
 
 ```{r  fig.width=4.5, fig.height=3.25}
-p <- plot(syn, plot_type = 'estimate only') + ggtitle("Replication of Abadie et al. (2010), Figure 3")
+p <- plot(syn_rstat, plot_type = 'estimate only') + ggtitle("Replication of Abadie et al. (2010), Figure 3")
 ```
 
 ```{r Format figures 3 comparison, echo=FALSE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
@@ -337,7 +315,7 @@ plot(syn_rstat, plot_type="outcomes raw average")
 The `donor_table()` function will return a summary dataframe with the RMSPE and synthetic weight for each of the donor units.
 
 ```{r}
-donor_table(syn) %>%
+donor_table(syn_rstat) %>%
     arrange( -abs(weight) )
 ```
 
@@ -352,17 +330,20 @@ Updated augsynth models inherit the inference type, formula, and data structure 
 
 ```{r Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
-    plot(plot_type = 'placebo', inf_type = 'permutation') + 
+    summary( inf_type = 'permutation' ) %>%
+    plot(plot_type = 'placebo' ) + 
     ggtitle("Replication of Abadie et al. (2010), Figure 5") + ylim(-51, 91) + 
     annotate('text', y = -48, x = 1970, label = "Removes donors with 20x California's  pre-treatment RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
 update_augsynth(syn, drop = 5) %>% 
-    plot(plot_type = 'placebo', inf_type = 'permutation') + 
+    summary( inf_type = 'permutation' ) %>%
+    plot(plot_type = 'placebo') + 
     ggtitle("Replication of Abadie et al. (2010), Figure 6") + ylim(-51, 91) + 
     annotate('text', y = -48, x = 1970, label = "Removes donors with 5x California's pre-treatment RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
 update_augsynth(syn, drop = 2) %>% 
-    plot(plot_type = 'placebo', inf_type = 'permutation') + 
+    summary( inf_type = 'permutation' ) %>%
+    plot(plot_type = 'placebo') + 
     ggtitle("Replication of Abadie et al. (2010), Figure 7") + ylim(-51, 91) + 
     annotate('text', y = -48, x = 1970, label = "Removes donors with 2x California's pre-treatment  RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
@@ -375,6 +356,8 @@ drop_states <- c("Iowa", "Arizona", "Alabama", "Illinois", "Indiana", "Idaho", "
                  "New Mexico", "Texas", "Utah", "North Dakota", "South Dakota", "Vermont", 
                  "Wisconsin", "West Virginia", "Wyoming", "Tennessee", "Pennsylvania")
 
-update_augsynth(syn, drop = drop_states) %>% plot(plot_type = 'placebo', inf_type = 'permutation') 
+update_augsynth(syn, drop = drop_states) %>% 
+    summary( inf_type = 'permutation' ) %>%
+    plot(plot_type = 'placebo') 
 ```
 
