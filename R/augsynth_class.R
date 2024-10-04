@@ -270,7 +270,8 @@ treated_table <- function(augsynth) {
     # and the overall donor pool average
     trt_index <- which(augsynth$data$trt == 1)
     df <- bind_cols(augsynth$data$X, augsynth$data$y)
-    synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
+    # synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
+    synth_unit <- predict(augsynth)
     average_unit <- df[-trt_index, ] %>% colMeans()
     treated_unit <- t(df[trt_index, ])
     lvls = tibble(
