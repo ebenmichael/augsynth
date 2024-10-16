@@ -17,7 +17,7 @@
 #'                 mcp=MCPanel,
 #'                 cits=Comparitive Interuppted Time Series
 #'                 causalimpact=Bayesian structural time series with CausalImpact
-#' @param scm Whether the SCM weighting function is used
+#' @param scm Whether the SCM weighting function is used.  If FALSE, then package will fit the outcome model, but not calculate new donor weights to match pre-treatment covariates.  Instead, each donor unit will be equally weighted.  If TRUE, weights on donor pool will be calculated.
 #' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #' @param plot Whether or not to return a plot of the augsynth model
@@ -120,19 +120,25 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
         progfunc = "none"
     }
     progfunc = tolower(progfunc)
+
     ## fit augsynth
     if(progfunc == "ridge") {
         # Ridge ASCM
         augsynth <- do.call(fit_ridgeaug_formatted,
                             list(wide_data = fit_wide,
                                  synth_data = fit_synth_data,
-                                 Z = Z, V = V, scm = scm, ...))
+                                 Z = Z, V = V,
+                                 ridge = TRUE, scm = scm, ...))
     } else if(progfunc == "none") {
         ## Just SCM
+        if ( !scm ) {
+            stop( "Cannot run with progfunc='none' AND no SCM weights" )
+        }
         augsynth <- do.call(fit_ridgeaug_formatted,
                             c(list(wide_data = fit_wide,
                                    synth_data = fit_synth_data,
-                                   Z = Z, ridge = F, scm = T, V = V, ...)))
+                                   Z = Z, V = V,
+                                   ridge = FALSE, scm = scm, ...)))
     } else {
         ## Other outcome models
         progfuncs = c("ridge", "None", "en", "rf", "gsyn", "mcp",

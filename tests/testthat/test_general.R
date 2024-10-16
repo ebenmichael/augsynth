@@ -14,11 +14,13 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
 
 test_that("SCM gives the right answer", {
 
-    syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=T, t_int=1975)
-
+    syn <- single_augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=TRUE, t_int=1975)
+    sss = summary(syn, inf_type = 'none')
     ## average att estimate is as expected
-    expect_equal(-.3686, mean(summary(syn, inf_type = 'none')$att$Estimate), tolerance=1e-4)
+    expect_equal(-.3686,
+                 mean(sss$att$Estimate), tolerance=1e-4)
 
+    expect_equal( syn$progfunc, "none" )
 
     ## level of balance is as expected
     expect_equal(.377, syn$l2_imbalance, tolerance=1e-3)
@@ -26,8 +28,33 @@ test_that("SCM gives the right answer", {
     expect_equal( dim( syn ), c( 17, 43 ) )
     expect_equal( n_unit( syn ), 17 )
     expect_equal( n_time( syn ), 43 )
-}
-)
+
+    # Try progfunc not defined.  Get different answer?
+    syn2 <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
+                            scm=TRUE, t_int=1975)
+
+    expect_equal( syn2$progfunc, "ridge" )
+    ss = summary( syn2, inf_type = "none" )
+    # different answers
+    expect_true( sd( ss$att$Estimate - sss$att$Estimate ) > 0.2 )
+
+
+    # No SCM and no progfunc does what?
+    # TODO:
+    sraw <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
+                            progfunc="none", scm=FALSE, t_int=1975)
+    sumraw = summary( sraw, inf_type="none" )
+    sumraw$donor_table
+
+
+    sraw2 <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
+                            progfunc="none", scm=TRUE, t_int=1975)
+    sumraw2 = summary( sraw2, inf_type="none" )
+    sumraw2$donor_table
+    sumraw2$weights - sumraw$weights
+
+
+})
 
 test_that("SCM finds the correct t_int and gives the right answer", {
 
@@ -66,21 +93,21 @@ test_that("Ridge ASCM gives the right answer", {
 
 test_that("SCM after residualizing covariates gives the right answer", {
 
-  covsyn_resid <- augsynth(gdpcap ~ trt | invest + popdens,
-                      regionno, year, basque,
-                      progfunc = "None", scm = T,
-                      residualize = T)
+    covsyn_resid <- augsynth(gdpcap ~ trt | invest + popdens,
+                             regionno, year, basque,
+                             progfunc = "None", scm = T,
+                             residualize = T)
 
-  ## average att estimate is as expected
-  expect_equal(-.1443,
-                mean(summary(covsyn_resid, inf_type = 'none')$att$Estimate),
-                tolerance = 1e-3)
+    ## average att estimate is as expected
+    expect_equal(-.1443,
+                 mean(summary(covsyn_resid, inf_type = 'none')$att$Estimate),
+                 tolerance = 1e-3)
 
-  ## level of balance is as expected
-  expect_equal(.3720, covsyn_resid$l2_imbalance, tolerance=1e-3)
+    ## level of balance is as expected
+    expect_equal(.3720, covsyn_resid$l2_imbalance, tolerance=1e-3)
 
-  # perfect auxiliary covariate balance
-  expect_equal(0, covsyn_resid$covariate_l2_imbalance, tolerance=1e-3)
+    # perfect auxiliary covariate balance
+    expect_equal(0, covsyn_resid$covariate_l2_imbalance, tolerance=1e-3)
 
 }
 )
@@ -88,9 +115,9 @@ test_that("SCM after residualizing covariates gives the right answer", {
 test_that("Ridge ASCM with covariates jointly gives the right answer", {
 
     covsyn_noresid <- augsynth(gdpcap ~ trt | invest + popdens,
-                       regionno, year, basque,
-                       progfunc = "None", scm = T,
-                       residualize = F)
+                               regionno, year, basque,
+                               progfunc = "None", scm = T,
+                               residualize = F)
 
     ## average att estimate is as expected
     expect_equal(-.3345,
@@ -111,10 +138,10 @@ test_that("Ridge ASCM with covariates jointly gives the right answer", {
 test_that("Ridge ASCM after residualizing covariates gives the right answer", {
 
     covascm_resid <- augsynth(gdpcap ~ trt | invest + popdens,
-                       regionno, year, basque,
-                       progfunc = "Ridge", scm = T,
-                       lambda = 1,
-                       residualize = T)
+                              regionno, year, basque,
+                              progfunc = "Ridge", scm = T,
+                              lambda = 1,
+                              residualize = T)
 
     ## average att estimate is as expected
     expect_equal(-.123,
@@ -133,10 +160,10 @@ test_that("Ridge ASCM after residualizing covariates gives the right answer", {
 test_that("Ridge ASCM with covariates jointly gives the right answer", {
 
     covascm_noresid <- augsynth(gdpcap ~ trt | invest + popdens,
-                       regionno, year, basque,
-                       progfunc = "Ridge", scm = T,
-                       lambda = 1,
-                       residualize = F)
+                                regionno, year, basque,
+                                progfunc = "Ridge", scm = T,
+                                lambda = 1,
+                                residualize = F)
 
     ## average att estimate is as expected
     expect_equal(-.267,
@@ -156,9 +183,9 @@ test_that("Ridge ASCM with covariates jointly gives the right answer", {
 test_that("Warning given when inputting an unused argument", {
 
     expect_warning(
-      augsynth(gdpcap ~ trt| invest + popdens, regionno, year, basque,
-               progfunc="Ridge", scm=T, lambda=8, t_int = 1975,
-               bad_param = "Unused input parameter"),
+        augsynth(gdpcap ~ trt| invest + popdens, regionno, year, basque,
+                 progfunc="Ridge", scm=T, lambda=8, t_int = 1975,
+                 bad_param = "Unused input parameter"),
     )
 })
 
