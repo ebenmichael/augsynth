@@ -14,7 +14,8 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
 
 test_that("SCM gives the right answer", {
 
-    syn <- single_augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="None", scm=TRUE, t_int=1975)
+    syn <- single_augsynth( gdpcap ~ trt, regionno, year, basque,
+                            progfunc="None", scm=TRUE, t_int=1975)
     sss = summary(syn, inf_type = 'none')
     ## average att estimate is as expected
     expect_equal(-.3686,
@@ -39,12 +40,12 @@ test_that("SCM gives the right answer", {
     expect_true( sd( ss$att$Estimate - sss$att$Estimate ) > 0.2 )
 
 
-    # No SCM and no progfunc does what?
-    # TODO:
-    sraw <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
-                            progfunc="none", scm=FALSE, t_int=1975)
-    sumraw = summary( sraw, inf_type="none" )
-    sumraw$donor_table
+    # No SCM and no progfunc throws an error?
+    expect_error( sraw <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
+                            progfunc="none", scm=FALSE, t_int=1975) )
+
+    #sumraw = summary( sraw, inf_type="none" )
+    #sumraw$donor_table
 
 
     sraw2 <- single_augsynth(gdpcap ~ trt, regionno, year, basque,

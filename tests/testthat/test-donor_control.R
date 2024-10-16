@@ -4,7 +4,7 @@ set.seed(7393)
 dat = augsynth:::make_synth_data( n_time = 10, n_U = 5, N = 12, long_form = TRUE, tx_impact = 2, tx_shift = 1 )
 # ggplot( dat, aes( time, Y, group=ID ) ) + geom_line()
 
-syn = augsynth( Y ~ Tx | X1, unit = ID, time = time, data = dat, fixedeff = TRUE, scm = TRUE, progfunc = "none" )
+syn = augsynth( Y ~ Tx | X1, unit = ID, time = time, data = dat, fixedeff = TRUE, progfunc = "none" )
 
 test_that("Donor control - high RMSPE multiple doesn't drop any units", {
     syn2 <- update_augsynth(syn, drop = 1000)
@@ -50,7 +50,7 @@ test_that("Donor control drops the correct units based on RMSPE", {
     # Check that we get the same model parameters from dropping units manually
     dat_tmp <- dat %>% filter(!ID %in% drop_units)
     syn_manual <- augsynth( Y ~ Tx | X1, unit = ID, time = time, data = dat_tmp,
-                            fixedeff = TRUE, scm = TRUE, progfunc = "none" )
+                            fixedeff = TRUE, progfunc = "none" )
     s_syn_manual <- summary(syn_manual)
     s_syn3 <- summary(syn3)
 
@@ -79,7 +79,9 @@ test_that("Donor control drops the correct units based on unit names", {
 
     # Check that we get the same model parameters from dropping units manually
     dat_tmp <- dat %>% filter(!ID %in% drop_units)
-    syn_manual <- augsynth( Y ~ Tx | X1, unit = ID, time = time, data = dat_tmp, fixedeff = TRUE, scm = FALSE, progfunc = "none" )
+    syn_manual <- augsynth( Y ~ Tx | X1, unit = ID, time = time,
+                            data = dat_tmp, fixedeff = TRUE,
+                            progfunc = "none" )
     s_syn_manual <- summary(syn_manual)
     s_syn4 <- summary(syn4)
 
