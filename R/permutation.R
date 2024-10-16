@@ -100,7 +100,7 @@ swap_treat_unit = function (wide_data, Z, i) {
 calculate_MDES_table = function( lest, treat_year, tx_col, time_col ) {
 
 
-    stopifnot( all( c(  tx_col, "trt", time_col, "ATT" ) %in%
+    stopifnot("Entity by year estimates (`lest`) are missing one of the following necessary features: `tx_col`, 'trt', `time_col`, or 'ATT'" =  all( c(  tx_col, "trt", time_col, "ATT" ) %in%
                         names( lest ) ) )
 
     RMSPEs = calculate_RMSPE( lest, treat_year, tx_col, time_col )
@@ -174,7 +174,7 @@ calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
 #'
 #' Given a list of impact estimates (all assumed to be estimating a
 #' target impact of 0), calculate the modified standard deviation by
-#' looking an in inner-quartile range rather than the simple standard
+#' looking an in inter-quartile range rather than the simple standard
 #' deviation.  This reduces the effect of small numbers of extreme
 #' outliers, and focuses on central variation.  This then gets
 #' converted to a standard error (standard deviation of the results,
@@ -191,10 +191,10 @@ calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
 #'   interpolate quantiles using R's quantile function.
 #'
 #' @noRd
-estimate_robust_SE = function( placebo_estimates, k = NULL, beta=NULL,
+estimate_robust_SE = function( placebo_estimates, k = NULL, beta = NULL,
                                round_beta = FALSE ) {
 
-    stopifnot( is.null(k) != is.null( beta ) )
+    stopifnot("Either `k` or `beta` must be NULL." = is.null(k) != is.null( beta ) )
 
     n = length( placebo_estimates )
 
@@ -287,7 +287,7 @@ add_placebo_distribution <- function(augsynth) {
     units$weights[ units$ever_Tx == 1 ] = 0
 
     # confirm that we have placebos for every entity over every observed time period
-    stopifnot((ncol(augsynth$data$X) + ncol(augsynth$data$y)) * nrow(augsynth$data$y) == nrow(lest))
+    stopifnot("Placebos do not cover every entity over every observed time period." = (ncol(augsynth$data$X) + ncol(augsynth$data$y)) * nrow(augsynth$data$y) == nrow(lest))
 
     lest = rename( lest, !!as.name(augsynth$unit_var) := ID )
 
