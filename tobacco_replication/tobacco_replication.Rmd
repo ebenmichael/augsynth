@@ -81,12 +81,6 @@ While the general intuition of Abadie et al.'s analysis can be replicated using 
 ```{r import tobacco data, include=FALSE}
 # Get working data CA and 38 control states 
 Wk.data <- read.dta(here::here("./tobacco_replication/data/smoking_wkdata_39.dta"))
-
-# load in "Rest of US" data (computed from 50 states) for figure 1
-RestUS.50 <- read.dta(here::here("./tobacco_replication/data/restofus_50.dta"))
-
-# this data is used for table 1, where we average the 38 control states
-RestUS.38 <- read.dta(here::here("./tobacco_replication/data/restofus_38.dta"))
 ```
 
 ```{r Synth dataprep and model, echo=FALSE, cache=TRUE, include=FALSE}

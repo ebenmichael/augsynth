@@ -91,3 +91,26 @@ test_that("Donor control drops the correct units based on unit names", {
 
 })
 
+
+test_that("`update_augsynth` returns the same basic SCM in cases when updates are not applied", {
+
+    syn1 <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
+                     progfunc = "None", scm = T)
+    syn2 <- update_augsynth(syn1, Inf) # dropping based on RMSPE multiple
+    syn3 <- update_augsynth(syn1, "") # dropping based on unit names
+
+    # test that weights are the same
+    expect_equal(syn2$weights, syn3$weights)
+    expect_equal(syn1$weights, syn2$weights)
+
+    # test that ATTs are the same
+    summ1 <- summary(syn1)
+    summ2 <- summary(syn2)
+    summ3 <- summary(syn3)
+    expect_equal(summ2$att['Estimate'], summ3$att['Estimate'])
+    expect_equal(summ1$att['Estimate'], summ2$att['Estimate'])
+})
+
+
+
+
