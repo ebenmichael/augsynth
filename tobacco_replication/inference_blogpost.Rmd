@@ -49,34 +49,45 @@ set.seed(1234)
 ```
 
 
-There are many competing types of inference in the Synthetic Control world, which rely on a variety of different sets of assumptions that researchers can get quite agitated about.
-In this post, we are going to re-analyze the famous "Tobacco example" originally laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf), using some cool new features we recently added to the `augsynth` package.
+There are many competing approaches to inference in the Synthetic Control world, and these apporaches rely on a variety of different sets of assumptions that researchers can get quite agitated about.
+In this post, we are going to compare some of these approaches by re-analyzing the famous "Tobacco example" originally laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf) using some cool new features we recently added to the `augsynth` package.
 
-The synthetic control approach has two major steps.
+As a tiny bit of background, the synthetic control approach has two major steps.
 The first step is to generate the synthetic control.
-Intuitively, this consists of using some sort of algorithm to reweight a set of possible "donor" units so that their weighted average "looks like" the target treated unit, usually with respect to the treated unit's pre-treatment outcome trajectory.
+Intuitively, this consists of using some sort of algorithm to reweight a set of possible "donor" units so that their weighted average "looks like" the target treated unit, usually with respect to the treated unit's pre-treatment outcome trajectory and possibly some other baseline covariates besides.
 There are an ever-increasing variety of ways one might do this, which we will discuss a bit more below.
-The second step is to figure out how to conduct inference: we have deliberately manufactured a "synthetic" unit to look like our treated unit, and now we want to know if the difference in their behaviors post-treatment could be due to random chance, or something structural like a treatment effect.
+Once you have your synthetic control, you estimate treatment impacts as the difference in the treated outcome and the synthetic control outcome for each post-treatment time period.
 
-In terms of R packages to do all of this for you, we note two contenders.
+With synthetic control and treatment impacts in hand, the second step is to figure out how to conduct inference: we have deliberately manufactured a "synthetic" unit to look like our treated unit, and now we want to know if the difference in their behaviors post-treatment could be due to random chance, or something structural like a treatment effect.
+
+
+## A note on different packages and approaches
+
+In terms of R packages for synthetic control, we know of two contenders.
 The first is the `Synth` package, which has the algoirthm and approach outlined in the seminal Abadie et al. (2010).
 The second is the newer `augsynth` package, that offers a variety of different methods for building a synthetic comparison, and in fact _does not_ offer the exact same option used in `Synth`.
 Nevertheless, we can fairly closely mimic the spirit of the "Original Synth" with `augsynth`, which gets us fairly close to the same results, as measured by Figures 2--7 in the 2010 paper, even though we are using a slightly different algorithm.
+The `augsynth` package also offers a wider array of inference approaches which, as of the latest update, includes the permutation approach advocated for by the original Synth papers.
+Before diving into inference, we first discuss how Synth and augsynth are different.
 
-So what is the difference?
-In short, unlike the `augsynth` package, the `Synth` package used in Abadie et al.'s analysis balances lagged outcomes *and* auxiliary covariates in selecting synthetic weights.
+To use the `Synth` package, you specify a set of features you want to match on, and a separate set of pre-treatment "test" outcomes to assess performance on, and then the package will find the best weighting of the match features that produces the closest matched synthetic control as measured by the specified pre-treatment "test" outcomes.
+This results in two sets of weights, the "V" weights, which weight the possible match variables, and the match weights, which weight the donor units.
+This approach makes it easy to include both lagged outcomes *and* auxiliary covariates, as the V weights will essentially rescale covariates to optimize tradeoffs between which covariates to prioritize when building a match.
+
+The `augsynth` package, by contrast, directly finds unit weights to minimize the mean squared difference of all pre-treatment outcome periods and any additional covariates.
+The scaling of match covariates can be done as a pre-processing step, but is not done within the package.
+Instead of focusing on V weights, the `augsynth` package allows for balance correction via a (usually ridge) regression step.
+This can help regularize weights so, in the case of rich donor unit contexts, more donor units can be included in the synthetic match.
+
+<!--We primarily focus on the 
 The Rmd version of this notebook includes `Synth` code to generate Abadie et al.'s results with a high degree of fidelity (with the resulting `Synth`-based plots shown adjacent to analogous output from `augsynth` models).
+-->
 
 
 ```{r import tobacco data, include=FALSE}
 # Get working data CA and 38 control states 
 Wk.data <- read.dta(here::here("./tobacco_replication/data/smoking_wkdata_39.dta"))
 
-# load in "Rest of US" data (computed from 50 states) for figure 1
-RestUS.50 <- read.dta(here::here("./tobacco_replication/data/restofus_50.dta"))
-
-# this data is used for table 1, where we average the 38 control states
-RestUS.38 <- read.dta(here::here("./tobacco_replication/data/restofus_38.dta"))
 ```
 
 ```{r Synth dataprep and model, echo=FALSE, cache=TRUE, include=FALSE}
@@ -179,11 +190,13 @@ gap_plot
 
 ### Model setup
 
-We can now execute an `augsynth` model with or without inference. Inference options include those already included in the package (`conformal`, `jackknife`, `jackknife+`), but also `permutation` and `permutation_rstat` (RMSPE-adjusted permutation inference), which are calculated using placebo tests. 
+The `augsynth` package divides the two steps into two function calls.
+To get a synthetic control, we call `augsynth()`. 
+To get inference, we call `summary()`.
 
-All inference results, similar to those previously returned by `summmary.augsynth()`, are stored in `augsynth$results` by default when the `inf_type` argument is specified. 
+Here we do our first step of getting our synthetic control:
 
-```{r reformat tobacco data using tidyverse, echo=FALSE}
+```{r reformat tobacco data using tidyverse, include = FALSE}
 tobacco <- Wk.data %>%
     mutate(treated = ifelse((name == 'California') &
                                 (year > 1988), 1, 0),
@@ -194,19 +207,30 @@ tobacco <- Wk.data %>%
 tobacco_70 <- tobacco %>% filter(year >= 1970) # subset data to 1970 forward to avoid issues due to missingess of outcomes
 ```
 
-Note that if we use `progfunc = "none"` and `scm = TRUE` then the results deviate more strongly from the tobacco paper, but if we allow augsynth to do its default bias removal, we more closely replicate the paper:
 
 ```{r run tobacco model using augsynth}
 # Basic SCM with covariates
 syn <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
                 unit = state,
                 time = year,
-                data = tobacco_70
-                #progfunc = "none", scm=TRUE
-)
+                data = tobacco_70 )
 ```
 
-### Summmarizing results
+The default `augsynth()` call conducts bias removal via a ridge regression.
+You can prevent it, which is closer in spirit to the Abadie approach, by including `progfunc = "none"`.
+However, in this case, dropping the bias removal gives results that deviate more strongly from the tobacco paper, but if we allow augsynth to do its default bias removal, we more closely replicate the paper.
+We hypothesize that the bias removal is serving the role of adjusting for the measured covariates and handling the variable importance weights (the bias removal being a regression that will naturally weight some variables more than others).
+Without that step, all the pre-treatment outcomes and weights are included equally.
+
+
+
+### Getting our inference
+
+We get our inference via summarizing.
+Inference options include those already included in the package (`conformal`, `jackknife`, `jackknife+`), but also `permutation` and `permutation_rstat` (RMSPE-adjusted permutation inference), which are calculated using placebo tests. 
+
+All inference results, similar to those previously returned by `summmary.augsynth()`, are stored in `augsynth$results` by default when the `inf_type` argument is specified. 
+
 
 Calling `summary()` on an `augsynth` object can now accommodate an expanded range of inference types. 
 

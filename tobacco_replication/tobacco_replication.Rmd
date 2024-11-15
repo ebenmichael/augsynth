@@ -86,6 +86,10 @@ Wk.data <- read.dta(here::here("./tobacco_replication/data/smoking_wkdata_39.dta
 ```{r Synth dataprep and model, echo=FALSE, cache=TRUE, include=FALSE}
 ### Run Baseline Model
 
+# Notes
+# `retprice` is the state average retail price of cigarettes (in cents)
+# `K1_r_15_24` is the share of the state population aged 15-24
+
 dataprep.out <- dataprep(
     foo = Wk.data,
     predictors = c("retprice", "xxincome", "K1_r_15_24"),

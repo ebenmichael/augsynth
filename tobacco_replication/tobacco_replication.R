@@ -26,8 +26,8 @@ library(augsynth)
 data(kansas)
 
 ## For the Abadie plots
-replication_theme <- theme_bw(base_family = "Times New Roman") + 
-    theme(panel.grid = element_blank(), 
+replication_theme <- theme_bw(base_family = "Times New Roman") +
+    theme(panel.grid = element_blank(),
           legend.background = element_rect(color = 'black'),
           legend.spacing.y = unit(0.0, 'pt'),
           legend.box.margin = margin(t = 5, r = 5, unit = 'pt'),
@@ -37,7 +37,7 @@ set.seed(1234)
 
 
 ## ----import tobacco data, include=FALSE------------------------------------------------------
-# Get working data CA and 38 control states 
+# Get working data CA and 38 control states
 Wk.data <- read.dta(here::here("./tobacco_replication/data/smoking_wkdata_39.dta"))
 
 # load in "Rest of US" data (computed from 50 states) for figure 1
@@ -167,26 +167,26 @@ syn <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
 
 
 ## ----plot augsynth kansas models, echo=FALSE, cache=TRUE, fig.width=8, fig.height=4.5--------
-all_results <- bind_rows(Conformal = summary(syn, inf_type = 'conformal')$att, 
-                         Jackknife = summary(syn, inf_type = 'jackknife')$att, 
-                         `Jackknife+` = summary(syn, inf_type = 'jackknife+')$att, 
-                         Permutation = summary(syn, inf_type = 'permutation')$att, 
-                         `Permutation (rstat)` = summary(syn, inf_type = 'permutation_rstat')$att, 
-                         .id = 'name') %>% 
-    mutate(name = factor(name, 
-                         levels = c('Conformal', 'Jackknife', 'Jackknife+', "Permutation", "Permutation (rstat)"), 
+all_results <- bind_rows(Conformal = summary(syn, inf_type = 'conformal')$att,
+                         Jackknife = summary(syn, inf_type = 'jackknife')$att,
+                         `Jackknife+` = summary(syn, inf_type = 'jackknife+')$att,
+                         Permutation = summary(syn, inf_type = 'permutation')$att,
+                         `Permutation (rstat)` = summary(syn, inf_type = 'permutation_rstat')$att,
+                         .id = 'name') %>%
+    mutate(name = factor(name,
+                         levels = c('Conformal', 'Jackknife', 'Jackknife+', "Permutation", "Permutation (rstat)"),
                          ordered = T))
 
-ggplot(all_results, aes(x = Time, y = Estimate, color = name)) + 
-    geom_hline(yintercept = 0, linetype = 'solid') + 
-    geom_vline(xintercept = syn$t_int, linetype = 'dashed') + 
+ggplot(all_results, aes(x = Time, y = Estimate, color = name)) +
+    geom_hline(yintercept = 0, linetype = 'solid') +
+    geom_vline(xintercept = syn$t_int, linetype = 'dashed') +
     geom_line() +
-    geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound, fill = name), alpha = 0.2, size = 0.1) + 
-    facet_wrap(. ~ name) + 
-    scale_x_continuous(breaks = seq(1970, 2010, 5)) + 
-    labs(x = 'Year', y = 'Gap in per-capita cigarette sales\n(in packs)', 
+    geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound, fill = name), alpha = 0.2, size = 0.1) +
+    facet_wrap(. ~ name) +
+    scale_x_continuous(breaks = seq(1970, 2010, 5)) +
+    labs(x = 'Year', y = 'Gap in per-capita cigarette sales\n(in packs)',
          caption = 'ND replication: augsynth package') +
-    scale_color_manual(values = c('red', 'blue', 'darkgreen', 'purple', 'orange'), 
+    scale_color_manual(values = c('red', 'blue', 'darkgreen', 'purple', 'orange'),
                        guide = 'none', aesthetics = c('color', 'fill')) +
     theme_bw() +
     theme(plot.caption = element_text(hjust = 0, color = 'darkseagreen', size = 9))
@@ -202,7 +202,7 @@ plot(syn) + labs(title = 'Conformal inference (default)')
 
 
 ## ----fig.width=4.5, fig.height=4-------------------------------------------------------------
-plot(syn_rstat, 
+plot(syn_rstat,
      plot_type = 'placebo',
      inf_type = 'permutation',
 ) + ggtitle("Replication of Abadie et al. (2010), Figure 4")
@@ -218,13 +218,13 @@ p
 
 
 ## ----fig.width=4.5, fig.height=4-------------------------------------------------------------
-p <- plot(syn_rstat, plot_type = 'outcomes') + 
+p <- plot(syn_rstat, plot_type = 'outcomes') +
     ggtitle("Replication of Abadie et al. (2010), Figure 2")
 
 
 ## ----Format figures 2 comparison, echo=FALSE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6----
 path_plot
-p 
+p
 
 
 ## ----Outcomes plot with average, echo=TRUE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6----
@@ -239,30 +239,30 @@ donor_table(syn_rstat) %>%
 ## ----Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6----
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
     summary( inf_type = 'permutation' ) %>%
-    plot(plot_type = 'placebo' ) + 
-    ggtitle("Replication of Abadie et al. (2010), Figure 5") + ylim(-51, 91) + 
+    plot(plot_type = 'placebo' ) +
+    ggtitle("Replication of Abadie et al. (2010), Figure 5") + ylim(-51, 91) +
     annotate('text', y = -48, x = 1970, label = "Removes donors with 20x California's  pre-treatment RMSPE",
-             hjust = 0, color = 'darkseagreen', size = 3) 
-update_augsynth(syn, drop = 5) %>% 
+             hjust = 0, color = 'darkseagreen', size = 3)
+update_augsynth(syn, drop = 5) %>%
     summary( inf_type = 'permutation' ) %>%
-    plot(plot_type = 'placebo') + 
-    ggtitle("Replication of Abadie et al. (2010), Figure 6") + ylim(-51, 91) + 
+    plot(plot_type = 'placebo') +
+    ggtitle("Replication of Abadie et al. (2010), Figure 6") + ylim(-51, 91) +
     annotate('text', y = -48, x = 1970, label = "Removes donors with 5x California's pre-treatment RMSPE",
-             hjust = 0, color = 'darkseagreen', size = 3) 
-update_augsynth(syn, drop = 2) %>% 
+             hjust = 0, color = 'darkseagreen', size = 3)
+update_augsynth(syn, drop = 2) %>%
     summary( inf_type = 'permutation' ) %>%
-    plot(plot_type = 'placebo') + 
-    ggtitle("Replication of Abadie et al. (2010), Figure 7") + ylim(-51, 91) + 
+    plot(plot_type = 'placebo') +
+    ggtitle("Replication of Abadie et al. (2010), Figure 7") + ylim(-51, 91) +
     annotate('text', y = -48, x = 1970, label = "Removes donors with 2x California's pre-treatment  RMSPE",
-             hjust = 0, color = 'darkseagreen', size = 3) 
+             hjust = 0, color = 'darkseagreen', size = 3)
 
 
 ## ----permutation without states, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6----
-drop_states <- c("Iowa", "Arizona", "Alabama", "Illinois", "Indiana", "Idaho", "Connecticut", 
-                 "New Mexico", "Texas", "Utah", "North Dakota", "South Dakota", "Vermont", 
+drop_states <- c("Iowa", "Arizona", "Alabama", "Illinois", "Indiana", "Idaho", "Connecticut",
+                 "New Mexico", "Texas", "Utah", "North Dakota", "South Dakota", "Vermont",
                  "Wisconsin", "West Virginia", "Wyoming", "Tennessee", "Pennsylvania")
 
-update_augsynth(syn, drop = drop_states) %>% 
+update_augsynth(syn, drop = drop_states) %>%
     summary( inf_type = 'permutation' ) %>%
-    plot(plot_type = 'placebo') 
+    plot(plot_type = 'placebo')
 

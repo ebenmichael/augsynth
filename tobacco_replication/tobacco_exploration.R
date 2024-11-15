@@ -1,6 +1,9 @@
 
 
 # Exploration of the tobacco data
+# (C) 2024 Miratrix
+
+# This came out of the howard "best synth practices" project
 
 
 ## Install Synth if not already installed
@@ -356,7 +359,7 @@ do_year <- function( tob, yr ) {
 }
 
 library( tidyverse )
-yrs <- map_df( 1975:1988, do_year, tob = tobacco_55 )
+yrs <- map_df( 1975:1988, do_year, tob = tobacco_70 )
 #yrs$tx_year = as.factor(yrs$tx_year)
 head( yrs )
 
@@ -372,8 +375,20 @@ ggplot( yrs, aes(x = Time, y = Estimate, color = tx_year, group=tx_year)) +
     theme(plot.caption = element_text(hjust = 0, color = 'darkseagreen', size = 9))
 
 
+head( yrs )
 
-
+y85 = filter( yrs, tx_year %in% c( 1985, 1986, 1987, 1988 ) )
+ggplot( y85, aes(x = Time, y = Estimate)) +
+    geom_hline(yintercept = 0, linetype = 'solid') +
+    geom_vline(xintercept = syn$t_int - 0.5, linetype = 'dashed') +
+    geom_vline(xintercept = 1985 + 0.5, linetype = 'dashed') +
+    geom_line() +
+    geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound ), alpha = 0.2, size = 0.1) +
+    facet_wrap( ~ tx_year ) +
+    scale_x_continuous(breaks = seq(1970, 2010, 5)) +
+    labs(x = 'Year', y = 'Gap in per-capita cigarette sales\n(in packs)' ) +
+    theme_bw() +
+    theme(plot.caption = element_text(hjust = 0, color = 'darkseagreen', size = 9))
 
 
 

@@ -105,6 +105,11 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
 
     n <- nrow(wide$X)
     t0 <- ncol(wide$X)
+
+    if ( progfunc == "ridge" && abs( n - t0 ) <= 1 ) {
+        warning( glue::glue( "Tuning ridge regression when number of units ({n}) is almost equal to the number of time periods ({t0}) is often unstable." ), call. = FALSE )
+    }
+
     ttot <- t0 + ncol(wide$y)
     if(fixedeff) {
         demeaned <- demean_data(wide, synth_data)
