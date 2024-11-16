@@ -51,7 +51,7 @@ test_that("General plotting functions do not crash", {
     expect_equal( sum$inf_type, "permutation" )
 
     # Check that it will add inference on the fly
-    auto_add_inf <- plot( syn, inf_type = "permutation_rstat" )
+    expect_message( auto_add_inf <- plot( syn, inf_type = "permutation_rstat" ) )
     expect_true( is.ggplot( auto_add_inf ) )
 
     plt <- augsynth:::augsynth_outcomes_plot( sum )
@@ -65,7 +65,9 @@ test_that("General plotting functions do not crash", {
     expect_equal( p0, p )
 
     pEO <- plot( sum, plot_type = "estimate only" )
-    pEO1 <- plot( syn, plot_type = "estimate only", inf_type = "permutation" )
+    expect_message(
+        pEO1 <- plot( syn, plot_type = "estimate only", inf_type = "permutation" )
+    )
     expect_equal( pEO, pEO1 )
 
     po <- plot( sum, plot_type = "outcomes" )

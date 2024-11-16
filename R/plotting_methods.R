@@ -1,10 +1,55 @@
 
 
+
+#' Figure out what kind of quick-summary is needed given the desired
+#' plot type.
+#'
+#' @noRd
+get_right_summary <- function( augsynth, plot_type, inf_type ) {
+
+    prior_inf = NULL
+    if ( !is.null(augsynth$results) ) {
+        prior_inf = augsynth$results$inf_type
+    } else {
+        prior_inf = "none"
+    }
+
+    if ( plot_type=="estimates only" ) {
+        inf_type = prior_inf
+    } else if (plot_type == 'placebo') {
+        if ( prior_inf %in% c('permutation', 'permutation_rstat') ) {
+            inf_type = prior_inf
+        } else if ( is.null( inf_type ) && prior_inf == "none" ) {
+            # if the user specifies the "placebo" plot type without
+            # accompanying inference, default to placebo
+            inf_type = "permutation"
+        } else if (!inf_type %in% c('permutation', 'permutation_rstat')) {
+            message('Placebo plots are only available for permutation-based inference. The plot shows results from "inf_type = "permutation""')
+            inf_type = "permutation"
+        }
+    } else if (plot_type %in% c( "outcomes", "outcomes raw average" )) {
+        if ( is.null( inf_type ) ) {
+            inf_type = "none"
+        }
+    } else if ( is.null( prior_inf ) ) {
+        inf_type = "conformal"
+    }
+
+    if ( is.null( inf_type ) || inf_type == "none" ) {
+        inf_type = prior_inf
+    }
+
+    inf_type
+}
+
+
+
+
 #' Plot function for augsynth or summary.augsynth objects
 #'
 #' @importFrom graphics plot
 #'
-#' @param augsynth Augsynth or summary.augsynth object to be plotted
+#' @param augsynth augsynth or summary.augsynth object to be plotted
 #' @param plot_type The stylized plot type to be returned. Options include
 #'        \itemize{
 #'          \item{"estimate"}{The ATT and 95\% confidence interval}
@@ -31,15 +76,22 @@
 #'         }
 #' @param ... Optional arguments
 plot_augsynth_results <- function( augsynth,
-                          cv = FALSE,
-                          plot_type = 'estimate',
-                          inf_type = NULL, ...) {
+                                   cv = FALSE,
+                                   plot_type = 'estimate',
+                                   inf_type = NULL, ...) {
 
-    stopifnot(tolower(inf_type) %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
+    if ( !is.null( inf_type ) ) {
+        inf_type = tolower(inf_type)
+        stopifnot( inf_type %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
+    }
 
     # Summarize object if needed.
     if ( is.augsynth(augsynth) ) {
-        augsynth = summary(augsynth, inf_type=inf_type)
+        it <- get_right_summary(augsynth, plot_type, inf_type)
+        if ( it != "none" ) {
+            message("Plotting augsynth objects may slow execution time. For faster results, plot from an augsynth summary object using plot.summary.augsynth()")
+        }
+        augsynth = summary(augsynth, inf_type=it)
     }
 
     if (cv == TRUE) {
@@ -194,7 +246,7 @@ augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
         ggplot2::theme(legend.position = 'bottom',
                        legend.key = ggplot2::element_rect(fill = scales::alpha("white", 0.5)),
                        legend.background = ggplot2::element_rect(fill = scales::alpha("white", 0))
-                       )
+        )
 
     return(p)
 }

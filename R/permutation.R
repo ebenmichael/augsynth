@@ -341,11 +341,15 @@ add_placebo_distribution <- function(augsynth) {
 #'
 #' @param results Results from calling augsynth()
 #'
-#' @param inf_type Inference type (takes a value of 'permutation' or 'permutation_rstat')
-#' Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
+#' @param inf_type Inference type (takes a value of 'permutation' or
+#'   'permutation_rstat') Type of inference algorithm. Inherits
+#'   inf_type from `object` or otherwise defaults to "conformal".
+#'   Options are
 #'         \itemize{
-#'          \item{"If numeric"}{A multiple of the treated unit's RMSPE above which donor units will be dropped}
-#'          \item{"If a character"}{The name or names of donor units to be dropped based on the `unit` parameter
+#'          \item{"If numeric"}{A multiple of the treated unit's RMSPE
+#'          above which donor units will be dropped}
+#'          \item{"If a character"}{The name or names of donor units to
+#'          be dropped based on the `unit` parameter
 #'           in the augsynth model}
 #'         }
 #' @export

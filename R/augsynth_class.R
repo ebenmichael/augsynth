@@ -64,38 +64,6 @@ plot.augsynth <- function(augsynth,
                           plot_type = 'estimate',
                           inf_type = NULL, ...) {
 
-    message("Plotting augsynth objects may slow execution time. For faster results, plot from an augsynth summary object using plot.summary.augsynth()")
-
-    if (is.null(inf_type) & !is.null(augsynth$results)) {
-        inf_type = augsynth$results$inf_type
-    } else if (is.null(inf_type) & is.null(augsynth$results)) {
-        # if no inf_type given for a basic (backwards compatible) augsynth object, set inf_type to conformal
-        inf_type = 'conformal'
-    }
-
-    # if inf_type is set to "none", then only return a raw treatment estimate or an outcomes plot (treated/synth trajectories)
-    if ((inf_type %in% c('None', 'none')) & (!grepl('outcomes', plot_type))) {
-        plot_type = 'estimate only'
-    }
-
-    # if the user specifies the "placebo" plot type without accompanying inference, default to placebo and show message
-    if ((plot_type == 'placebo') & (!inf_type %in% c('permutation', 'permutation_rstat'))) {
-        message('Placebo plots are only available for permutation-based inference. The plot shows results from "inf_type = "permutation""')
-        return(permutation_plot(augsynth, inf_type = 'permutation'))
-    }
-
-    if (is.null(inf_type)) {
-        if (!is.null(augsynth$results)) {
-            inf_type <- augsynth$results$inf_type
-        } else {
-            inf_type <- 'conformal'
-        }
-    }
-
-    if (is.null(augsynth$results)) {
-        augsynth <- add_inference(augsynth, inf_type = inf_type)
-    }
-
     plot_augsynth_results( augsynth=augsynth, cv=cv, plot_type=plot_type, inf_type=inf_type, ... )
 
 }

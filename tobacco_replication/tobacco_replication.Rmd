@@ -1,17 +1,29 @@
 ---
+title: "Replicating Abadie et al. (2010) with the `augsynth` package"
+author: "Delaney & Miratrix"
+date: "2024-11-16"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+<!--
+---
 output: rmarkdown::html_vignette
 vignette: >
 %\VignetteIndexEntry{MultiSynth Vignette}
     %\VignetteEngine{knitr::rmarkdown}
     %\VignetteEncoding{UTF-8}
-    title: "Permutation inference for the `augsynth` package"
-subtitle: Replicating Abadie et al. (2010)
+title: "Replicating Abadie et al. (2010) with the `augsynth` package"
 editor_options: 
   chunk_output_type: console
 ---
+-->
+
 
 ```{r setup, include = FALSE}
-
+library( tidyverse )
 knitr::opts_chunk$set(
     collapse = FALSE,
     message = FALSE,
@@ -35,7 +47,6 @@ library(foreign)
 library(graphics)
 library(Synth)
 library(augsynth)
-data(kansas)
 
 ## For the Abadie plots
 replication_theme <- theme_bw(base_family = "Times New Roman") + 
@@ -48,35 +59,16 @@ replication_theme <- theme_bw(base_family = "Times New Roman") +
 set.seed(1234)
 ```
 
-# Project Overview
+This vignette replicates the analysis and figures in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf) using the `augsynth` package.
+In particular, our recent extensions to the `augsynth` package streamline permutation-based inference and associated visualizations on behalf of the user.
+In the following, we show how to easily generate results similar (but not entirely identical) to Figures 2-7 in the original paper.
 
-This vignette demonstrates the functionality of several extensions to the `augsynth` package, using the data and analytic context laid out in [Abadie et al. (2010)](https://web.stanford.edu/~jhain/Paper/JASA2010.pdf). The package extensions include the option to use permutation-based inference with models generated using the `augsynth()` function. In addition, the changes expand the plotting options available for `augsynth` objects.
+While the general intuition of Abadie et al.'s analysis is replicated in the `augsynth` package, it is worth noting that covariates and model parameters are handled somewhat differently than in the original analysis. In particular, unlike the `augsynth` package, the `Synth` package used in Abadie et al.'s analysis reweights a subset of the lagged outcomes and passed auxiliary covariates when generating synthetic weights.
+The `augsynth` package, by contrast, directly balances _all_ pre-treatment outcomes along with auxillary covariates, which means it does not dynamically determine variable importance weights.
 
-## Summary of changes
+In this vignette we also include `Synth` code to generate the reported Abadie et al.'s results with a high degree of fidelity (with the resulting `Synth`-based plots shown adjacent to analogous output from `augsynth` models) for comparison purposes.
+We do note that we show _all_ the post-treatment years, while the original paper only shows the first 10 years post-treatment.
 
-This project currently lives on the [n-delaney/augsynth_permutation](https://github.com/n-delaney/augsynth_permutation) GitHub repository. All changes should (ideally) be backwards compatible, although they are only currently implemented for cases where `single_augsynth()` is executed. The proposed extensions to the `augsynth` package do the following:
-
-* Add the option to include inference in `augsynth` objects (in addition to summary objects). Inference details are stored in  `augsynth$results`.
-* Extend the inference options available for `augsynth` objects with a single treated unit. Additional options now include placebo-based inference through `inf_type = permutation` and `inf_type = permutation_rstat` (RMSPE-adjusted placebo tests). 
-* Modify  `summary.augsynth()` 
-* If an `augsynth` does not already have inference results, `summary.augsynth()` will calculate them. 
-* It's also possible to use `summary.augsynth()` to re-do inference on an existing model with different characteristics (for example, switching from the default of "conformal" to "permutation" inference).
-* Moves inference calculations from `summary.augsynth()` to `add_inference()`, a function that handles inference calculations, whether executed as part of  `augsynth()` or  `summary.augsynth()`
-* Add flexibility to `plot.augsynth()` 
-* Allow users to choose from or update inference types for a given `augsynth` model (ex. comparing plots using conformal and placebo inference).
-* Allow users to select from a number of stylized plots using the `plot_type` argument (the default is the ATT estimate and 95% confidence intervavl):
-* "estimate" — The ATT and 95% confidence interval
-* "estimate only" — The ATT without a confidence interval
-* "outcomes" — The level of the outcome variable for the treated and synthetic control units.
-* "outcomes raw average" — The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.
-* "placebo" — The ATTs resulting from placebo tests on the donor units.
-* `plot.summary.augsynth()` should still be backwards compatible but no longer handles most of the plotting. 
-
-# Replication
-
-This vignette replicates the analysis and figures in Abadie et al. (2010) using the `augsynth` package. Whereas the original paper relies on the `Synth` package, the proposed extensions to the `augsynth` package are intended to streamline permutation-based inference and associated visualizations on behalf of the user. The following vignette shows how to use the `augsynth` package, including extended inference types and plotting functionality, to generate results similar (but not entirely identical) to Figures 2-7 in the original paper.
-
-While the general intuition of Abadie et al.'s analysis can be replicated using the `augsynth` package, it is worth noting that covariates and model parameters are handled somewhat differently than in the original analysis. In particular, unlike the `augsynth` package, the `Synth` package used in Abadie et al.'s analysis balances lagged outcomes *and* auxiliary covariates in selecting synthetic weights. The Rmd version of this notebook includes `Synth` code to generate Abadie et al.'s results with a high degree of fidelity (with the resulting `Synth`-based plots shown adjacent to analogous output from `augsynth` models).
 
 ```{r import tobacco data, include=FALSE}
 # Get working data CA and 38 control states 
@@ -185,11 +177,10 @@ gap_plot <- ggplot(plot_df, aes(x = year, y = gap)) +
 gap_plot
 ```
 
-### Model setup
+### Replication with augsynth
 
-We can now execute an `augsynth` model with or without inference. Inference options include those already included in the package (`conformal`, `jackknife`, `jackknife+`), but also `permutation` and `permutation_rstat` (RMSPE-adjusted permutation inference), which are calculated using placebo tests. 
-
-All inference results, similar to those previously returned by `summmary.augsynth()`, are stored in `augsynth$results` by default when the `inf_type` argument is specified. 
+When fitting our model, we found that using `progfunc = "none"` (meaning no ridge regression bias adjustment step, which would be seemingly more similar to Abadie) then the results deviate more strongly from the tobacco paper, but if we allow augsynth to do its default bias removal, we more closely replicate the paper.
+Thus, we use ridge regresssion in this vignette, but then use the "R-statistic" permutation approahc from Abadie for inference:
 
 ```{r reformat tobacco data using tidyverse, echo=FALSE}
 tobacco <- Wk.data %>%
@@ -200,100 +191,31 @@ tobacco <- Wk.data %>%
     select(cigsalepcap, treated, state, year, retprice, xxincome, K1_r_15_24, xxbeer)
 
 tobacco_70 <- tobacco %>% filter(year >= 1970) # subset data to 1970 forward to avoid issues due to missingess of outcomes
-```
 
-Note that if we use `progfunc = "none"` and `scm = TRUE` then the results deviate more strongly from the tobacco paper, but if we allow augsynth to do its default bias removal, we more closely replicate the paper:
+# Make beer variable and rescale proportion young people
+tobacco_70 <- tobacco_70 %>% group_by( state) %>%
+    mutate( beer = mean( xxbeer[ year %in% 1984:1988 ], na.rm=TRUE ),
+            retail = mean( retprice[ year %in% 1980:1988 ], na.rm=TRUE ),
+            K1_r_15_24 = 100 * K1_r_15_24 ) %>%
+    ungroup()
+
+```
 
 ```{r run tobacco model using augsynth}
 # Basic SCM with covariates
-syn <- augsynth(form = cigsalepcap ~ treated | retprice + xxincome + K1_r_15_24,
+syn <- augsynth(form = cigsalepcap ~ treated | retail + xxincome + K1_r_15_24 + beer,
                 unit = state,
                 time = year,
                 data = tobacco_70
-                #progfunc = "none", scm=TRUE
+                #progfunc = "none"
 )
+syn_rstat <- summary( syn, inf_type = 'permutation_rstat' )
 ```
 
-### Summmarizing results
-
-Calling `summary()` on an `augsynth` object can now accommodate an expanded range of inference types. 
-
-**Question:** Currently, jackknife inference returns standard errors but not confidence intervals for the ATT estimate. Why is this?
-
-```{r plot augsynth kansas models, echo=FALSE, cache=TRUE, fig.width=8, fig.height=4.5}
-all_results <- bind_rows(Conformal = summary(syn, inf_type = 'conformal')$att, 
-                         Jackknife = summary(syn, inf_type = 'jackknife')$att, 
-                         `Jackknife+` = summary(syn, inf_type = 'jackknife+')$att, 
-                         Permutation = summary(syn, inf_type = 'permutation')$att, 
-                         `Permutation (rstat)` = summary(syn, inf_type = 'permutation_rstat')$att, 
-                         .id = 'name') %>% 
-    mutate(name = factor(name, 
-                         levels = c('Conformal', 'Jackknife', 'Jackknife+', "Permutation", "Permutation (rstat)"), 
-                         ordered = T))
-
-ggplot(all_results, aes(x = Time, y = Estimate, color = name)) + 
-    geom_hline(yintercept = 0, linetype = 'solid') + 
-    geom_vline(xintercept = syn$t_int, linetype = 'dashed') + 
-    geom_line() +
-    geom_ribbon(aes(ymin = lower_bound, ymax = upper_bound, fill = name), alpha = 0.2, size = 0.1) + 
-    facet_wrap(. ~ name) + 
-    scale_x_continuous(breaks = seq(1970, 2010, 5)) + 
-    labs(x = 'Year', y = 'Gap in per-capita cigarette sales\n(in packs)', 
-         caption = 'ND replication: augsynth package') +
-    scale_color_manual(values = c('red', 'blue', 'darkgreen', 'purple', 'orange'), 
-                       guide = 'none', aesthetics = c('color', 'fill')) +
-    theme_bw() +
-    theme(plot.caption = element_text(hjust = 0, color = 'darkseagreen', size = 9))
-```
-
-
-### Permutation inference
-
-Adding permutation inference (via `inf_type = "permutation"` or `inf_type = "permutation_rstat"`) will return information about the 95% confidence interval, as well as other data generated from the raw placebo tests. Placebo results can be gotten via the `placebo_distribution()` method:
-
-```{r show_perm_inference}
-syn_rstat = summary( syn, inf_type = "permutation_rstat" )
-placebo_distribution( syn_rstat )
-```
-
-
-### Plotting `augsynth` models
-
-Generally one should plot the summarized `augsynth` model, as the summary has the inferenence. 
-The proposed extensions to plotting capabilities include the possibility to customize the inferential features of plots and to easily generate plots showing the permuted ATTs from placebo tests, when appropriate.
-
-If `plot()` is called on a summarized model object without additional arguments, it will return an ATT estimate with a 95% confidence interval calculated using conformal inference.
-You can directly call plot on the original, pre-summarized, result, but this is not recommended as it will then have to calculate the inference on the fly:
-
-```{r fig.width=4.5, fig.height=3.25}
-plot(syn) + labs(title = 'Conformal inference (default)')
-```
-
-Setting `plot_type = "placebo"` on a summary with inference types of `permutation` or `permutation_rstat` will return a plot showing each placebo test. Otherwise, for other inference types, it will return only the ATT estimate. 
-
-```{r fig.width=4.5, fig.height=4}
-plot(syn_rstat, 
-     plot_type = 'placebo',
-     inf_type = 'permutation',
-) + ggtitle("Replication of Abadie et al. (2010), Figure 4")
-```
-
-
-```{r  fig.width=4.5, fig.height=3.25}
-p <- plot(syn_rstat, plot_type = 'estimate only') + ggtitle("Replication of Abadie et al. (2010), Figure 3")
-```
-
-```{r Format figures 3 comparison, echo=FALSE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
-gap_plot
-p
-```
-
-
-
-If an outcomes plot is desired, the user can call `plot(plot_type = 'outcomes')` on an `augsynth` object. 
+To get the outcome plot (Figure 2), call `plot(plot_type = 'outcomes')` on an `augsynth` object or summary object:
 
 ```{r  fig.width=4.5, fig.height=4}
-p <- plot(syn_rstat, plot_type = 'outcomes') + 
+p <- plot(syn_rstat, plot_type = 'outcomes raw average') + 
     ggtitle("Replication of Abadie et al. (2010), Figure 2")
 ```
 
@@ -302,52 +224,99 @@ path_plot
 p 
 ```
 
-Alternatively, `plot(augsynth, plot_type = 'outcomes raw average')` will return both the raw average of donor units and the synthetic counterfactual.
+Note our version has a bit of "Figure 1" in it, with the raw outcome trajectory.
+If desired, setting `plot_type = 'outcomes'` will drop the raw average of donor units and the synthetic counterfactual.
 
-```{r Outcomes plot with average, echo=TRUE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
-plot(syn_rstat, plot_type="outcomes raw average")
+To get Table 1, the comparison of the means of various covariates, we can use
+```{r}
+covariate_balance_table( syn, pre_period = c( 1975, 1980, 1988 ) ) %>%
+    knitr::kable( digits = 2 )
 ```
 
-### Examining donor units and RMSPE
 
-The `donor_table()` function will return a summary dataframe with the RMSPE and synthetic weight for each of the donor units.
+For Figure 3, we compare the estimated impact to that calculated in the original paper:
+
+```{r  fig.width=4.5, fig.height=3.25}
+p <- plot(syn_rstat, plot_type = 'estimate only') +
+    ggtitle("Replication of Abadie et al. (2010), Figure 3") +
+    scale_y_continuous(limits = c(-30, 30))
+```
+
+```{r Format figures 3 comparison, echo=FALSE, fig.show="hold", fig.align='default', fig.height=4, fig.width=4.6}
+gap_plot
+p
+```
+
+We see a bit more choppyness than the Synth package.
+
+
+We can finally plot our result, using `plot_type = "placebo"`, to obtain a plot showing each placebo trajectory:
+
+```{r fig.width=4.5, fig.height=4}
+plot(syn_rstat, plot_type = 'placebo' ) + 
+    ggtitle("Replication of Abadie et al. (2010), Figure 4")
+```
+
+We can get the raw trajectories via
+```{r}
+placebo_distribution( syn_rstat )
+```
+
+To see what makes up our synthetic unit, we can use `donor_table()` to obtain a dataframe with the RMSPE and synthetic weight for each of the donor units.
 
 ```{r}
 donor_table(syn_rstat) %>%
     arrange( -abs(weight) )
 ```
 
+California is apparently mainly a mix of Colorado and Connecticut, with a bit of Utah and Nevada thrown in.
+The negative weights, and the lack of sparse weights, are from the ridge regresssion.
+Without that second stage, these weights would generally be sparse, as in the original paper.
+For example:
 
-### Limiting the donor pool
+```{r}
+syn_classic <- augsynth(form = cigsalepcap ~ treated | retail + xxincome + K1_r_15_24 + beer,
+                unit = state,
+                time = year,
+                data = tobacco_70,
+                progfunc = "none" )
+donor_table(syn_classic) %>%
+    filter( weight!= 0 ) %>%
+    arrange( -abs(weight) )
+```
+
+
+### Sensitivity checks by limiting the donor pool
 
 The augsynth models can be re-fitted after excluding certain donor units via the `update_augsynth()` method.
-If `drop` is passed to `update_augsynth()` as a numeric, then donor units will be excluded if their RMSPE is greater than a certain multiple of the treated unit's pre-treatment RMSPE. For example, setting `drop = 2` will exclude any units with a pre-treatment RMSPE twice as large as California's.
-Donor units can also be specified using their unit identifiers (ex. "New Hampshire").
-
-Updated augsynth models inherit the inference type, formula, and data structure of the original model.
+The main method is to set `drop` to a multiplier for the treatment unit RMSPE.
+All units with a RMSPE larger than that value will be dropped:
 
 ```{r Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
     summary( inf_type = 'permutation' ) %>%
     plot(plot_type = 'placebo' ) + 
     ggtitle("Replication of Abadie et al. (2010), Figure 5") + ylim(-51, 91) + 
-    annotate('text', y = -48, x = 1970, label = "Removes donors with 20x California's  pre-treatment RMSPE",
+    annotate('text', y = -48, x = 1970, 
+             label = "Removes donors with 20x California's  pre-treatment RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
 update_augsynth(syn, drop = 5) %>% 
     summary( inf_type = 'permutation' ) %>%
     plot(plot_type = 'placebo') + 
     ggtitle("Replication of Abadie et al. (2010), Figure 6") + ylim(-51, 91) + 
-    annotate('text', y = -48, x = 1970, label = "Removes donors with 5x California's pre-treatment RMSPE",
+    annotate('text', y = -48, x = 1970, 
+             label = "Removes donors with 5x California's pre-treatment RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
 update_augsynth(syn, drop = 2) %>% 
     summary( inf_type = 'permutation' ) %>%
     plot(plot_type = 'placebo') + 
     ggtitle("Replication of Abadie et al. (2010), Figure 7") + ylim(-51, 91) + 
-    annotate('text', y = -48, x = 1970, label = "Removes donors with 2x California's pre-treatment  RMSPE",
+    annotate('text', y = -48, x = 1970, 
+             label = "Removes donors with 2x California's pre-treatment  RMSPE",
              hjust = 0, color = 'darkseagreen', size = 3) 
 ```
 
-The names of units to be excluded can be passed in directly as characters using `drop`. 
+Alternatively, the names of units to be excluded can be passed in directly as characters using `drop`. 
 
 ```{r permutation without states, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
 drop_states <- c("Iowa", "Arizona", "Alabama", "Illinois", "Indiana", "Idaho", "Connecticut", 
@@ -359,3 +328,25 @@ update_augsynth(syn, drop = drop_states) %>%
     plot(plot_type = 'placebo') 
 ```
 
+
+# The RMSPE plot
+
+Finally, we can make Figure 8--interestingly, this does not replicate well, with CA no longer being an extreme outlier (although it still is in the tail of the distribution).
+It looks like all of the outliers have pulled back substantially, vs. the original Figure 8.
+
+```{r}
+
+rms <- placebo_distribution( syn_rstat ) %>%
+    mutate( post = ifelse( year > 1988, "post", "pre" ),
+            Tx = ifelse( state == "California", "CA", "synth" ) ) %>%
+    group_by( state, post, Tx ) %>%
+    summarise( MSPE = mean( (Yhat - Yobs)^2 ), .groups = "drop" ) %>%
+    pivot_wider( names_from = post, values_from = MSPE ) %>%
+    mutate( ratio =  post / pre )
+
+ggplot( rms, aes( ratio, fill=Tx ) ) +
+    geom_dotplot( alpha = 0.5, method="histodot", binwidth = 2 ) +
+    ggtitle("RMSPE ratio of post to pre-treatment periods") +
+    scale_x_continuous( limits = c(0, 130 ), breaks = seq( 0,120,by=20) ) +
+    replication_theme
+```

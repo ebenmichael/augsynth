@@ -11,7 +11,7 @@ update_augsynth(augsynth, drop = 20)
 
 \item{drop}{Drop donor units, based on pre-treatment RMSPE or unit
 name(s). Default of 20 means drop units with an RMSPE 20x higher
-than the treated unit.  Can also be a character vector of unit
+than the treated unit.  The `drop` parameter can also be a character vector of unit
 IDs to drop.}
 }
 \description{

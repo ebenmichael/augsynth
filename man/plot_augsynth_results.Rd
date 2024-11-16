@@ -13,7 +13,7 @@ plot_augsynth_results(
 )
 }
 \arguments{
-\item{augsynth}{Augsynth or summary.augsynth object to be plotted}
+\item{augsynth}{augsynth or summary.augsynth object to be plotted}
 
 \item{cv}{If True, plot cross validation MSE against hyper-parameter, otherwise plot effects}
 
