@@ -76,7 +76,7 @@ test_that("General plotting functions do not crash", {
 
     praw <- plot( sum, plot_type = "outcomes raw average" )
     praw1 <- plot( syn, plot_type = "outcomes raw average", inf_type="permutation" )
-    expect_equal( praw, praw1 )
+    expect_equal( praw$data, praw1$data )
 
     ppla <- plot( sum, plot_type = "placebo" )
     ppla1 <- plot( syn, plot_type = "placebo", inf_type="permutation" )

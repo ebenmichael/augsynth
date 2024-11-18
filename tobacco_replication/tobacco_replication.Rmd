@@ -145,8 +145,6 @@ path_plot <- ggplot(f2_plot_df, aes(x = year, y = per_cap_cigs, linetype = treat
          y = 'per-capita cigarette sales (in packs)') +
     annotate('text', y = 41, x = 1987.5, label = 'Passage of Proposition 99 \u2192',
              hjust = 1, color = 'black', size = 3, family = "Times New Roman") +
-    annotate('text', y = 0, x = 1970, label = 'ND replication: Synth package',
-             hjust = 0, color = 'darkseagreen', size = 3) +
     replication_theme
 
 path_plot
