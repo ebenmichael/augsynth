@@ -103,7 +103,7 @@ calculate_MDES_table = function( lest, treat_year, tx_col, time_col ) {
 
 
     stopifnot("Entity by year estimates (`lest`) are missing one of the following necessary features: `tx_col`, 'trt', `time_col`, or 'ATT'" =  all( c(  tx_col, "trt", time_col, "ATT" ) %in%
-                        names( lest ) ) )
+                                                                                                                                                         names( lest ) ) )
 
     RMSPEs = calculate_RMSPE( lest, treat_year, tx_col, time_col )
 
@@ -627,16 +627,14 @@ placebo_distribution <- function( augsynth ) {
     if ( is.summary.augsynth(augsynth) ) {
         inf_type = augsynth$inf_type
     } else if ( is.augsynth(augsynth) ) {
-        inf_type = augsynth$results$inf_type
+        augsynth <- summary( augsynth, inf_type = "permutation" )
+        inf_type = augsynth$inf_type
     } else {
         stop( "Object must be an Augsynth object or summary object" )
     }
+
     if ( !is.null( inf_type ) && inf_type %in% c( "permutation", "permutation_rstat" ) ) {
-        if ( is.augsynth(augsynth) ) {
-            return( augsynth$results$permutations$placebo_dist )
-        } else {
-            return( augsynth$permutations$placebo_dist )
-        }
+        return( augsynth$permutations$placebo_dist )
     } else {
         stop( "Placebo distribution only available for permutation inference" )
     }

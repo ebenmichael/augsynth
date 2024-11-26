@@ -270,7 +270,7 @@ donor_table(syn_rstat) %>%
 California is apparently mainly a mix of Colorado and Connecticut, with a bit of Utah and Nevada thrown in.
 The negative weights, and the lack of sparse weights, are from the ridge regresssion.
 Without that second stage, these weights would generally be sparse, as in the original paper.
-For example:
+Here we drop the ridge step, and see what we get:
 
 ```{r}
 syn_classic <- augsynth(form = cigsalepcap ~ treated | retail + xxincome + K1_r_15_24 + beer,
@@ -283,12 +283,16 @@ donor_table(syn_classic) %>%
     arrange( -abs(weight) )
 ```
 
+A small number of units.  The weights differ from Abadie, as we are using an overall different strategy.
+
 
 ### Sensitivity checks by limiting the donor pool
 
 The augsynth models can be re-fitted after excluding certain donor units via the `update_augsynth()` method.
 The main method is to set `drop` to a multiplier for the treatment unit RMSPE.
 All units with a RMSPE larger than that value will be dropped:
+
+Here we replicate Figures 5, 6, and 7 from Abadie et al. (2010) by dropping donor units with pre-treatment RMSPE greater than 20, 5, and 2 times California's pre-treatment RMSPE, respectively:
 
 ```{r Figures 6 and 7, echo=TRUE, eval=TRUE, fig.show="hold", fig.align='default', fig.height=4.5, fig.width=4.6}
 update_augsynth(syn) %>% # drops units with >20x treated RMSPE by default
