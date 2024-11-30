@@ -3,8 +3,7 @@ context("Generally testing the workflow for augsynth")
 
 library( tidyverse )
 
-library(Synth)
-data(basque)
+data(basque, package="Synth")
 basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                                             regionno != 17 ~0,
                                             regionno == 17 ~ 1)) %>%
@@ -185,3 +184,16 @@ test_that("Warning given when inputting an unused argument", {
     )
 })
 
+
+
+
+test_that( "Warning given when T0 = n", {
+
+    bb <- filter( basque,
+                  year >= 1975-17 )
+
+    expect_warning(
+        augsynth(gdpcap ~ trt| invest + popdens, regionno, year, bb,
+                 progfunc="Ridge", scm=T, lambda=8, t_int = 1975)
+    )
+})

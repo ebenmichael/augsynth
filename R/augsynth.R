@@ -41,6 +41,9 @@ single_augsynth <- function(form, unit, time, t_int, data,
     call_name <- match.call()
     #inf_type = match.arg(inf_type)
 
+    stopifnot( !is.null( progfunc ) )
+    progfunc = tolower(progfunc)
+
     form <- Formula::Formula(form)
     unit <- enquo(unit)
     time <- enquo(time)
@@ -492,16 +495,16 @@ print.summary.augsynth <- function(x, ...) {
                          format(p_val, digits = 2), ")\n")
         inf_type <- "Conformal inference"
 
-      if("Treatment Effect Slope" %in% summ$average_att$Value) {
-        lowers <- summ$average_att$lower_bound[2:3]
-        uppers <- summ$average_att$upper_bound[2:3]
-        out_msg_line2 <- paste0("Confidence intervals for linear-in-time treatment effects (Intercept + Slope * Time)\n",
-        "\tIntercept: [", format(lowers[1], digits = 3), ",",
-        format(uppers[1], digits = 3), "]\n",
-        "\tSlope: [", format(lowers[2], digits = 3), ",",
-        format(uppers[2], digits = 3), "]\n")
-        out_msg <- paste0(out_msg, out_msg_line2)
-      }
+        if("Treatment Effect Slope" %in% summ$average_att$Value) {
+            lowers <- summ$average_att$lower_bound[2:3]
+            uppers <- summ$average_att$upper_bound[2:3]
+            out_msg_line2 <- paste0("Confidence intervals for linear-in-time treatment effects (Intercept + Slope * Time)\n",
+                                    "\tIntercept: [", format(lowers[1], digits = 3), ",",
+                                    format(uppers[1], digits = 3), "]\n",
+                                    "\tSlope: [", format(lowers[2], digits = 3), ",",
+                                    format(uppers[2], digits = 3), "]\n")
+            out_msg <- paste0(out_msg, out_msg_line2)
+        }
 
     } else if(summ$inf_type == "jackknife+") {
         out_msg <- paste("Average ATT Estimate: ",
@@ -514,8 +517,8 @@ print.summary.augsynth <- function(x, ...) {
                            "Permutation inference",
                            "Permutation inference (RMSPE-adjusted)")
         out_msg <-paste0( out_msg, "\n",
-                         ( sprintf( "Donor RMSPE range from %.2f to %.2f\n",
-                                    min( summ$donor_table$RMSPE ), max( summ$donor_table$RMSPE ) ) ) )
+                          ( sprintf( "Donor RMSPE range from %.2f to %.2f\n",
+                                     min( summ$donor_table$RMSPE ), max( summ$donor_table$RMSPE ) ) ) )
 
     } else {
         out_msg <- paste("Average ATT Estimate: ",
