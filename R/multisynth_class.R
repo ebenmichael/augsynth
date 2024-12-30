@@ -270,7 +270,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         ## take out pre-treatment averages
         fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
                                             ncol=ncol(wide$y)))
-        out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force)
+        out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force, time_cohort)
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- NULL
@@ -282,7 +282,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
             # fit scm on residuals after taking out unit fixed effects
             fullmask <- cbind(wide$mask, matrix(0, nrow=nrow(wide$mask),
                                             ncol=ncol(wide$y)))
-            out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force)
+            out <- fit_feff(cbind(wide$X, wide$y), wide$trt, fullmask, force, time_cohort)
             bal_mat <- lapply(out$residuals, function(x) x[,1:ncol(wide$X)])
         } else if(typeof(residuals) == "list") {
             bal_mat <- lapply(residuals, function(x) x[,1:ncol(wide$X)])
