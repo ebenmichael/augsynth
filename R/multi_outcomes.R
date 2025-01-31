@@ -117,9 +117,11 @@ fit_augsynth_multiout_internal <- function(wide_list, combine_method, Z,
     # potentially add back in fixed effects
     augsynth$mhat <- mhat# + augsynth$mhat
 
-    augsynth$data = list(X = X, trt = trt, y = y, Z = Z)
+    augsynth$data <- list(X = X, trt = trt, y = y, Z = Z)
     augsynth$data_list <- wide_list
     augsynth$outcomes <- outcomes_str
+    # change fixedeff flag to match input (rather than fixedeff = F in fit_augsynth_internal)
+    augsynth$fixedeff <- fixedeff
     ##format output
     class(augsynth) <- c("augsynth_multiout", "augsynth")
     return(augsynth)
