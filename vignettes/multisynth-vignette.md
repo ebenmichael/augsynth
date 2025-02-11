@@ -162,7 +162,7 @@ ppool_syn_summ
 #>                    10 Average -0.017838072 0.03348942 -0.08774112  0.04149486
 ```
 
-`nopool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
+`ppool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
 
 <table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
  <thead>
