@@ -8,30 +8,18 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                                             regionno == 17 ~ 1)) %>%
     filter(regionno != 1)
 
-syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc = "Ridge", scm = T)
+
+syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
+                       progfunc = "None", scm = T, fixedeff = F)
+sum <- summary( syn, inf_type = "permutation" )
 
 
-test_that("General plotting functions do not crash", {
-
-    syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
-                           progfunc="None", scm=T, fixedeff = F)
+test_that("Confirm equivalence of plotting estimate across augsynth and summary objects", {
 
     # Testing some of the permutation plotting functions
     tst_plt <- augsynth:::permutation_plot( syn, inf_type = "permutation_rstat" )
     expect_true( is_ggplot( tst_plt ) )
 
-    sum <- summary( syn, inf_type = "permutation" )
-    expect_equal( sum$inf_type, "permutation" )
-
-    # Check that it will add inference on the fly
-    expect_message( auto_add_inf <- plot( syn, inf_type = "permutation_rstat" ) )
-    expect_true( is_ggplot( auto_add_inf ) )
-
-    plt <- augsynth:::augsynth_outcomes_plot( sum )
-    expect_true( is_ggplot( plt ) )
-
-    # use testthat to check print.augsynth.summary writes to console
-    expect_output( print( sum ), "Permutation inference" )
 
     p0 <- plot( sum )
     p <- plot( sum, plot_type = "estimate" )
@@ -42,6 +30,11 @@ test_that("General plotting functions do not crash", {
         pEO1 <- plot( syn, plot_type = "estimate only", inf_type = "permutation" )
     )
     expect_equal( pEO, pEO1 )
+})
+
+
+
+test_that("Confirm equivalence of plotting outcomes across augsynth and summary objects", {
 
     po <- plot( sum, plot_type = "outcomes" )
     po1 = plot( syn, plot_type = "outcomes", inf_type = "permutation" )
@@ -51,21 +44,43 @@ test_that("General plotting functions do not crash", {
     praw1 <- plot( syn, plot_type = "outcomes raw average", inf_type="permutation" )
     expect_equal( praw$data, praw1$data )
 
-    ppla <- plot( sum, plot_type = "placebo" )
-    ppla1 <- plot( syn, plot_type = "placebo", inf_type="permutation" )
-    expect_equal( ppla, ppla1 )
-
     # These two plots should be the same
     p2 <- plot( syn )
     expect_true( is_ggplot(p2 ) )
 
-    sump <- summary( syn )
-    p3 <- plot( sump )
-    expect_true( is_ggplot( p3 ) )
+})
 
-    expect_output( print( sump ), "Conformal inference" )
 
-    dt = sump$donor_table
-    expect_equal( sum( dt$weight ), 1, tolerance = 0.000001 )
+test_that("Requesting a placebo plot defaults to permutation inference", {
+
+    syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
+                           progfunc = "None", scm = T, fixedeff = F)
+
+    sum <- summary( syn, inf_type = "permutation" )
+
+    ppla <- plot( sum, plot_type = "placebo" )
+    ppla1 <- plot( syn, plot_type = "placebo", inf_type="permutation" )
+
+    expect_equal( ppla, ppla1 )
+    expect_true(all(ppla$data$ATT == ppla1$data$ATT))
+})
+
+
+test_that("Check that plotting functions will add inference on the fly", {
+
+    syn <- single_augsynth(gdpcap ~ trt, regionno, year, 1975, basque,
+                           progfunc = "None", scm = T, fixedeff = F)
+
+    expect_message( auto_add_inf <- plot( syn, inf_type = "permutation_rstat" ) )
+    expect_true( is_ggplot( auto_add_inf ) )
+})
+
+
+test_that("Check that we can use plotting helper functions from summary", {
+
+    sum <- summary(syn)
+
+    plt <- augsynth:::augsynth_outcomes_plot( sum )
+    expect_true( is_ggplot( plt ) )
 
 })

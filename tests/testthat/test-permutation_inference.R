@@ -44,16 +44,15 @@ test_that( "MDES_table corresponds to default treatment table", {
 test_that( "Placebo distribtion works", {
 
     syn <- augsynth(gdpcap ~ trt, regionno, year,
-                    data=basque, scm = TRUE, progfunc= "none" )
+                    data = basque, scm = TRUE, progfunc = "none" )
     tt <- treated_table(syn)
-    tt
 
     donor_table(syn)
 
     b2 = basque %>%
         mutate( trt = 0 + (regionno == 7 ) * (year>=1975) )
     syn7 <- augsynth(gdpcap ~ trt, regionno, year,
-                    data=b2, scm = TRUE, progfunc= "none")
+                    data = b2, scm = TRUE, progfunc = "none")
 
     # These should be the same?  Or close to the same?
     # (They were not under ridge, probably due to the cross-validation procedure.)
@@ -64,9 +63,6 @@ test_that( "Placebo distribtion works", {
                       names_to = "year",
                       values_to = "est" )
     expect_equal( tt$ATT - g17$est, rep(0,nrow(tt)), tolerance = 0.000001 )
-
-    #as.numeric( gaps[ gaps$ID == 10, -1 ] )
-    #- as.numeric( gaps7[ gaps7$ID == 10, -1 ] )
 
     n_unit = length(unique(basque$regionno))
     expect_equal( nrow(gaps7), n_unit )
@@ -86,6 +82,13 @@ test_that( "Placebo distribtion works", {
 
 
 
+test_that("Inference carries through in summary objects", {
 
+    syn <- augsynth(gdpcap ~ trt, regionno, year,
+                    data = basque, scm = TRUE, progfunc = "none" )
+
+    sum <- summary( syn, inf_type = "permutation" )
+    expect_equal( sum$inf_type, "permutation" )
+})
 
 

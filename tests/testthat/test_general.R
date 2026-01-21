@@ -44,12 +44,6 @@ test_that("SCM gives the right answer", {
     expect_error( sraw <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
                             progfunc="none", scm=FALSE, t_int=1975) )
 
-    sraw2 <- single_augsynth(gdpcap ~ trt, regionno, year, basque,
-                            progfunc="none", scm=TRUE, t_int=1975)
-    sumraw2 = summary( sraw2, inf_type="none" )
-    sumraw2$donor_table
-
-
 })
 
 test_that("SCM finds the correct t_int and gives the right answer", {
