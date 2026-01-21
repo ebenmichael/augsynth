@@ -57,11 +57,11 @@ test_that("General plotting functions do not crash", {
 
     # These two plots should be the same
     p2 <- plot( syn )
-    expect_true( is.ggplot(p2 ) )
+    expect_true( is_ggplot(p2 ) )
 
     sump <- summary( syn )
     p3 <- plot( sump )
-    expect_true( is.ggplot( p3 ) )
+    expect_true( is_ggplot( p3 ) )
 
     expect_output( print( sump ), "Conformal inference" )
 

@@ -99,10 +99,10 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
                 progfunc = "Ridge", scm = T)
 ```
 
-We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = T` in the `plot` function:
+We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `plot_type = "cv"` in the `plot` function:
 
 ```{r fig_asyn_cv, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
-plot(asyn, cv = T)
+plot(asyn, plot_type = 'cv')
 ```
 
 By default, the CV procedure chooses the maximal value of `lambda` with MSE within one standard deviation of the minimal MSE. To instead choose the `lambda` that minizes the cross validation MSE, set `min_1se = FALSE`.

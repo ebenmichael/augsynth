@@ -21,7 +21,7 @@
 #' @export
 donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 ) {
 
-    if ( is.summary.augsynth( augsynth ) ) {
+    if ( is_summary_augsynth( augsynth ) ) {
         if ( !is.null( augsynth$donor_table ) ) {
             return( augsynth$donor_table )
         } else {
@@ -34,7 +34,7 @@ donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 
     trt_index <- which(augsynth$data$trt == 1)
     unit_var <- augsynth$unit_var
 
-    tbl = tibble(
+    tbl = data.frame(
         unit = rownames( augsynth$weights ),
         weight = as.numeric(augsynth$weights) )
     names(tbl)[[1]] = unit_var
