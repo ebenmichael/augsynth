@@ -386,7 +386,7 @@ permutation_plot <- function(augsynth, inf_type = 'permutation') {
 
     out_plot <- ggplot2::ggplot(plot_df,
                                 aes(x = !!as.name(augsynth$time_var), y = !!as.name(measure),
-                                    color = trt_status, linetype = !!as.name(augsynth$unit_var)), size = 0.8) +
+                                    color = trt_status, linetype = !!as.name(augsynth$unit_var))) +
         ggplot2::geom_line() +
         ggplot2::geom_vline(lty = 2, xintercept = treat_year) +
         ggplot2::geom_hline(lty = 2, yintercept = 0) +

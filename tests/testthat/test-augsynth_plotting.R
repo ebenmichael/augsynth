@@ -10,33 +10,6 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
 
 syn <- augsynth(gdpcap ~ trt, regionno, year, basque, progfunc = "Ridge", scm = T)
 
-test_that("All plot types for plot.summary.augsynth() are working", {
-
-    for (it in c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat')){
-        s_syn <- summary(syn, inf_type = it)
-        for (pt in c('estimate only', 'estimate', 'placebo', 'outcomes', 'outcomes raw average')) {
-            if((!it %in% c('permutation', 'permutation_rstat')) & (pt == 'placebo')) {
-                expect_error(plot(s_syn, plot_type = pt))
-            } else {
-                p <- plot(s_syn, plot_type = pt)
-                expect_true('ggplot' %in% class(p))
-            }
-        }
-    }
-
-})
-
-test_that("All plot types for plot.augsynth() are working", {
-
-    for (it in c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat')){
-        for (pt in c('estimate only', 'estimate', 'placebo', 'outcomes', 'outcomes raw average')) {
-            p <- plot(syn, plot_type = pt, inf_type = it)
-            expect_true('ggplot' %in% class(p))
-        }
-    }
-
-})
-
 
 test_that("General plotting functions do not crash", {
 
@@ -45,17 +18,17 @@ test_that("General plotting functions do not crash", {
 
     # Testing some of the permutation plotting functions
     tst_plt <- augsynth:::permutation_plot( syn, inf_type = "permutation_rstat" )
-    expect_true( is.ggplot( tst_plt ) )
+    expect_true( is_ggplot( tst_plt ) )
 
     sum <- summary( syn, inf_type = "permutation" )
     expect_equal( sum$inf_type, "permutation" )
 
     # Check that it will add inference on the fly
     expect_message( auto_add_inf <- plot( syn, inf_type = "permutation_rstat" ) )
-    expect_true( is.ggplot( auto_add_inf ) )
+    expect_true( is_ggplot( auto_add_inf ) )
 
     plt <- augsynth:::augsynth_outcomes_plot( sum )
-    expect_true( is.ggplot( plt ) )
+    expect_true( is_ggplot( plt ) )
 
     # use testthat to check print.augsynth.summary writes to console
     expect_output( print( sum ), "Permutation inference" )

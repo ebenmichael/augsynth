@@ -88,9 +88,10 @@ plot_augsynth_results <- function( augsynth,
     # Summarize object if needed.
     if ( is.augsynth(augsynth) ) {
         it <- get_right_summary(augsynth, plot_type, inf_type)
-        if ( it != "none" ) {
-            message("Plotting augsynth objects may slow execution time. For faster results, plot from an augsynth summary object using plot.summary.augsynth()")
-        }
+        message(
+            "Plotting augsynth objects may be slow. For faster results, first create a summary object ",
+            "and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s))."
+        )
         augsynth = summary(augsynth, inf_type=it)
     }
 
