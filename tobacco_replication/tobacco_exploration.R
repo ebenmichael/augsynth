@@ -3,7 +3,9 @@
 # Exploration of the tobacco data
 # (C) 2024 Miratrix
 
-# This came out of the howard "best synth practices" project
+# This came out of the howard "best synth practices" project.  We look
+# at various aspects of the tobacco data such as ICC and effective
+# sample sizes and R2 measures.
 
 
 ## Install Synth if not already installed
@@ -52,7 +54,7 @@ Wk.data <- mutate( Wk.data,
                    year_c = year - 1988 )
 
 M <- lmer( cigsalepcap ~ 1 + year_c + I(year_c^2) + retprice + xxincome + K1_r_15_24 + (1|index),
-           data = Wk.data )
+           data = dplyr::filter( Wk.data, year_c <= 0 ) )
 
 arm::display( M )
 
