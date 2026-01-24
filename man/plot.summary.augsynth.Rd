@@ -11,6 +11,7 @@
 
 \item{plot_type}{The stylized plot type to be returned. Options include
 \itemize{
+  \item{"cv"}{Cross-validation diagnostic plot}
   \item{"estimate"}{The ATT and 95\% confidence interval}
   \item{"estimate only"}{The ATT without a confidence interval}
   \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
