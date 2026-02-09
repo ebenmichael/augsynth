@@ -981,6 +981,13 @@ jackknife_se_multi <- function(multisynth, relative=NULL, alpha = 0.05, att_weig
                        function(i) {
                            msyn_i <- drop_unit_i_multi(multisynth, i)
                            pred <- predict(msyn_i[[1]], relative=relative, att=T, att_weight = att_weight)
+                           if(nrow(pred) < outddim) {
+                               pred <- rbind(
+                                   pred[1:(nrow(pred)-1), ],
+                                   matrix(NA, nrow=outddim-nrow(pred), ncol=ncol(pred)),
+                                   pred[nrow(pred), ]
+                               )
+                           }
                            if(length(msyn_i[[2]]) != 0) {
                                out <- matrix(NA, nrow=nrow(pred), ncol=(J+1))
                                out[,-(msyn_i[[2]]+1)] <- pred
