@@ -88,7 +88,7 @@ We can then report the level of global and individual balance as well as estimat
 ppool_syn_summ
 ```
 
-`nopool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
+`ppool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
 
 ```{r echo = F}
 ppool_syn_summ$att %>%

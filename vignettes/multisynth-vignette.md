@@ -82,6 +82,8 @@ The dataset contains several important variables that we'll use:
 </tbody>
 </table>
 
+
+
 To run `multisynth`, we need to include a treatment status column that indicates which state is treated in a given year, we call this `cbr` below. We also restrict to the years 1959-1997 where we have yearly measurements of expenditures and drop Washington D.C. and Wisconsin from the analysis.
 
 
@@ -138,7 +140,7 @@ ppool_syn_summ
 #> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
 #>     data = analysis_df)
 #> 
-#> Average ATT Estimate (Std. Error): -0.011  (0.023)
+#> Average ATT Estimate (Std. Error): -0.011  (0.022)
 #> 
 #> Global L2 Imbalance: 0.003
 #> Scaled Global L2 Imbalance: 0.019
@@ -149,20 +151,20 @@ ppool_syn_summ
 #> Percent improvement from uniform individual weights: 90.4	
 #> 
 #>  Time Since Treatment   Level     Estimate  Std.Error lower_bound upper_bound
-#>                     0 Average -0.004280701 0.02269737 -0.05159944  0.03896561
-#>                     1 Average -0.010855744 0.02161351 -0.05409988  0.03376852
-#>                     2 Average  0.004379480 0.02393025 -0.03997935  0.05198373
-#>                     3 Average  0.001156364 0.02448954 -0.04590518  0.05044205
-#>                     4 Average -0.009304510 0.02499853 -0.05695416  0.03888795
-#>                     5 Average -0.016942492 0.02448921 -0.06750855  0.03154558
-#>                     6 Average -0.018504802 0.02560768 -0.07212786  0.03085003
-#>                     7 Average -0.003866051 0.02897714 -0.06303320  0.05221466
-#>                     8 Average -0.015834891 0.03187607 -0.07675735  0.04337170
-#>                     9 Average -0.031750413 0.02942826 -0.09231243  0.02319679
-#>                    10 Average -0.017838072 0.03348942 -0.08774112  0.04149486
+#>                     0 Average -0.004281754 0.02231379 -0.04888183  0.03786032
+#>                     1 Average -0.010856856 0.02099299 -0.05423609  0.02939147
+#>                     2 Average  0.004378813 0.02268842 -0.04268354  0.04896627
+#>                     3 Average  0.001155346 0.02388535 -0.04846624  0.04464696
+#>                     4 Average -0.009305005 0.02529949 -0.06207289  0.03822153
+#>                     5 Average -0.016942988 0.02447144 -0.06935946  0.02695179
+#>                     6 Average -0.018505173 0.02507329 -0.07297111  0.02755436
+#>                     7 Average -0.003866657 0.02817460 -0.06047905  0.05013422
+#>                     8 Average -0.015835730 0.03141197 -0.08179055  0.04231137
+#>                     9 Average -0.031751350 0.02962989 -0.09168791  0.02202697
+#>                    10 Average -0.017839047 0.03314017 -0.08835499  0.04070061
 ```
 
-`nopool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
+`ppool_syn_summ$att` is a dataframe that contains all of the point estimates, standard errors, and lower/upper confidence limits. `Time = NA` denotes the effect averaged across the post treatment periods.
 
 <table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
  <thead>
@@ -179,53 +181,55 @@ ppool_syn_summ
   <tr>
    <td style="text-align:right;"> 0 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0042807 </td>
-   <td style="text-align:right;"> 0.0226974 </td>
-   <td style="text-align:right;"> -0.0515994 </td>
-   <td style="text-align:right;"> 0.0389656 </td>
+   <td style="text-align:right;"> -0.0042818 </td>
+   <td style="text-align:right;"> 0.0223138 </td>
+   <td style="text-align:right;"> -0.0488818 </td>
+   <td style="text-align:right;"> 0.0378603 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 1 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0108557 </td>
-   <td style="text-align:right;"> 0.0216135 </td>
-   <td style="text-align:right;"> -0.0540999 </td>
-   <td style="text-align:right;"> 0.0337685 </td>
+   <td style="text-align:right;"> -0.0108569 </td>
+   <td style="text-align:right;"> 0.0209930 </td>
+   <td style="text-align:right;"> -0.0542361 </td>
+   <td style="text-align:right;"> 0.0293915 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 2 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> 0.0043795 </td>
-   <td style="text-align:right;"> 0.0239303 </td>
-   <td style="text-align:right;"> -0.0399793 </td>
-   <td style="text-align:right;"> 0.0519837 </td>
+   <td style="text-align:right;"> 0.0043788 </td>
+   <td style="text-align:right;"> 0.0226884 </td>
+   <td style="text-align:right;"> -0.0426835 </td>
+   <td style="text-align:right;"> 0.0489663 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 3 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> 0.0011564 </td>
-   <td style="text-align:right;"> 0.0244895 </td>
-   <td style="text-align:right;"> -0.0459052 </td>
-   <td style="text-align:right;"> 0.0504420 </td>
+   <td style="text-align:right;"> 0.0011553 </td>
+   <td style="text-align:right;"> 0.0238853 </td>
+   <td style="text-align:right;"> -0.0484662 </td>
+   <td style="text-align:right;"> 0.0446470 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0093045 </td>
-   <td style="text-align:right;"> 0.0249985 </td>
-   <td style="text-align:right;"> -0.0569542 </td>
-   <td style="text-align:right;"> 0.0388879 </td>
+   <td style="text-align:right;"> -0.0093050 </td>
+   <td style="text-align:right;"> 0.0252995 </td>
+   <td style="text-align:right;"> -0.0620729 </td>
+   <td style="text-align:right;"> 0.0382215 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 5 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0169425 </td>
-   <td style="text-align:right;"> 0.0244892 </td>
-   <td style="text-align:right;"> -0.0675085 </td>
-   <td style="text-align:right;"> 0.0315456 </td>
+   <td style="text-align:right;"> -0.0169430 </td>
+   <td style="text-align:right;"> 0.0244714 </td>
+   <td style="text-align:right;"> -0.0693595 </td>
+   <td style="text-align:right;"> 0.0269518 </td>
   </tr>
 </tbody>
 </table>
+
+
 
 We can also visually display both the pre-treatment balance and the estimated treatment effects.
 
@@ -234,7 +238,10 @@ We can also visually display both the pre-treatment balance and the estimated tr
 plot(ppool_syn_summ)
 ```
 
-<img src="figure/ppool_syn_plot-1.png" title="plot of chunk ppool_syn_plot" alt="plot of chunk ppool_syn_plot" style="display: block; margin: auto;" />
+<div class="figure" style="text-align: center">
+<img src="figure/ppool_syn_plot-1.png" alt="plot of chunk ppool_syn_plot"  />
+<p class="caption">plot of chunk ppool_syn_plot</p>
+</div>
 
 And again we can hone in on the average effects.
 
@@ -243,7 +250,10 @@ And again we can hone in on the average effects.
 plot(ppool_syn_summ, levels = "Average")
 ```
 
-<img src="figure/ppool_syn_plot_avg-1.png" title="plot of chunk ppool_syn_plot_avg" alt="plot of chunk ppool_syn_plot_avg" style="display: block; margin: auto;" />
+<div class="figure" style="text-align: center">
+<img src="figure/ppool_syn_plot_avg-1.png" alt="plot of chunk ppool_syn_plot_avg"  />
+<p class="caption">plot of chunk ppool_syn_plot_avg</p>
+</div>
 
 
 ### Collapsing into time cohorts
@@ -257,7 +267,7 @@ ppool_syn_time <- multisynth(lnppexpend ~ cbr, State, year,
                         analysis_df, time_cohort = TRUE)
 
 print(ppool_syn_time$nu)
-#> [1] 0.3655737
+#> [1] 0.3939013
 
 ppool_syn_time
 #> 
@@ -265,7 +275,7 @@ ppool_syn_time
 #> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
 #>     data = analysis_df, time_cohort = TRUE)
 #> 
-#> Average ATT Estimate: -0.017
+#> Average ATT Estimate: -0.018
 ```
 
 We can then compute effects for the overall average as well as for each treatment time cohort, rather than individual units.
@@ -279,28 +289,28 @@ ppool_syn_time_summ
 #> multisynth(form = lnppexpend ~ cbr, unit = State, time = year, 
 #>     data = analysis_df, time_cohort = TRUE)
 #> 
-#> Average ATT Estimate (Std. Error): -0.017  (0.023)
+#> Average ATT Estimate (Std. Error): -0.018  (0.024)
 #> 
 #> Global L2 Imbalance: 0.005
 #> Scaled Global L2 Imbalance: 0.018
 #> Percent improvement from uniform global weights: 98.2
 #> 
-#> Individual L2 Imbalance: 0.039
+#> Individual L2 Imbalance: 0.038
 #> Scaled Individual L2 Imbalance: 0.057
 #> Percent improvement from uniform individual weights: 94.3	
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error lower_bound upper_bound
-#>                     0 Average  0.0025241650 0.02427670 -0.04243539  0.05022789
-#>                     1 Average -0.0155724247 0.02494439 -0.06218451  0.03716488
-#>                     2 Average -0.0003873799 0.02422133 -0.04427147  0.05003630
-#>                     3 Average -0.0011558505 0.02603977 -0.05015049  0.05300141
-#>                     4 Average -0.0158716363 0.02603853 -0.06867016  0.03323353
-#>                     5 Average -0.0272642131 0.02615656 -0.07611295  0.02067049
-#>                     6 Average -0.0214783752 0.02539654 -0.07285592  0.02674774
-#>                     7 Average -0.0114809345 0.03083043 -0.07027653  0.04978445
-#>                     8 Average -0.0244298889 0.03280718 -0.09239776  0.03559889
-#>                     9 Average -0.0464849060 0.03146908 -0.10986141  0.01522710
-#>                    10 Average -0.0227462133 0.03141998 -0.08773530  0.03683826
+#>                     0 Average -0.0007756959 0.02443902 -0.04849731  0.04410082
+#>                     1 Average -0.0160616979 0.02455148 -0.06120905  0.03042719
+#>                     2 Average -0.0028471499 0.02521902 -0.05189710  0.04841170
+#>                     3 Average -0.0026721191 0.02742973 -0.05634460  0.05048728
+#>                     4 Average -0.0181312843 0.02798461 -0.07148111  0.03468573
+#>                     5 Average -0.0284898474 0.02644653 -0.07724091  0.02368573
+#>                     6 Average -0.0228343778 0.02673115 -0.07456646  0.02837584
+#>                     7 Average -0.0140789250 0.03200335 -0.07574649  0.04580312
+#>                     8 Average -0.0245472682 0.03276526 -0.08792999  0.03819451
+#>                     9 Average -0.0476922268 0.03221486 -0.11080383  0.01490279
+#>                    10 Average -0.0216121159 0.03235770 -0.08391841  0.03853317
 ```
 
 <table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
@@ -318,53 +328,55 @@ ppool_syn_time_summ
   <tr>
    <td style="text-align:right;"> 0 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> 0.0025242 </td>
-   <td style="text-align:right;"> 0.0242767 </td>
-   <td style="text-align:right;"> -0.0424354 </td>
-   <td style="text-align:right;"> 0.0502279 </td>
+   <td style="text-align:right;"> -0.0007757 </td>
+   <td style="text-align:right;"> 0.0244390 </td>
+   <td style="text-align:right;"> -0.0484973 </td>
+   <td style="text-align:right;"> 0.0441008 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 1 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0155724 </td>
-   <td style="text-align:right;"> 0.0249444 </td>
-   <td style="text-align:right;"> -0.0621845 </td>
-   <td style="text-align:right;"> 0.0371649 </td>
+   <td style="text-align:right;"> -0.0160617 </td>
+   <td style="text-align:right;"> 0.0245515 </td>
+   <td style="text-align:right;"> -0.0612091 </td>
+   <td style="text-align:right;"> 0.0304272 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 2 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0003874 </td>
-   <td style="text-align:right;"> 0.0242213 </td>
-   <td style="text-align:right;"> -0.0442715 </td>
-   <td style="text-align:right;"> 0.0500363 </td>
+   <td style="text-align:right;"> -0.0028471 </td>
+   <td style="text-align:right;"> 0.0252190 </td>
+   <td style="text-align:right;"> -0.0518971 </td>
+   <td style="text-align:right;"> 0.0484117 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 3 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0011559 </td>
-   <td style="text-align:right;"> 0.0260398 </td>
-   <td style="text-align:right;"> -0.0501505 </td>
-   <td style="text-align:right;"> 0.0530014 </td>
+   <td style="text-align:right;"> -0.0026721 </td>
+   <td style="text-align:right;"> 0.0274297 </td>
+   <td style="text-align:right;"> -0.0563446 </td>
+   <td style="text-align:right;"> 0.0504873 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0158716 </td>
-   <td style="text-align:right;"> 0.0260385 </td>
-   <td style="text-align:right;"> -0.0686702 </td>
-   <td style="text-align:right;"> 0.0332335 </td>
+   <td style="text-align:right;"> -0.0181313 </td>
+   <td style="text-align:right;"> 0.0279846 </td>
+   <td style="text-align:right;"> -0.0714811 </td>
+   <td style="text-align:right;"> 0.0346857 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 5 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0272642 </td>
-   <td style="text-align:right;"> 0.0261566 </td>
-   <td style="text-align:right;"> -0.0761129 </td>
-   <td style="text-align:right;"> 0.0206705 </td>
+   <td style="text-align:right;"> -0.0284898 </td>
+   <td style="text-align:right;"> 0.0264465 </td>
+   <td style="text-align:right;"> -0.0772409 </td>
+   <td style="text-align:right;"> 0.0236857 </td>
   </tr>
 </tbody>
 </table>
+
+
 
 Again we can plot the effects.
 
@@ -373,7 +385,10 @@ Again we can plot the effects.
 plot(ppool_syn_time_summ)
 ```
 
-<img src="figure/ppool_syn_time_plot-1.png" title="plot of chunk ppool_syn_time_plot" alt="plot of chunk ppool_syn_time_plot" style="display: block; margin: auto;" />
+<div class="figure" style="text-align: center">
+<img src="figure/ppool_syn_time_plot-1.png" alt="plot of chunk ppool_syn_time_plot"  />
+<p class="caption">plot of chunk ppool_syn_time_plot</p>
+</div>
 
 
 ### Including auxiliary covariates
@@ -424,7 +439,7 @@ ppool_syn_cov_summ
 #> multisynth(form = lnppexpend ~ cbr | perinc_1959 + studteachratio_1959, 
 #>     unit = State, time = year, data = analysis_df_covs)
 #> 
-#> Average ATT Estimate (Std. Error): -0.019  (0.018)
+#> Average ATT Estimate (Std. Error): -0.019  (0.016)
 #> 
 #> Global L2 Imbalance: 0.004
 #> Scaled Global L2 Imbalance: 0.030
@@ -435,17 +450,17 @@ ppool_syn_cov_summ
 #> Percent improvement from uniform individual weights: 84.5	
 #> 
 #>  Time Since Treatment   Level      Estimate  Std.Error lower_bound upper_bound
-#>                     0 Average -0.0002623589 0.02078651 -0.04130156 0.040925662
-#>                     1 Average -0.0156460545 0.01949953 -0.05349108 0.021924164
-#>                     2 Average  0.0069387466 0.02024600 -0.03258108 0.048686540
-#>                     3 Average -0.0106103779 0.02160831 -0.04983880 0.033063844
-#>                     4 Average -0.0194237423 0.02080205 -0.05902669 0.023164059
-#>                     5 Average -0.0209125783 0.02213589 -0.06216587 0.020961055
-#>                     6 Average -0.0212524266 0.02186180 -0.06374825 0.020971197
-#>                     7 Average -0.0276106061 0.02293380 -0.07255874 0.016851395
-#>                     8 Average -0.0278447702 0.02425786 -0.07499258 0.019589910
-#>                     9 Average -0.0354975379 0.02473537 -0.08628692 0.009765277
-#>                    10 Average -0.0341082006 0.02870464 -0.09258365 0.019230728
+#>                     0 Average -0.0002624529 0.02142663 -0.04534283 0.039477273
+#>                     1 Average -0.0156461424 0.01955742 -0.05138329 0.021858933
+#>                     2 Average  0.0069387257 0.01979857 -0.03246108 0.046934990
+#>                     3 Average -0.0106105517 0.02094953 -0.05241864 0.032678554
+#>                     4 Average -0.0194238312 0.02027608 -0.06026658 0.019006295
+#>                     5 Average -0.0209126517 0.02065713 -0.06053277 0.018478402
+#>                     6 Average -0.0212525401 0.02011174 -0.06076619 0.018093027
+#>                     7 Average -0.0276107046 0.02122581 -0.07010144 0.014753050
+#>                     8 Average -0.0278450111 0.02282095 -0.07360570 0.017305636
+#>                     9 Average -0.0354977043 0.02341366 -0.07998872 0.009126067
+#>                    10 Average -0.0341083505 0.02709654 -0.08591161 0.017937928
 ```
 
 <table class="table table-hover table-responsive" style="margin-left: auto; margin-right: auto;">
@@ -463,53 +478,55 @@ ppool_syn_cov_summ
   <tr>
    <td style="text-align:right;"> 0 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0002624 </td>
-   <td style="text-align:right;"> 0.0207865 </td>
-   <td style="text-align:right;"> -0.0413016 </td>
-   <td style="text-align:right;"> 0.0409257 </td>
+   <td style="text-align:right;"> -0.0002625 </td>
+   <td style="text-align:right;"> 0.0214266 </td>
+   <td style="text-align:right;"> -0.0453428 </td>
+   <td style="text-align:right;"> 0.0394773 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 1 </td>
    <td style="text-align:left;"> Average </td>
    <td style="text-align:right;"> -0.0156461 </td>
-   <td style="text-align:right;"> 0.0194995 </td>
-   <td style="text-align:right;"> -0.0534911 </td>
-   <td style="text-align:right;"> 0.0219242 </td>
+   <td style="text-align:right;"> 0.0195574 </td>
+   <td style="text-align:right;"> -0.0513833 </td>
+   <td style="text-align:right;"> 0.0218589 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 2 </td>
    <td style="text-align:left;"> Average </td>
    <td style="text-align:right;"> 0.0069387 </td>
-   <td style="text-align:right;"> 0.0202460 </td>
-   <td style="text-align:right;"> -0.0325811 </td>
-   <td style="text-align:right;"> 0.0486865 </td>
+   <td style="text-align:right;"> 0.0197986 </td>
+   <td style="text-align:right;"> -0.0324611 </td>
+   <td style="text-align:right;"> 0.0469350 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 3 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0106104 </td>
-   <td style="text-align:right;"> 0.0216083 </td>
-   <td style="text-align:right;"> -0.0498388 </td>
-   <td style="text-align:right;"> 0.0330638 </td>
+   <td style="text-align:right;"> -0.0106106 </td>
+   <td style="text-align:right;"> 0.0209495 </td>
+   <td style="text-align:right;"> -0.0524186 </td>
+   <td style="text-align:right;"> 0.0326786 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 4 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0194237 </td>
-   <td style="text-align:right;"> 0.0208020 </td>
-   <td style="text-align:right;"> -0.0590267 </td>
-   <td style="text-align:right;"> 0.0231641 </td>
+   <td style="text-align:right;"> -0.0194238 </td>
+   <td style="text-align:right;"> 0.0202761 </td>
+   <td style="text-align:right;"> -0.0602666 </td>
+   <td style="text-align:right;"> 0.0190063 </td>
   </tr>
   <tr>
    <td style="text-align:right;"> 5 </td>
    <td style="text-align:left;"> Average </td>
-   <td style="text-align:right;"> -0.0209126 </td>
-   <td style="text-align:right;"> 0.0221359 </td>
-   <td style="text-align:right;"> -0.0621659 </td>
-   <td style="text-align:right;"> 0.0209611 </td>
+   <td style="text-align:right;"> -0.0209127 </td>
+   <td style="text-align:right;"> 0.0206571 </td>
+   <td style="text-align:right;"> -0.0605328 </td>
+   <td style="text-align:right;"> 0.0184784 </td>
   </tr>
 </tbody>
 </table>
+
+
 
 Again we can plot the effects.
 
@@ -517,4 +534,7 @@ Again we can plot the effects.
 plot(ppool_syn_cov_summ, levels = "Average")
 ```
 
-<img src="figure/ppool_syn_cov_plot-1.png" title="plot of chunk ppool_syn_cov_plot" alt="plot of chunk ppool_syn_cov_plot" style="display: block; margin: auto;" />
+<div class="figure" style="text-align: center">
+<img src="figure/ppool_syn_cov_plot-1.png" alt="plot of chunk ppool_syn_cov_plot"  />
+<p class="caption">plot of chunk ppool_syn_cov_plot</p>
+</div>
