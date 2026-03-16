@@ -32,7 +32,7 @@ multisynth(
    \item{outcome}{Name of the outcome of interest}
    \item{treatment}{Name of the treatment assignment variable}
    \item{weighting covariates}{Auxiliary covariates to weight on}
-   \item{approximate matching covariates}{Auxiliary covariates to approximately match one before weighting}
+   \item{approximate matching covariates}{Auxiliary covariates to approximately match on before weighting}
    \item{exact matching covariates}{Auxiliary covariates to exactly match on before weighting}
 }
 If covariates are time-varying, their average value before the first unit is treated will be used. This can be changed by supplying a custom aggregation function to cov_agg.}
