@@ -2,25 +2,28 @@
 % Please edit documentation in R/augsynth.R
 \name{permutation_plot}
 \alias{permutation_plot}
-\title{Generate permutation plots}
+\title{Generate a placebo plot for permutation-based inference}
 \usage{
-permutation_plot(augsynth, inf_type = "permutation")
+permutation_plot(augsynth, inf_type = NULL)
 }
 \arguments{
-\item{inf_type}{Inference type (takes a value of 'permutation' or
-'permutation_rstat') Type of inference algorithm. Inherits
-inf_type from `object` or otherwise defaults to "conformal".
-Options are
-      \itemize{
-       \item{"If numeric"}{A multiple of the treated unit's RMSPE
-       above which donor units will be dropped}
-       \item{"If a character"}{The name or names of donor units to
-       be dropped based on the `unit` parameter
-        in the augsynth model}
-      }}
+\item{augsynth}{An `augsynth` or `summary.augsynth` object.}
 
-\item{results}{Results from calling augsynth()}
+\item{inf_type}{The permutation-based inference type to plot. Must be one
+of `"permutation"` or `"permutation_rstat"`. If `NULL`, the function
+uses the inference type stored in `augsynth`.}
+}
+\value{
+A `ggplot2` placebo plot.
 }
 \description{
-Generate permutation plots
+Plot placebo treatment effect paths for the treated unit and donor units
+using permutation-based inference. If `inf_type = "permutation"`, the plot
+shows raw ATT paths. If `inf_type = "permutation_rstat"`, the plot shows
+RMSPE-adjusted ATT paths.
+}
+\details{
+If `inf_type` is `NULL`, the function inherits the permutation inference
+type from the supplied object. The supplied object must correspond to
+permutation-based inference.
 }
