@@ -4,24 +4,26 @@
 \alias{plot.summary.augsynth}
 \title{Plot results from summarized augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, plot_type = "estimate", cv = FALSE, inf = TRUE, ...)
+\method{plot}{summary.augsynth}(x, plot_type = "estimate", inf = TRUE, ...)
 }
 \arguments{
 \item{x}{A `summary.augsynth` object.}
 
 \item{plot_type}{Type of plot to return.}
 
-\item{cv}{Logical; if `TRUE`, return the cross-validation plot.}
-
-\item{inf}{Logical; if `TRUE`, include uncertainty information when available.}
+\item{inf}{Logical; if `TRUE`, include uncertainty information when
+available.}
 
 \item{...}{Optional additional arguments.}
 }
 \description{
-Make a variety of plots, depending on `plot_type`. The default is to
-plot treatment effect estimates with associated uncertainty (if present).
-For `summary.augsynth` objects, the plot inherits the inference results
-stored in the summary object. Thus, the displayed confidence intervals
-and p-values correspond to the `inf_type` used when `summary()` was
+Make a variety of plots, depending on `plot_type`. The default is
+to plot treatment effect estimates with associated uncertainty (if
+present).
+}
+\details{
+If `inf` is true, will plot the inference results stored in the
+summary object. Thus, the displayed confidence intervals and
+p-values correspond to the `inf_type` used when `summary()` was
 called, and are not recomputed at plot time.
 }

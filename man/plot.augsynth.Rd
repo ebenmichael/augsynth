@@ -16,21 +16,23 @@
 \arguments{
 \item{augsynth}{An `augsynth` object to be plotted.}
 
-\item{plot_type}{The stylized plot type to be returned. Options include
+\item{plot_type}{The style of plot to be returned. Options include
 \itemize{
   \item{"estimate"}{ATT}
   \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
-  \item{"cv"}{Cross-validation MSE (lambda)}
-  \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}
+  \item{"cv"}{Cross-validation MSE (lambda) when using ridge for progfunc.}
+  \item{"placebo"}{The ATTs resulting from the augsynth call applied to all donor units (a placebo permutation test).}
 }}
 
-\item{cv}{If `TRUE`, plot cross-validation MSE against the hyper-parameter;
-otherwise plot effects.}
+\item{cv}{If `TRUE`, force plot_type to be 'cv'; this is for
+backwards compatibility.}
 
-\item{inf}{If `TRUE`, add a confidence interval to plotted ATT estimates.}
+\item{inf}{If `TRUE`, add a confidence interval to plotted ATT
+estimates, if appropriate.  If `FALSE`, do not add confidence
+intervals even if inference results are available.}
 
-\item{inf_type}{Type of inference algorithm. Inherits `inf_type` from
-`object` or otherwise defaults to `"conformal"`. Options are
+\item{inf_type}{Type of inference algorithm, if `inf = TRUE` and
+  `object` does not have precomputed inference. Options are
 \itemize{
   \item{"conformal"}{Conformal inference (default)}
   \item{"jackknife+"}{Jackknife+ algorithm over time periods}
@@ -40,8 +42,9 @@ otherwise plot effects.}
   \item{"None"}{Return ATT estimate only}
 }}
 
-\item{...}{Optional arguments for inference. For details for each
-`inf_type`, see
+\item{...}{Optional arguments to be passed to inference, if
+  inference needs to be calculated. For details for each
+  `inf_type`, see
 \itemize{
   \item{"conformal"}{\code{conformal_inf}}
   \item{"jackknife+"}{\code{time_jackknife_plus}}
@@ -51,14 +54,13 @@ otherwise plot effects.}
 }
 \description{
 Generate plots for fitted `augsynth` objects. Supported plot types
-include treatment effect estimates, observed and synthetic outcomes,
-cross-validation curves, and placebo plots.
+include treatment effect estimates, observed and synthetic
+outcomes, cross-validation curves, and placebo plots.
 }
 \details{
-When a fitted `augsynth` object is supplied, plotting may internally
-compute a summary object, including inference results if requested.
-As a result, plotting directly from an `augsynth` object can be slower,
-especially when inference is required. For faster plotting, first create
-a `summary.augsynth` object (e.g., via `summary()`) and plot that object
-instead.
+When a fitted `augsynth` object is supplied, and `inf` is TRUE,
+plotting may internally compute a summary object to conduct needed
+inference. As a result, plotting directly from an `augsynth` object
+can be slow. For faster plotting, first create a `summary.augsynth`
+object (e.g., via `summary()`) and plot that object instead.
 }

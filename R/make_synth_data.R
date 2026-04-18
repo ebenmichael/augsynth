@@ -31,7 +31,9 @@ make_synth_data = function(n_U, N, n_time, N_tx = 1, n_post = 3,
                            sd_unit_fe = 1,
                            sd_time_fe = 0.2,
                            sd_e = 1,
-                           tx_shift = 0.5 ) {
+                           tx_shift = 0.5,
+                           shock_onesided = FALSE,
+                           shock_linear_coef = NULL ) {
 
     stopifnot( N_tx < N )
     stopifnot( n_post < n_time )
@@ -41,25 +43,24 @@ make_synth_data = function(n_U, N, n_time, N_tx = 1, n_post = 3,
     # Make correlation structure for latent factors
     Sigma = matrix(0.15, nrow = n_U, ncol = n_U)
     diag(Sigma) = 1
-    #solve(Sigma)
     U = MASS::mvrnorm(N, mu = rep(1, n_U), Sigma = Sigma)
-    #U = abs( U )
     U = cbind( U, 1 )
     U[,1] = sd_unit_fe * U[,1]
-    #U
-    #summary(U)
     U[1:N_tx,1:n_U] = U[1:N_tx,1:n_U] + tx_shift
 
 
     # (2) Make the time varying component, with the first row being an
     # intercept
     shocks = matrix(rnorm(n_U * n_time, sd=sd_time), nrow = n_U)
-    #shocks = abs( shocks )
+    if ( shock_onesided ) {
+        shocks = abs( shocks )
+    }
     shocks = rbind( 1, shocks )
-    #shocks[1, ] = 2 * sort(shocks[1, ])
-    #shocks[2, ] = sort(shocks[2, ])
-    #shocks[2, ] = 0.5 * rev(sort(shocks[2, ]))
-    #browser()
+    if ( !is.null( shock_linear_coef ) ) {
+        for ( c in 1:length(shock_linear_coef) ) {
+            shocks[c, ] = shock_linear_coef * sort(shocks[c, ])
+        }
+    }
 
     # Make a time drift by having the fixed effect time shock increase over time.
     shocks[n_U+1,] = sort( shocks[n_U+1,] )
@@ -67,16 +68,10 @@ make_synth_data = function(n_U, N, n_time, N_tx = 1, n_post = 3,
     # Alt way to create time drift
     # shocks = shocks + rep( 1:n_time, each=n_U ) / n_time
 
-    #shocks = shocks + (1:nrow(shocks))/nrow(shocks)
-    #qplot(1:n_time, shocks[1, ])
-    #dim(U)
-    #dim(shocks)
-
     # Outcome is latent factors times time shocks, with extra noise
     # added.
     Y = U %*% shocks
     Y = Y + rnorm( length(Y), sd = sd_e )
-    #dim(Y)
 
     dat = as.data.frame(Y)
     colnames(dat) = 1:n_time

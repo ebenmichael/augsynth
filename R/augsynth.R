@@ -369,30 +369,31 @@ print.augsynth <- function(x, ...) {
 #' Plot function for augsynth
 #'
 #' Generate plots for fitted `augsynth` objects. Supported plot types
-#' include treatment effect estimates, observed and synthetic outcomes,
-#' cross-validation curves, and placebo plots.
+#' include treatment effect estimates, observed and synthetic
+#' outcomes, cross-validation curves, and placebo plots.
 #'
-#' When a fitted `augsynth` object is supplied, plotting may internally
-#' compute a summary object, including inference results if requested.
-#' As a result, plotting directly from an `augsynth` object can be slower,
-#' especially when inference is required. For faster plotting, first create
-#' a `summary.augsynth` object (e.g., via `summary()`) and plot that object
-#' instead.
+#' When a fitted `augsynth` object is supplied, and `inf` is TRUE,
+#' plotting may internally compute a summary object to conduct needed
+#' inference. As a result, plotting directly from an `augsynth` object
+#' can be slow. For faster plotting, first create a `summary.augsynth`
+#' object (e.g., via `summary()`) and plot that object instead.
 #'
 #' @importFrom graphics plot
 #' @param augsynth An `augsynth` object to be plotted.
-#' @param plot_type The stylized plot type to be returned. Options include
+#' @param plot_type The style of plot to be returned. Options include
 #' \itemize{
 #'   \item{"estimate"}{ATT}
 #'   \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
-#'   \item{"cv"}{Cross-validation MSE (lambda)}
-#'   \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}
+#'   \item{"cv"}{Cross-validation MSE (lambda) when using ridge for progfunc.}
+#'   \item{"placebo"}{The ATTs resulting from the augsynth call applied to all donor units (a placebo permutation test).}
 #' }
-#' @param cv If `TRUE`, plot cross-validation MSE against the hyper-parameter;
-#' otherwise plot effects.
-#' @param inf If `TRUE`, add a confidence interval to plotted ATT estimates.
-#' @param inf_type Type of inference algorithm. Inherits `inf_type` from
-#' `object` or otherwise defaults to `"conformal"`. Options are
+#' @param cv If `TRUE`, force plot_type to be 'cv'; this is for
+#'   backwards compatibility.
+#' @param inf If `TRUE`, add a confidence interval to plotted ATT
+#'   estimates, if appropriate.  If `FALSE`, do not add confidence
+#'   intervals even if inference results are available.
+#' @param inf_type Type of inference algorithm, if `inf = TRUE` and
+#'   `object` does not have precomputed inference. Options are
 #' \itemize{
 #'   \item{"conformal"}{Conformal inference (default)}
 #'   \item{"jackknife+"}{Jackknife+ algorithm over time periods}
@@ -401,8 +402,9 @@ print.augsynth <- function(x, ...) {
 #'   \item{"permutation_rstat"}{Placebo permutation, RMSPE-adjusted ATT}
 #'   \item{"None"}{Return ATT estimate only}
 #' }
-#' @param ... Optional arguments for inference. For details for each
-#' `inf_type`, see
+#' @param ... Optional arguments to be passed to inference, if
+#'   inference needs to be calculated. For details for each
+#'   `inf_type`, see
 #' \itemize{
 #'   \item{"conformal"}{\code{conformal_inf}}
 #'   \item{"jackknife+"}{\code{time_jackknife_plus}}
@@ -416,7 +418,14 @@ plot.augsynth <- function(augsynth,
                           inf = TRUE,
                           inf_type = 'conformal', ...) {
 
-    plot_augsynth_results( augsynth=augsynth, cv=cv, inf=inf, plot_type=plot_type, inf_type=inf_type, ... )
+    if ( cv == TRUE ) {
+        plot_type = 'cv'
+    }
+
+    plot_augsynth_results( augsynth=augsynth,
+                           inf=inf,
+                           plot_type=plot_type,
+                           inf_type=inf_type, ... )
 
 }
 
@@ -750,11 +759,13 @@ print.summary.augsynth <- function(x, ...) {
 
 #' Plot results from summarized augsynth
 #'
-#' Make a variety of plots, depending on `plot_type`. The default is to
-#' plot treatment effect estimates with associated uncertainty (if present).
-#' For `summary.augsynth` objects, the plot inherits the inference results
-#' stored in the summary object. Thus, the displayed confidence intervals
-#' and p-values correspond to the `inf_type` used when `summary()` was
+#' Make a variety of plots, depending on `plot_type`. The default is
+#' to plot treatment effect estimates with associated uncertainty (if
+#' present).
+#'
+#' If `inf` is true, will plot the inference results stored in the
+#' summary object. Thus, the displayed confidence intervals and
+#' p-values correspond to the `inf_type` used when `summary()` was
 #' called, and are not recomputed at plot time.
 #'
 #' @param x A `summary.augsynth` object.
@@ -763,7 +774,6 @@ print.summary.augsynth <- function(x, ...) {
 #' @export
 plot.summary.augsynth <- function(x,
                                   plot_type = "estimate",
-                                  cv = FALSE,
                                   inf = TRUE,
                                   ...) {
 
@@ -779,23 +789,25 @@ plot.summary.augsynth <- function(x,
         )
     }
 
+    if (!is.null(dots$cv)) {
+        plot_type = "cv"
+    }
+
+
     if (grepl("placebo", plot_type) &&
         !x$inf_type %in% c("permutation", "permutation_rstat")) {
 
-        warning(
+        stop(
             "Placebo plots are only available for permutation-based inference ",
             "(`inf_type = \"permutation\"` or `\"permutation_rstat\"`). ",
             "No plot was produced.",
             call. = FALSE
         )
-
-        return(invisible(NULL))
     }
 
     plot_augsynth_results(
         x,
         plot_type = plot_type,
-        cv = cv,
         inf = inf,
         ...
     )
@@ -812,11 +824,11 @@ plot.summary.augsynth <- function(x,
 #' plot type.
 #'
 #' @noRd
-get_right_summary <- function(augsynth, plot_type, inf_type = NULL) {
+get_right_summary <- function(augsynth, plot_type, inf, inf_type = NULL) {
 
     plot_type <- tolower(plot_type)
 
-    if (plot_type %in% c("cv", "outcomes")) {
+    if (plot_type %in% c("cv")) {
         return("none")
     }
 
@@ -833,17 +845,14 @@ get_right_summary <- function(augsynth, plot_type, inf_type = NULL) {
 
         warning(
             "Placebo plots are only available for permutation-based inference. ",
-            "Output uses `inf_type = \"permutation\"`.",
+            "Switching to `inf_type = \"permutation\"`.",
             call. = FALSE
         )
         return("permutation")
     }
 
-    if (plot_type == "estimate") {
-        if (is.null(inf_type)) {
-            return("conformal")
-        }
-        return(tolower(inf_type))
+    if ( inf == FALSE ) {
+        return("none")
     }
 
     if (is.null(inf_type)) {
@@ -854,119 +863,147 @@ get_right_summary <- function(augsynth, plot_type, inf_type = NULL) {
 }
 
 
+plot_cv_curve <- function( augsynth ) {
+
+    if ( is.null(augsynth$lambda_errors) | is.null(augsynth$lambdas) ) {
+        stop(
+            "Cross-validation errors and lambdas are not available in this augsynth object. ",
+            "Make sure to fit the model with `progfunc = \"ridge\"` and `CV = TRUE` to get these values. ",
+            "No plot was produced.",
+            call. = FALSE
+        )
+    }
+
+    errors <- data.frame(
+        lambdas = augsynth$lambdas,
+        errors = augsynth$lambda_errors,
+        errors_se = augsynth$lambda_errors_se
+    )
+
+    p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
+        ggplot2::geom_point(size = 2) +
+        ggplot2::geom_errorbar(
+            ggplot2::aes(ymin = errors,
+                         ymax = errors + errors_se),
+            width = 0.2, linewidth = 0.5
+        ) +
+        ggplot2::labs(
+            title = bquote("Cross Validation MSE over " ~ lambda),
+            x = expression(lambda),
+            y = "Cross Validation MSE"
+        ) +
+        ggplot2::scale_x_log10()
+
+    min_lambda <- choose_lambda(
+        augsynth$lambdas,
+        augsynth$lambda_errors,
+        augsynth$lambda_errors_se,
+        FALSE
+    )
+    min_1se_lambda <- choose_lambda(
+        augsynth$lambdas,
+        augsynth$lambda_errors,
+        augsynth$lambda_errors_se,
+        TRUE
+    )
+
+    min_lambda_index <- which(augsynth$lambdas == min_lambda)
+    min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
+
+    highlight_min <- data.frame(
+        lambdas = min_lambda,
+        errors = augsynth$lambda_errors[min_lambda_index]
+    )
+
+    highlight_1se <- data.frame(
+        lambdas = min_1se_lambda,
+        errors = augsynth$lambda_errors[min_1se_lambda_index]
+    )
+
+    p <- p +
+        ggplot2::geom_point(
+            data = highlight_min,
+            ggplot2::aes(x = lambdas, y = errors),
+            color = "gold"
+        ) +
+        ggplot2::geom_point(
+            data = highlight_1se,
+            ggplot2::aes(x = lambdas, y = errors),
+            color = "gold"
+        ) +
+        ggplot2::theme_bw()
+
+    return(p)
+
+}
 
 
 #' Plot results from an augsynth fit or summary
 #'
 #' Internal plotting helper used by `plot.augsynth()` and
-#' `plot.summary.augsynth()`. Depending on `plot_type`, this function draws
-#' treatment effect estimates, observed and synthetic outcomes, cross-validation
-#' curves, or placebo plots.
+#' `plot.summary.augsynth()`. Depending on `plot_type`, this function
+#' draws treatment effect estimates, observed and synthetic outcomes,
+#' cross-validation curves, or placebo plots.
 #'
-#' If a fitted `augsynth` object is supplied, the function may first compute a
-#' `summary.augsynth` object. If a `summary.augsynth` object is supplied, any
-#' stored inference results are used directly.
+#' If a fitted `augsynth` object is supplied, the function may first
+#' compute a `summary.augsynth` object. If a `summary.augsynth` object
+#' is supplied, any stored inference results are used directly.
+#'
+#' For outcome plots, can specify extra argument of 'measure' to plot
+#' the synthetic counterfactual (`"synth"`), the raw average of donor
+#' units (`"average"`), or both.
 #'
 #' Placebo plots are only available for permutation-based inference.
 #'
 #' @param augsynth An `augsynth` or `summary.augsynth` object.
 #' @param plot_type Type of plot to return.
-#' @param cv Logical; if `TRUE`, return the cross-validation plot.
-#' @param inf Logical; if `TRUE`, include uncertainty information when available.
-#' @param inf_type Type of inference to use when summarization is needed.
+#' @param inf Logical; if `TRUE`, include uncertainty information when
+#'   available.
+#' @param inf_type Type of inference to use when summarization is
+#'   needed.
 #' @param ... Optional additional arguments.
 plot_augsynth_results <- function( augsynth,
                                    plot_type = 'estimate',
-                                   cv = FALSE,
                                    inf = TRUE,
                                    inf_type = "conformal",
                                    ...) {
 
-    if (inf == TRUE & !inf_type %in% c("None", 'none')) {
+    if ( inf == TRUE ) {
         inf_type = tolower(inf_type)
-        stopifnot( inf_type %in% c('conformal', 'jackknife', 'jackknife+', 'permutation', 'permutation_rstat', 'none'))
+        stopifnot( inf_type %in% c('conformal', 'jackknife', 'jackknife+',
+                                   'permutation', 'permutation_rstat', 'none'))
     }
 
     # Summarize object if needed.
     if ( is.augsynth(augsynth) ) {
-        it <- get_right_summary(augsynth, plot_type, inf_type)
-        message(
-            "Plotting augsynth objects may be slow. For faster results, first create a summary object ",
-            "and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s))."
-        )
+        if ( !inf ) {
+            inf_type == "none"
+        }
+        it <- get_right_summary(augsynth, plot_type,
+                                inf=inf, inf_type=inf_type)
+        if ( it != "none" ) {
+            message(
+                "Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object ",
+                "and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s))."
+            )
+        }
         augsynth = summary(augsynth, inf_type=it)
     }
 
-    if (plot_type == "cv" | cv == TRUE) {
-        errors <- data.frame(
-            lambdas = augsynth$lambdas,
-            errors = augsynth$lambda_errors,
-            errors_se = augsynth$lambda_errors_se
-        )
-
-        p <- ggplot2::ggplot(errors, ggplot2::aes(x = lambdas, y = errors)) +
-            ggplot2::geom_point(size = 2) +
-            ggplot2::geom_errorbar(
-                ggplot2::aes(ymin = errors,
-                             ymax = errors + errors_se),
-                width = 0.2, linewidth = 0.5
-            ) +
-            ggplot2::labs(
-                title = bquote("Cross Validation MSE over " ~ lambda),
-                x = expression(lambda),
-                y = "Cross Validation MSE"
-            ) +
-            ggplot2::scale_x_log10()
-
-        min_lambda <- choose_lambda(
-            augsynth$lambdas,
-            augsynth$lambda_errors,
-            augsynth$lambda_errors_se,
-            FALSE
-        )
-        min_1se_lambda <- choose_lambda(
-            augsynth$lambdas,
-            augsynth$lambda_errors,
-            augsynth$lambda_errors_se,
-            TRUE
-        )
-
-        min_lambda_index <- which(augsynth$lambdas == min_lambda)
-        min_1se_lambda_index <- which(augsynth$lambdas == min_1se_lambda)
-
-        highlight_min <- data.frame(
-            lambdas = min_lambda,
-            errors = augsynth$lambda_errors[min_lambda_index]
-        )
-
-        highlight_1se <- data.frame(
-            lambdas = min_1se_lambda,
-            errors = augsynth$lambda_errors[min_1se_lambda_index]
-        )
-
-        p <- p +
-            ggplot2::geom_point(
-                data = highlight_min,
-                ggplot2::aes(x = lambdas, y = errors),
-                color = "gold"
-            ) +
-            ggplot2::geom_point(
-                data = highlight_1se,
-                ggplot2::aes(x = lambdas, y = errors),
-                color = "gold"
-            ) +
-            ggplot2::theme_bw()
-
-        return(p)
-
-    } else if (plot_type == 'estimate' & inf == TRUE) {
-        p <- augsynth_plot_from_results(augsynth, ci = TRUE)
-    } else if (plot_type == 'estimate' & inf == FALSE) {
-        p <- augsynth_plot_from_results(augsynth, ci = FALSE)
+    if ( plot_type == "cv" ) {
+        p <- plot_cv_curve( augsynth )
+    } else if (plot_type == 'estimate' ) {
+        p <- augsynth_estimate_plot(augsynth, ci = inf )
     } else if (grepl("placebo", plot_type)) {
         p <- permutation_plot(augsynth, inf_type = augsynth$inf_type)
     } else if (plot_type == 'outcomes') {
-        p <- augsynth_outcomes_plot(augsynth, measure = c('synth', 'average'))
+        dots <- list(...)
+        if ( !is.null(dots$measure) ) {
+            measure <- dots$measure
+        } else {
+            measure <- c("synth", "average")
+        }
+        p <- augsynth_outcomes_plot(augsynth, ci = inf, measure = measure )
     }
     return(p)
 }
@@ -980,7 +1017,7 @@ plot_augsynth_results <- function( augsynth,
 #' @param ... Optional arguments
 #'
 #' @noRd
-augsynth_plot_from_results <- function(augsynth,
+augsynth_estimate_plot <- function(augsynth,
                                        ci = TRUE,
                                        ...) {
 
@@ -1031,10 +1068,10 @@ augsynth_plot_from_results <- function(augsynth,
 #'   raw average of donor units.  Can list both if desired.
 #'
 #' @noRd
-augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
+augsynth_outcomes_plot <- function(augsynth, ci = TRUE, measure = c("synth", "average")) {
 
     if (!is_summary_augsynth(augsynth)) {
-        augsynth <- summary(augsynth)
+        augsynth <- summary(augsynth, inf = inf )
     }
 
     series = augsynth$treated_table
@@ -1046,8 +1083,41 @@ augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
     pt = which( series$tx == 1 )[[1]]
     cut_time = (series$time[pt] + series$time[pt + 1]) / 2
 
-    p <- ggplot2::ggplot( series ) +
+    p <- ggplot2::ggplot( series )
+
+    if (ci) {
+        ci_series  <- augsynth$att
+        stopifnot( nrow(series) == nrow(ci_series) )
+        ci_series$Yobs = series$Yobs
+        ci_series$time = series$time
+        if(all(is.na(ci_series$lower_bound))) {
+            stopifnot( "Std.Error" %in% colnames(ci_series) )
+
+            p <- p +
+                ggplot2::geom_ribbon(data = ci_series %>% filter(!is.na(Std.Error)),
+                                     ggplot2::aes(x = time,
+                                                  ymin = Yobs - 2 * Std.Error,
+                                                  ymax = Yobs + 2 * Std.Error),
+                                     alpha = 0.2)
+        } else {
+            ci_series$lower_bound = ci_series$lower_bound - ci_series$Estimate
+            ci_series$upper_bound = ci_series$upper_bound - ci_series$Estimate
+
+            p <- p +
+                ggplot2::geom_ribbon(data = ci_series %>% filter(!is.na(lower_bound)),
+                                     ggplot2::aes(x = time,
+                                                  ymin = Yobs + lower_bound,
+                                                  ymax = Yobs + upper_bound),
+                                     alpha = 0.2)
+        }
+
+    }
+
+
+    p <- p +
         ggplot2::geom_line(aes(x = time, y = Yobs, linetype = as.character(augsynth$trt_unit)))
+
+
 
     if ('synth' %in% measure) {
         p <- p +
@@ -1058,6 +1128,19 @@ augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
         p <- p +
             ggplot2::geom_line(aes(x = time, y = raw_average, linetype = 'Donor raw average'))
     }
+
+    p <- p +
+        labs( lty = "Unit" )
+
+
+    return(p)
+
+
+
+
+
+
+
 
     p <- p +
         ggplot2::labs(linetype = NULL,
@@ -1079,19 +1162,21 @@ augsynth_outcomes_plot <- function(augsynth, measure = c("synth", "average")) {
 
 #' Generate a placebo plot for permutation-based inference
 #'
-#' Plot placebo treatment effect paths for the treated unit and donor units
-#' using permutation-based inference. If `inf_type = "permutation"`, the plot
-#' shows raw ATT paths. If `inf_type = "permutation_rstat"`, the plot shows
-#' RMSPE-adjusted ATT paths.
+#' Plot placebo treatment effect paths for the treated unit and donor
+#' units using permutation-based inference. If `inf_type =
+#' "permutation"`, the plot shows raw ATT paths. If `inf_type =
+#' "permutation_rstat"`, the plot shows RMSPE-adjusted ATT paths.
 #'
-#' If `inf_type` is `NULL`, the function inherits the permutation inference
-#' type from the supplied object. The supplied object must correspond to
-#' permutation-based inference.
+#' If `inf_type` is `NULL`, the function inherits the permutation
+#' inference type from the supplied object. The supplied object must
+#' correspond to permutation-based inference.
 #'
 #' @param augsynth An `augsynth` or `summary.augsynth` object.
-#' @param inf_type The permutation-based inference type to plot. Must be one
-#'   of `"permutation"` or `"permutation_rstat"`. If `NULL`, the function
-#'   uses the inference type stored in `augsynth`.
+#' @param inf_type The permutation-based inference type to plot. Must
+#'   be one of `"permutation"` or `"permutation_rstat"`. If `NULL`,
+#'   the function uses the inference type stored in `augsynth`, if
+#'   appropriate.  If `augsynth` does not have a stored inference
+#'   type, refits with `"permutation"`.
 #'
 #' @return A `ggplot2` placebo plot.
 #' @export

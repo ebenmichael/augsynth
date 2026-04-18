@@ -7,7 +7,6 @@
 plot_augsynth_results(
   augsynth,
   plot_type = "estimate",
-  cv = FALSE,
   inf = TRUE,
   inf_type = "conformal",
   ...
@@ -18,24 +17,28 @@ plot_augsynth_results(
 
 \item{plot_type}{Type of plot to return.}
 
-\item{cv}{Logical; if `TRUE`, return the cross-validation plot.}
+\item{inf}{Logical; if `TRUE`, include uncertainty information when
+available.}
 
-\item{inf}{Logical; if `TRUE`, include uncertainty information when available.}
-
-\item{inf_type}{Type of inference to use when summarization is needed.}
+\item{inf_type}{Type of inference to use when summarization is
+needed.}
 
 \item{...}{Optional additional arguments.}
 }
 \description{
 Internal plotting helper used by `plot.augsynth()` and
-`plot.summary.augsynth()`. Depending on `plot_type`, this function draws
-treatment effect estimates, observed and synthetic outcomes, cross-validation
-curves, or placebo plots.
+`plot.summary.augsynth()`. Depending on `plot_type`, this function
+draws treatment effect estimates, observed and synthetic outcomes,
+cross-validation curves, or placebo plots.
 }
 \details{
-If a fitted `augsynth` object is supplied, the function may first compute a
-`summary.augsynth` object. If a `summary.augsynth` object is supplied, any
-stored inference results are used directly.
+If a fitted `augsynth` object is supplied, the function may first
+compute a `summary.augsynth` object. If a `summary.augsynth` object
+is supplied, any stored inference results are used directly.
+
+For outcome plots, can specify extra argument of 'measure' to plot
+the synthetic counterfactual (`"synth"`), the raw average of donor
+units (`"average"`), or both.
 
 Placebo plots are only available for permutation-based inference.
 }
