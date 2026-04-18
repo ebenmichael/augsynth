@@ -4,26 +4,24 @@
 \alias{plot.summary.augsynth}
 \title{Plot results from summarized augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, plot_type = "estimate", ...)
+\method{plot}{summary.augsynth}(x, plot_type = "estimate", cv = FALSE, inf = TRUE, ...)
 }
 \arguments{
-\item{x}{summary.augsynth object}
+\item{x}{A `summary.augsynth` object.}
 
-\item{plot_type}{The stylized plot type to be returned. Options include
-\itemize{
-  \item{"estimate"}{The ATT and 95\% confidence interval}
-  \item{"estimate only"}{The ATT without a confidence interval}
-  \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
-  \item{"outcomes raw average"}{The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.}
-  \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}  }}
+\item{plot_type}{Type of plot to return.}
 
-\item{...}{Optional arguments}
+\item{cv}{Logical; if `TRUE`, return the cross-validation plot.}
+
+\item{inf}{Logical; if `TRUE`, include uncertainty information when available.}
+
+\item{...}{Optional additional arguments.}
 }
 \description{
-Make a variety of plots, depending on plot_type.  Default is to
-plot impacts with associated uncertainty (if present).  Other
-options are estimates with no uncertainty ("estimate only"), the
-level of outcome ("outcomes"), level of outcomes with the raw trend
-as well ("outcomes raw average"), and the classic spagetti plot
-("placebo").
+Make a variety of plots, depending on `plot_type`. The default is to
+plot treatment effect estimates with associated uncertainty (if present).
+For `summary.augsynth` objects, the plot inherits the inference results
+stored in the summary object. Thus, the displayed confidence intervals
+and p-values correspond to the `inf_type` used when `summary()` was
+called, and are not recomputed at plot time.
 }

@@ -7,32 +7,27 @@
 \method{summary}{augsynth}(object, inf_type = "conformal", ...)
 }
 \arguments{
-\item{object}{augsynth object}
+\item{object}{An `augsynth` object.}
 
-\item{inf_type}{Type of inference algorithm. If left NULL, inherits
-inf_type from `object` or otherwise defaults to "conformal."
-Options are
-      \itemize{
-       \item{"conformal"}{Conformal inference (default)}
-       \item{"jackknife+"}{Jackknife+ algorithm over time periods}
-       \item{"jackknife"}{Jackknife over units}
-       \item{"permutation"}{Placebo permutation, raw ATT}
-       \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
-      }}
+\item{inf_type}{Type of inference algorithm to compute. Defaults to
+`"conformal"`. Options are
+\itemize{
+  \item{"conformal"}{Conformal inference (default)}
+  \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+  \item{"jackknife"}{Jackknife over units}
+  \item{"permutation"}{Placebo permutation, raw ATT}
+  \item{"permutation_rstat"}{Placebo permutation, RMSPE-adjusted ATT}
+}}
 
-\item{...}{Optional arguments for inference, for more details for
-each `inf_type` see
-      \itemize{
-       \item{"conformal"}{`conformal_inf`}
-       \item{"jackknife+"}{`time_jackknife_plus`}
-       \item{"jackknife"}{`jackknife_se_single`}
-       \item{"permutation", "permutation_rstat"}{`permutation_inf`}
-      }}
+\item{...}{Optional arguments passed to the selected inference procedure.}
 }
 \description{
-Summary summarizes an augsynth result by (usually) adding an
-inferential result, if that has not been calculated already, and
-calculating a few other summary statistics such as estimated bias.
-This method does this via `add_inference()`, if inference is
-needed.
+Summarize a fitted `augsynth` object by adding inference results and
+computing additional summary statistics such as estimated bias, donor
+weights, and treated-unit outcome summaries.
+}
+\details{
+The returned `summary.augsynth` object stores the inference results used
+for printing and plotting. Plotting a `summary.augsynth` object does not
+recompute inference.
 }

@@ -43,8 +43,6 @@ causalimpact=Bayesian structural time series with CausalImpact}
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
 
 \item{...}{optional arguments for outcome model}
-
-\item{plot}{Whether or not to return a plot of the augsynth model}
 }
 \value{
 augsynth object that contains:

@@ -45,11 +45,12 @@ fit_gsynth_multi <- function(long_df, X, trt, r=0, force=3, CV=1) {
 #' @param trt Vector of treatment status for each unit
 #' @param mask Matrix of treatment statuses
 #' @param force Fixed effects: 1="unit", 2="time", 3="two-way"
+#' @param time_cohort Boolean indicating whether to use time cohorts
 #' @noRd
 #' @return \itemize{
 #'           \item{y0hat }{Predicted outcome under control}
 #'           \item{params }{Regression parameters}}
-fit_feff <- function(X, trt, mask, force) {
+fit_feff <- function(X, trt, mask, force, time_cohort) {
 
     ttot <- ncol(X)
     n <- nrow(X)
@@ -89,11 +90,11 @@ fit_feff <- function(X, trt, mask, force) {
     }
     
     # go from treatment cohorts to individuals
-    if(force %in% c(1,3)) {
+    if(force %in% c(1,3) & !time_cohort) {
       names(residuals) <- as.character(grps)
-    residuals <- residuals[as.character(trt[is.finite(trt)])]
-    names(y0hat) <- as.character(grps)
-    y0hat <- y0hat[as.character(trt[is.finite(trt)])]
+      residuals <- residuals[as.character(trt[is.finite(trt)])]
+      names(y0hat) <- as.character(grps)
+      y0hat <- y0hat[as.character(trt[is.finite(trt)])]
     }
     
     return(list(y0hat = y0hat,
