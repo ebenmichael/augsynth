@@ -126,3 +126,22 @@ test_that("augsynth runs single_synth with progfunc = 'ridge' when there is a si
 
   expect_equal(syn$weights, syn_single$weights)
 })
+
+
+
+test_that("Check print.augsynth.summary writes to console", {
+
+    data(basque)
+    basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
+                                                regionno != 17 ~0,
+                                                regionno == 17 ~ 1)) %>%
+        filter(regionno != 1)
+
+    syn <- augsynth(gdpcap ~ trt, regionno, year, basque, scm = T)
+    sum <- summary(syn)
+
+    expect_output( print( sum ), "Conformal inference" )
+})
+
+
+

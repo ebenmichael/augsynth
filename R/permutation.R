@@ -339,69 +339,6 @@ add_placebo_distribution <- function(augsynth) {
 }
 
 
-#' Generate permutation plots
-#'
-#' @param results Results from calling augsynth()
-#'
-#' @param inf_type Inference type (takes a value of 'permutation' or
-#'   'permutation_rstat') Type of inference algorithm. Inherits
-#'   inf_type from `object` or otherwise defaults to "conformal".
-#'   Options are
-#'         \itemize{
-#'          \item{"If numeric"}{A multiple of the treated unit's RMSPE
-#'          above which donor units will be dropped}
-#'          \item{"If a character"}{The name or names of donor units to
-#'          be dropped based on the `unit` parameter
-#'           in the augsynth model}
-#'         }
-#' @export
-permutation_plot <- function(augsynth, inf_type = 'permutation') {
-
-    if (!inf_type %in% c('permutation', 'permutation_rstat')) {
-        stop("Permutation plots are only available for `permutation` and `permutation_rstat` inference types")
-    }
-
-    if(inf_type == 'permutation') {
-        measure = "ATT"
-        y_lab = "Estimate (ATT)"
-    } else {
-        measure = 'rstat'
-        y_lab = "Estimate (RMPSE-adjusted ATT)"
-    }
-
-    if (is.summary.augsynth(augsynth)) {
-        placebo_dist <- augsynth$permutations$placebo_dist
-    } else if (is.null(augsynth$results$permutations)) {
-        augsynth <- add_placebo_distribution(augsynth)
-        placebo_dist <- augsynth$results$permutations$placebo_dist
-    } else {
-        placebo_dist <- augsynth$results$permutations$placebo_dist
-    }
-
-    plot_df <- placebo_dist %>%
-        mutate(trt_status = factor(trt, levels = c(0, 1), labels = c('Control', 'Treatment')))
-
-    t0 <- ncol(augsynth$data$X)
-    treat_year = augsynth$data$time[t0 + 1]
-
-    out_plot <- ggplot2::ggplot(plot_df,
-                                aes(x = !!as.name(augsynth$time_var), y = !!as.name(measure),
-                                    color = trt_status, linetype = !!as.name(augsynth$unit_var)), size = 0.8) +
-        ggplot2::geom_line() +
-        ggplot2::geom_vline(lty = 2, xintercept = treat_year) +
-        ggplot2::geom_hline(lty = 2, yintercept = 0) +
-        ggplot2::scale_color_manual(values = c('Control' = 'gray', 'Treatment' = 'black')) +
-        ggplot2::scale_linetype_manual(values = rep('solid', length(unique(plot_df %>% pull(!!as.name(augsynth$unit_var)))))) +
-        ggplot2::labs(color = NULL, y = y_lab) +
-        ggplot2::guides(linetype = 'none') +
-        ggplot2::theme_bw() +
-        ggplot2::theme(legend.position = 'bottom')
-
-    return(out_plot)
-}
-
-
-
 #' Generate formatted outputs for statistical inference using permutation inference
 #'
 #' @param augsynth An augsynth object.
@@ -437,165 +374,6 @@ permutation_inf <- function(augsynth, inf_type) {
 
 
 
-# Methods for interacting with the augsynth object
-
-#' Print function for augsynth
-#' @param x augsynth object
-#' @param ... Optional arguments
-#' @export
-print.augsynth <- function(x, ...) {
-    augsynth <- x
-
-    ## straight from lm
-    cat("\nCall:\n", paste(deparse(augsynth$call), sep="\n", collapse="\n"), "\n", sep="")
-    cat( sprintf( "    Fit to %d units and %d time points\n\n", n_unit(augsynth), n_time(augsynth) ) )
-    ## print att estimates
-    tint <- ncol(augsynth$data$X)
-    ttotal <- tint + ncol(augsynth$data$y)
-    att_post <- predict(augsynth, att = T)[(tint + 1):ttotal]
-
-    cat(paste("Average ATT Estimate: ",
-              format(round(mean(att_post),3), nsmall = 3), "\n\n", sep=""))
-}
-
-
-
-#' Plot function for augsynth
-#' @importFrom graphics plot
-#'
-#'
-#' @param augsynth Augsynth or summary.augsynth object to be plotted
-#' @param plot_type The stylized plot type to be returned. Options include
-#'        \itemize{
-#'          \item{"estimate"}{The ATT and 95\% confidence interval}
-#'          \item{"estimate only"}{The ATT without a confidence interval}
-#'          \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
-#'          \item{"outcomes raw average"}{The level of the outcome variable for the treated and synthetic control units, along with the raw average of the donor units.}
-#'          \item{"placebo"}{The ATTs resulting from placebo tests on the donor units.}  }
-#' @param cv If True, plot cross validation MSE against hyper-parameter, otherwise plot effects
-#' @param inf_type Type of inference algorithm. Inherits inf_type from `object` or otherwise defaults to "conformal". Options are
-#'         \itemize{
-#'          \item{"conformal"}{Conformal inference (default)}
-#'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
-#'          \item{"jackknife"}{Jackknife over units}
-#'          \item{"permutation"}{Placebo permutation, raw ATT}
-#'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
-#'          \item{"None"}{Return ATT Estimate only}
-#'         }
-#' @param ... Optional arguments for inference, for more details for each `inf_type` see
-#'         \itemize{
-#'          \item{"conformal"}{`conformal_inf`}
-#'          \item{"jackknife+"}{`time_jackknife_plus`}
-#'          \item{"jackknife"}{`jackknife_se_single`}
-#'          \item{"permutation"}{`permutation_inf`}
-#'         }
-#' @param ... Optional arguments
-#' @export
-plot.augsynth <- function(augsynth,
-                          cv = FALSE,
-                          plot_type = 'estimate',
-                          inf_type = NULL, ...) {
-
-    plot_augsynth_results( augsynth=augsynth, cv=cv, plot_type=plot_type, inf_type=inf_type, ... )
-
-}
-
-
-
-
-#' Methods for accessing details of augsynth result object (of class augsynth)
-#'
-#'
-#' @param x augsynth result object
-#'
-#' @rdname augsynth_class
-#'
-#' @return is.augsynth: TRUE if object is a augsynth object.
-#'
-#' @export
-is.augsynth <- function(x) {
-    inherits(x, "augsynth")
-}
-
-
-
-#'
-#' @return dim: Dimension of data as pair of (# units, # time points).
-#'
-#' @rdname augsynth_class
-#' @export
-#'
-dim.augsynth <- function(x, ... ) {
-    n_unit = length( unique( x$raw_data[[ x$unit_var ]] ) )
-    n_time = length( unique( x$raw_data[[ x$time_var ]] ) )
-    return( c( n_unit, n_time ) )
-}
-
-
-
-
-#'
-#' @return Single number (of unique units).
-#'
-#' @rdname synth_class
-#' @export
-#'
-n_unit <- function(x, ... ) {
-    UseMethod( "n_unit" )
-}
-
-#' @title Number of time points in fit data
-#'
-#' @rdname synth_class
-#' @return Single number (of unique time points).
-#' @export
-n_time <- function(x, ... ) {
-    UseMethod( "n_time" )
-}
-
-
-
-#' @title Number of treated units in fit data
-#'
-#' @rdname synth_class
-#' @return Single number (of number of treated units).
-#' @export
-n_treated <- function(x, ... ) {
-    UseMethod( "n_treated" )
-}
-
-
-
-#'
-#' @return Single number (of unique units).
-#'
-#' @rdname augsynth_class
-#'
-#' @export
-#'
-n_unit.augsynth <- function(x, ... ) {
-    dim.augsynth(x)[[1]]
-}
-
-#' @title Number of time points in augsynth
-#'
-#' @rdname augsynth_class
-#'
-#' @return Single number (of unique time points).
-#' @export
-n_time.augsynth <- function(x, ... ) {
-    dim.augsynth(x)[[2]]
-}
-
-
-#'
-#' @rdname augsynth_class
-#'
-#' @return Number of treated units (always 1 for augsynth)
-#' @export
-n_treated.augsynth <- function(x, ... ) {
-    return( 1 )
-}
 
 
 #' RMSPE for treated unit
@@ -624,7 +402,7 @@ RMSPE <- function( augsynth ) {
 #' @export
 placebo_distribution <- function( augsynth ) {
     inf_type = NA
-    if ( is.summary.augsynth(augsynth) ) {
+    if ( is_summary_augsynth(augsynth) ) {
         inf_type = augsynth$inf_type
     } else if ( is.augsynth(augsynth) ) {
         augsynth <- summary( augsynth, inf_type = "permutation" )
@@ -660,7 +438,7 @@ placebo_distribution <- function( augsynth ) {
 #' @export
 treated_table <- function(augsynth) {
 
-    if ( is.summary.augsynth( augsynth ) ) {
+    if ( is_summary_augsynth( augsynth ) ) {
         return( augsynth$treated_table )
     }
 

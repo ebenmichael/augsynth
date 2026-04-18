@@ -24,7 +24,7 @@ test_that( "covariate table works", {
 
 test_that("summary.augsynth works", {
 
-    expect_output( print( syn ), glue::glue("Fit to {n_units} units and {n_time} time points.*Average ATT Estimate") )
+    expect_output( print( syn ), paste0('Fit to ', n_units, ' units and ', n_time, ' time points.*Average ATT Estimate'))
 
     sum = summary( syn )
 
