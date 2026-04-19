@@ -13,7 +13,7 @@
 #' results, the function will call that form of inference, in order to
 #' calculate the RMSPEs for each donor unit in turn.
 #'
-#' @param augsynth Augsynth object to be plotted
+#' @param augsynth Augsynth object
 #' @param include_RMSPE Include RMSPEs in the table even if
 #'   permutation inference has not yet been conducted.
 #' @param zap_weights all weights smaller than this value will be set
@@ -40,9 +40,12 @@ donor_table <- function(augsynth, include_RMSPE = TRUE, zap_weights = 0.0000001 
     names(tbl)[[1]] = unit_var
 
     # If RMPSEs already exist, or flag says to calculate them, then calculate them
-    if ( include_RMSPE || (!is.null(augsynth$results) && augsynth$results$inf_type %in% c("permutation", "permutation_rstat")) ) {
+    if ( include_RMSPE ||
+         ( !is.null(augsynth$results ) &&
+           augsynth$results$inf_type %in% c("permutation", "permutation_rstat")) ) {
 
-        if (is.null(augsynth$results) || (!(augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) ) ) {
+        if ( is.null(augsynth$results) ||
+             (!(augsynth$results$inf_type %in% c("permutation", "permutaton_rstat")) ) ) {
             augsynth <- add_inference(augsynth, inf_type = 'permutation')
         }
         RMSPEs <- augsynth$results$permutations$placebo_dist %>%

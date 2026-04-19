@@ -147,6 +147,7 @@ calculate_MDES_table = function( lest, treat_year, tx_col, time_col ) {
 }
 
 
+
 #' Calculate RMSPE for all units on lagged outcomes
 #'
 #' This calculates the RMSPE of the difference between estimated and

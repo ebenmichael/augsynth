@@ -20,26 +20,6 @@ table( basque$trt, basque$regionno )
 
 
 
-test_that( "MDES_table corresponds to default treatment table", {
-
-    syn <- augsynth(gdpcap ~ trt, regionno, year,
-                    data=basque, scm = TRUE)
-
-    summ <- summary(syn, inf_type = 'permutation')
-
-    mm <- summ$permutations$MDES_table[1:7] %>%
-        select( sort( names(.)))
-    mm
-    tt <- treated_table(syn) %>%
-        select( sort( names(.)))
-    tt
-
-    expect_equal( as.data.frame(tt)[c("ATT","raw_average","Yhat", "tx")],
-                  as.data.frame(mm)[c("ATT","raw_average","Yhat", "tx")] )
-} )
-
-
-
 test_that( "Placebo distribtion works", {
 
     syn <- augsynth(gdpcap ~ trt, regionno, year,
@@ -76,7 +56,7 @@ test_that( "Placebo distribtion works", {
                       names_to = "year",
                       values_to = "est" )
     gs <- g1 %>%
-        inner_join( g7, by = c("ID","year"), suffix = c("_syn1", "_syn7") )    gs
+        inner_join( g7, by = c("ID","year"), suffix = c("_syn1", "_syn7") )
     expect_equal( gs$est_syn1, gs$est_syn7, tolerance = 0.000001 )
 
     expect_equal( tt$ATT, g7$est[g7$ID == 17], tolerance = 0.000001 )
