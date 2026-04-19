@@ -173,62 +173,6 @@ calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
     return(RMSPEs)
 }
 
-#' Estimate robust SE
-#'
-#' Given a list of impact estimates (all assumed to be estimating a
-#' target impact of 0), calculate the modified standard deviation by
-#' looking an in inter-quartile range rather than the simple standard
-#' deviation.  This reduces the effect of small numbers of extreme
-#' outliers, and focuses on central variation.  This then gets
-#' converted to a standard error (standard deviation of the results,
-#' in effect.)
-#'
-#' @param placebo_estimates The list of impact estimates to use for
-#'   estimating the SE.
-#' @param k Number of obs to drop from each tail (so 2k obs dropped
-#'   total)
-#' @param beta Proportion of obs to drop from each tail. E.g., 95\% to
-#'   drop 5\% most extreme.  Only one of beta or k can be non-null.
-#' @param round_beta TRUE means adjust beta to the nearest integer
-#'   number of units to drop (the Howard method).  FALSE means
-#'   interpolate quantiles using R's quantile function.
-#'
-#' @noRd
-estimate_robust_SE = function( placebo_estimates, k = NULL, beta = NULL,
-                               round_beta = FALSE ) {
-
-    stopifnot("Either `k` or `beta` must be NULL." = is.null(k) != is.null( beta ) )
-
-    n = length( placebo_estimates )
-
-    if ( is.null( beta ) ) {
-        #alpha = (2*k-1) / (2*n)    # Method A
-        alpha = k/( n-1 )    # Method B
-        beta = 1 - 2*alpha
-        q = sort( placebo_estimates )[ c(1+k, n - k) ]
-    } else {
-        alpha = (1 - beta)/2
-        k = alpha * (n-1)  # QUESTION: Why n-1 here????
-        if ( round_beta ) {
-            k = pmax( 1, round( k ) )
-            alpha = k/(n-1)
-            beta = 1 - 2*alpha
-            q = sort( placebo_estimates )[ c(1+k, n - k) ]
-        } else {
-            q = quantile( placebo_estimates, probs = c( alpha, 1 - alpha ) )
-        }
-    }
-
-    del = as.numeric( diff( q ) )
-    z = -qnorm( alpha )
-    SE_imp = del / (2*z)
-
-    res = data.frame( beta = beta, k = k,
-                      q_low = q[[1]], q_high = q[[2]],
-                      range = del, z = z, SE_imp = SE_imp )
-    res
-}
-
 
 #' Construct an organized dataframe with outcome data in long format
 #' from augsynth object

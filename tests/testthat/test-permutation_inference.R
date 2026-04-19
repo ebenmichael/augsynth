@@ -26,7 +26,6 @@ test_that( "Placebo distribtion works", {
                     data = basque, scm = TRUE, progfunc = "none" )
     tt <- treated_table(syn)
 
-
     b2 = basque %>%
         mutate( trt = 0 + (regionno == 7 ) * (year>=1975) )
     syn7 <- augsynth(gdpcap ~ trt, regionno, year,

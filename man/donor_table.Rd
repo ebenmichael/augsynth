@@ -8,7 +8,7 @@ their synthetic weights.}
 donor_table(augsynth, include_RMSPE = TRUE, zap_weights = 1e-07)
 }
 \arguments{
-\item{augsynth}{Augsynth object to be plotted}
+\item{augsynth}{Augsynth object}
 
 \item{include_RMSPE}{Include RMSPEs in the table even if
 permutation inference has not yet been conducted.}

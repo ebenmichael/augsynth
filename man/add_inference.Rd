@@ -2,7 +2,7 @@
 % Please edit documentation in R/augsynth.R
 \name{add_inference}
 \alias{add_inference}
-\title{Function to add inference to augsynth object}
+\title{Add inference to augsynth object}
 \usage{
 add_inference(object, inf_type = "conformal", linear_effect = F, ...)
 }
@@ -18,16 +18,19 @@ add_inference(object, inf_type = "conformal", linear_effect = F, ...)
  \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
 }}
 
-\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
+\item{linear_effect}{Boolean, whether to invert the conformal
+inference hypothesis test to get confidence intervals for a
+linear-in-time treatment effect: intercept + slope * time}
 
-\item{...}{Optional arguments for inference, for more details for each `inf_type` see
-\itemize{
- \item{"conformal"}{`conformal_inf`}
- \item{"jackknife+"}{`time_jackknife_plus`}
- \item{"jackknife"}{`jackknife_se_single`}
- \item{"permutation"}{`permutation_inf`}
-}}
+\item{...}{Optional arguments for inference, for more details for
+each `inf_type` see
+      \itemize{
+       \item{"conformal"}{`conformal_inf`}
+       \item{"jackknife+"}{`time_jackknife_plus`}
+       \item{"jackknife"}{`jackknife_se_single`}
+       \item{"permutation"}{`permutation_inf`}
+      }}
 }
 \description{
-Function to add inference to augsynth object
+Add inference to augsynth object
 }

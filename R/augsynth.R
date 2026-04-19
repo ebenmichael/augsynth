@@ -217,7 +217,8 @@ predict.augsynth <- function(object, att = F, ...) {
 
 
 
-#' Function to add inference to augsynth object
+#' Add inference to augsynth object
+#'
 #' @param object augsynth object
 #' @param inf_type Type of inference algorithm. Options are
 #'         \itemize{
@@ -227,8 +228,11 @@ predict.augsynth <- function(object, att = F, ...) {
 #'          \item{"permutation"}{Placebo permutation, raw ATT}
 #'          \item{"permutation_rstat"}{Placebo permutation, RMSPE adjusted ATT}
 #'         }
-#' @param linear_effect Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time
-#' @param ... Optional arguments for inference, for more details for each `inf_type` see
+#' @param linear_effect Boolean, whether to invert the conformal
+#'   inference hypothesis test to get confidence intervals for a
+#'   linear-in-time treatment effect: intercept + slope * time
+#' @param ... Optional arguments for inference, for more details for
+#'   each `inf_type` see
 #'         \itemize{
 #'          \item{"conformal"}{`conformal_inf`}
 #'          \item{"jackknife+"}{`time_jackknife_plus`}
@@ -255,7 +259,6 @@ add_inference <- function(object, inf_type = "conformal", linear_effect = F, ...
             if(linear_effect) {
                 att_linear <- conformal_inf_linear(augsynth, ...)
             }
-
         } else if (inf_type %in% c('permutation', 'permutation_rstat')) {
             if (is.null(augsynth$results$permutations)) {
                 augsynth <- add_placebo_distribution(augsynth)
