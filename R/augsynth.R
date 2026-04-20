@@ -1133,7 +1133,8 @@ augsynth_outcomes_plot <- function(augsynth, ci = TRUE, measure = c("synth", "av
     }
 
     p <- p +
-        labs( lty = "Unit" )
+        labs( lty = "Unit" ) +
+        ggplot2::theme_bw()
 
 
     return(p)
