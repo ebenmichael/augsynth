@@ -1,4 +1,4 @@
-
+context("Testing permutation inference")
 
 library( tidyverse )
 

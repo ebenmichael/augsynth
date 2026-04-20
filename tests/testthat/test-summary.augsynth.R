@@ -1,3 +1,5 @@
+context("Testing augsynth summary functionality")
+
 library( augsynth )
 set.seed( 4040440 )
 

@@ -1,4 +1,4 @@
-
+context("Testing donor control functionality")
 
 set.seed(7393)
 dat = augsynth:::make_synth_data( n_time = 10, n_U = 5, N = 12, long_form = TRUE, tx_impact = 2, tx_shift = 1 )
