@@ -225,6 +225,11 @@ test_that( "'cv' plots work for augsynth objects", {
 
     expect_equal( p2, p3 )
     expect_equal( layer_data(p2), layer_data(p3) )
+
+    p3 <- plot( sum_ridge, cv=FALSE )
+    p4 <- plot( sum_ridge )
+
+    expect_equal( layer_data(p3), layer_data(p4))
 })
 
 
