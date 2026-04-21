@@ -792,7 +792,7 @@ plot.summary.augsynth <- function(x,
         )
     }
 
-    if (!is.null(dots$cv)) {
+    if ( !is.null(dots$cv) && dots$cv == TRUE ) {
         plot_type = "cv"
     }
 
