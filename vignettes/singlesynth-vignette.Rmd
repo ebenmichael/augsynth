@@ -85,12 +85,6 @@ It's easier to see this information visually. Below we plot the difference betwe
 plot(syn)
 ```
 
-We can also compute point-wise confidence intervals using the [Jackknife+ procedure](https://arxiv.org/abs/1905.02928) by changing the `inf_type` argument, although this requires additional assumptions.
-
-```{r fig_syn_plus, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
-plot(syn, inf_type = "jackknife+")
-```
-
 
 ### Augmenting synth with an outcome model
 In this example the pre-intervention synthetic control fit has an L2 imbalance of 0.083, about 20% of the imbalance between Kansas and the average of the other states. We can reduce this by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`, while not specifying `lambda` will determine one through cross validation:
@@ -99,10 +93,10 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
                 progfunc = "Ridge", scm = T)
 ```
 
-We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `cv = TRUE` in the `plot` function:
+We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `plot_type = "cv"` in the `plot` function:
 
 ```{r fig_asyn_cv, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
-plot(asyn, cv = TRUE)
+plot(asyn, plot_type = "cv")
 ```
 
 By default, the CV procedure chooses the maximal value of `lambda` with MSE within one standard deviation of the minimal MSE. To instead choose the `lambda` that minizes the cross validation MSE, set `min_1se = FALSE`.
@@ -177,7 +171,29 @@ summary(desyn)
 plot(desyn)
 ```
 
-We can incorproate other outcome models by changing the `progfunc`.
-Several outcome models are available, including, fitting the factor model directly with `gsynth`, general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details.
+<!-- We can incorporate other outcome models by changing the `progfunc`.
+Several outcome models are available, including, fitting the factor model directly with `gsynth`, general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details. -->
+
+### Additional plot types and inference options
+
+We can plot the distribution of "placebo" effect estimates where we estimate a synthetic control for each control unit by setting the `plot_type` argument to `"placebo"`. This can be used to visually assess whether the estimated effect for the treated unit is large relative to what you would see for control units.
+```{r fig_syn_placebo, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
+plot(asyn, plot_type = "placebo")
+```
 
 
+We can also compute point-wise confidence intervals computed by inverting a permutation test over this "placebo" distribution by changing the `inf_type` argument, although this requires that the treated unit is exchangeable with the control units and will not be as robust as the default conformal approach.
+
+```{r fig_syn_perm, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
+plot(asyn, inf_type = "permutation")
+```
+
+Another option is to plot the observed outcomes for the treated unit and its synthetic control, which can be done by setting `plot_type = "outcomes"`. 
+```{r fig_syn_outcomes, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
+plot(asyn, plot_type = "outcomes")
+```
+For this plot as well as the standard gap plot, we can optionally remove the confidence intervals by setting `inf = FALSE` in the `plot` function.
+```{r fig_syn_noinf, fig.width=8, fig.height=4.5, echo=T, fig.align="center"}
+plot(asyn, inf = FALSE)
+plot(asyn, plot_type = "outcomes", inf = FALSE)
+```
