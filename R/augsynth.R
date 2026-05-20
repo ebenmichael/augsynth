@@ -977,6 +977,14 @@ plot_augsynth_results <- function( augsynth,
                                    'permutation', 'permutation_rstat', 'none'))
     }
 
+    if(!plot_type %in% c('estimate', 'outcomes', 'cv', 'placebo')) {
+      stop(
+          "Invalid plot type. Options are 'estimate', 'outcomes', 'cv', and 'placebo'. ",
+          "No plot was produced.",
+          call. = FALSE
+      )
+    }
+
     # Summarize object if needed.
     if ( is.augsynth(augsynth) ) {
         if ( !inf ) {
@@ -984,11 +992,15 @@ plot_augsynth_results <- function( augsynth,
         }
         it <- get_right_summary(augsynth, plot_type,
                                 inf=inf, inf_type=inf_type)
-        if ( it != "none" ) {
+        if ( it != "none" & !(plot_type == "placebo")) {
             message(
                 "Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object ",
                 "and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s))."
             )
+        } else if(plot_type == "placebo") {
+          message(
+            "Plotting placebo plots may be slow. For faster results, first create a summary object with `inf_type = \"permutation\"` or `\"permutation_rstat\"` and then plot that object directly (e.g., s <- summary(augsynth_obj, inf_type = \"permutation\"); plot(s, plot_type = \"placebo\"))"
+          )
         }
         augsynth = summary(augsynth, inf_type=it)
     }
@@ -1054,7 +1066,7 @@ augsynth_estimate_plot <- function(augsynth,
     p <- p + ggplot2::geom_line() +
         ggplot2::geom_vline(xintercept = augsynth$t_int, lty = 2) +
         ggplot2::geom_hline(yintercept = 0, lty = 2) +
-        ggplot2::labs(x = augsynth$time_var) +
+        ggplot2::labs(x = "Time") +
         ggplot2::theme_bw()
 
     return(p)
@@ -1133,7 +1145,7 @@ augsynth_outcomes_plot <- function(augsynth, ci = TRUE, measure = c("synth", "av
     }
 
     p <- p +
-        labs( lty = "Unit" ) +
+        ggplot2::labs( lty = "Unit", x = "Time", y = "Outcome" ) +
         ggplot2::theme_bw()
 
 

@@ -12,7 +12,6 @@ basque <- basque %>% mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 
 regions <- basque %>% distinct(regionno) %>% pull(regionno)
 
 test_that("Getting eligible donor units by exact matching works", {
-    skip("temporarily disabled")
 
   # binary variable to split on
   fake_bin <- sample(c(0, 1), length(regions), replace = T)
@@ -160,9 +159,7 @@ test_that("Getting eligible donor units by knn matching works", {
 })
 
 
-test_that("Getting eligible donor units by exact and knn matching works", {
-    skip("temporarily disabled")
-
+test_that("Getting eligible donor units by exact and knn matching works", {4
   # binary variable to split on
   fake_bin <- sample(c(0, 1), length(regions), replace = T)
 

@@ -51,7 +51,6 @@ test_that("Augmenting synth with random forest runs", {
 
 
 test_that("Augmenting synth with gsynth runs and produces the correct result", {
-  skip("temporarily disabled")
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
         ## should fail because gsynth isn't installed

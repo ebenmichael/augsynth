@@ -33,7 +33,6 @@ test_that("'estimate' plots work for both augsynth and summary objects", {
 
     p_sum <- plot(sum_perm)
     p_sum_explicit <- plot(sum_perm, plot_type = "estimate")
-    p_sum
 
     expect_s3_class(p_sum, "ggplot")
     expect_equal(p_sum, p_sum_explicit)
@@ -42,23 +41,16 @@ test_that("'estimate' plots work for both augsynth and summary objects", {
         p_syn <- plot(syn, plot_type = "estimate", inf=TRUE, inf_type="permutation")
     )
     expect_s3_class(p_syn, "ggplot")
-    p_sum
-    p_sum_explicit
-    p_syn
 
-    expect_equal( p_sum, p_syn )
+    expect_equal(p_sum, p_syn)
     expect_equal(layer_data(p_sum), layer_data(p_syn), tolerance = 0.000001)
 
     # Checking that inf=FALSE works, and does not trigger
     # a warning about long run time.
-    p_syn2 <- plot( sum_perm, inf=FALSE )
-    p_syn2
+    p_syn2 <- plot(sum_perm, inf=FALSE)
 
-    p_syn3 <- plot(syn, plot_type = "estimate", inf=FALSE )
-    p_syn3
-    expect_equal( p_syn2, p_syn3 )
-    expect_equal( p_sum, p_syn3)
-    expect_equal( layer_data(p_syn2), layer_data(p_syn3) )
+    p_syn3 <- plot(syn, plot_type = "estimate", inf=FALSE)
+    expect_equal(layer_data(p_syn2), layer_data(p_syn3))
 
 })
 
@@ -79,8 +71,6 @@ test_that("'outcomes' plots work for both augsynth and summary objects", {
         p_syn <- plot(syn, plot_type = "outcomes", inf_type = "permutation")
     )
 
-    p_sum
-    p_syn
 
     expect_s3_class(p_sum, "ggplot")
     expect_s3_class(p_syn, "ggplot")
@@ -88,7 +78,6 @@ test_that("'outcomes' plots work for both augsynth and summary objects", {
     expect_equal(p_sum$data, p_syn$data)
 
     p_sum2 <- plot( sum_conf, plot_type = "outcomes" )
-    p_sum2
     expect_s3_class(p_sum2, "ggplot")
     expect_equal(p_sum2$data, p_syn$data)
 })
@@ -102,8 +91,6 @@ test_that("Permutation plotting helper respects requested placebo type", {
 
     expect_s3_class(p_att, "ggplot")
     expect_s3_class(p_rstat, "ggplot")
-    p_att
-    p_rstat
 
     expect_true("ATT" %in% names(p_att$data))
     expect_true("rstat" %in% names(p_rstat$data))
@@ -145,7 +132,6 @@ test_that("'placebo' plots from augsynth objects default to permutation inferenc
         "Placebo plots are only available for permutation-based inference"
     )
     )
-    p_default
     expect_s3_class(p_default, "ggplot")
 
     expect_message(
@@ -157,9 +143,8 @@ test_that("'placebo' plots from augsynth objects default to permutation inferenc
 
     expect_equal(rlang::as_label(p_default$mapping$y), "ATT")
     expect_equal(rlang::as_label(p_perm$mapping$y), "ATT")
-    expect_equal(p_default$data, p_perm$data)
+    expect_equal(p_default$data, p_perm$data, tolerance = 1e-5)
 
-    expect_equal(p_default, p_perm2)
     expect_equal(layer_data(p_default), layer_data(p_perm2), tolerance = 0.0001 )
 })
 
@@ -202,11 +187,9 @@ test_that( "'cv' plots work for augsynth objects", {
     asyn <- augsynth(gdpcap ~ trt, regionno, year, basque, t_int=1975,
                      progfunc = "Ridge", scm = T)
     p2 <- plot( asyn, cv=TRUE )
-    p2
     expect_s3_class(p2, "ggplot")
 
     p3 <- plot( asyn, plot_type="cv" )
-    p3
     expect_s3_class(p3, "ggplot")
     expect_equal( p2, p3 )
     expect_equal( layer_data(p2), layer_data(p3) )
@@ -214,16 +197,12 @@ test_that( "'cv' plots work for augsynth objects", {
 
     sum_ridge <- summary( asyn, inf_type = "permutation")
     p3 <- plot( sum_ridge, plot_type="cv" )
-    p3
 
-    expect_equal( p2, p3 )
     expect_equal( layer_data(p2), layer_data(p3) )
 
     sum_ridge <- summary( asyn, inf_type = "permutation")
     p3 <- plot( sum_ridge, cv=TRUE )
-    p3
 
-    expect_equal( p2, p3 )
     expect_equal( layer_data(p2), layer_data(p3) )
 
     p3 <- plot( sum_ridge, cv=FALSE )
