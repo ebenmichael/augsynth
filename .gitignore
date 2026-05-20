@@ -13,7 +13,7 @@ inst/doc
 # R stuff
 *.Rout
 *.Rhistory
-*.RData 
+*.RData
 *.Rapp.history
 
 # Mac stuff
@@ -28,3 +28,9 @@ inst/doc
 test.R
 
 *-vignette.pdf
+.Rproj.user
+
+# scratch folder
+/scratch
+tobacco_replication/tobacco_replication_cache
+tobacco_replication/tobacco_replication_files/figure-html

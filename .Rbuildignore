@@ -5,3 +5,5 @@
 ^pkg.Rproj$
 figure$
 cache$
+^.*\.Rproj$
+^\.Rproj\.user$

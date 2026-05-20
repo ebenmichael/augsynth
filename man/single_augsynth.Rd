@@ -32,11 +32,11 @@ single_augsynth(
 ridge=Ridge regression (allows for standard errors),
 none=No outcome model,
 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-mcp=MCPanel, 
+mcp=MCPanel,
 cits=Comparitive Interuppted Time Series
 causalimpact=Bayesian structural time series with CausalImpact}
 
-\item{scm}{Whether the SCM weighting function is used}
+\item{scm}{Whether the SCM weighting function is used.  If FALSE, then package will fit the outcome model, but not calculate new donor weights to match pre-treatment covariates.  Instead, each donor unit will be equally weighted.  If TRUE, weights on donor pool will be calculated.}
 
 \item{fixedeff}{Whether to include a unit fixed effect, default F}
 

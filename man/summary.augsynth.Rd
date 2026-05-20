@@ -4,29 +4,30 @@
 \alias{summary.augsynth}
 \title{Summary function for augsynth}
 \usage{
-\method{summary}{augsynth}(object, inf = T, inf_type = "conformal", linear_effect = F, ...)
+\method{summary}{augsynth}(object, inf_type = "conformal", ...)
 }
 \arguments{
-\item{object}{augsynth object}
+\item{object}{An `augsynth` object.}
 
-\item{inf}{Boolean, whether to get confidence intervals around the point estimates}
-
-\item{inf_type}{Type of inference algorithm. Options are
+\item{inf_type}{Type of inference algorithm to compute. Defaults to
+`"conformal"`. Options are
 \itemize{
- \item{"conformal"}{Conformal inference (default)}
- \item{"jackknife+"}{Jackknife+ algorithm over time periods}
- \item{"jackknife"}{Jackknife over units}
+  \item{"conformal"}{Conformal inference (default)}
+  \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+  \item{"jackknife"}{Jackknife over units}
+  \item{"permutation"}{Placebo permutation, raw ATT}
+  \item{"permutation_rstat"}{Placebo permutation, RMSPE-adjusted ATT}
 }}
 
-\item{linear_effect}{Boolean, whether to invert the conformal inference hypothesis test to get confidence intervals for a linear-in-time treatment effect: intercept + slope * time}
-
-\item{...}{Optional arguments for inference, for more details for each `inf_type` see
-\itemize{
- \item{"conformal"}{`conformal_inf`}
- \item{"jackknife+"}{`time_jackknife_plus`}
- \item{"jackknife"}{`jackknife_se_single`}
-}}
+\item{...}{Optional arguments passed to the selected inference procedure.}
 }
 \description{
-Summary function for augsynth
+Summarize a fitted `augsynth` object by adding inference results and
+computing additional summary statistics such as estimated bias, donor
+weights, and treated-unit outcome summaries.
+}
+\details{
+The returned `summary.augsynth` object stores the inference results used
+for printing and plotting. Plotting a `summary.augsynth` object does not
+recompute inference.
 }

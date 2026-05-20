@@ -2,17 +2,28 @@
 % Please edit documentation in R/augsynth.R
 \name{plot.summary.augsynth}
 \alias{plot.summary.augsynth}
-\title{Plot function for summary function for augsynth}
+\title{Plot results from summarized augsynth}
 \usage{
-\method{plot}{summary.augsynth}(x, inf = T, ...)
+\method{plot}{summary.augsynth}(x, plot_type = "estimate", inf = TRUE, ...)
 }
 \arguments{
-\item{x}{Summary object}
+\item{x}{A `summary.augsynth` object.}
 
-\item{inf}{Boolean, whether to plot confidence intervals}
+\item{plot_type}{Type of plot to return.}
 
-\item{...}{Optional arguments}
+\item{inf}{Logical; if `TRUE`, include uncertainty information when
+available.}
+
+\item{...}{Optional additional arguments.}
 }
 \description{
-Plot function for summary function for augsynth
+Make a variety of plots, depending on `plot_type`. The default is
+to plot treatment effect estimates with associated uncertainty (if
+present).
+}
+\details{
+If `inf` is true, will plot the inference results stored in the
+summary object. Thus, the displayed confidence intervals and
+p-values correspond to the `inf_type` used when `summary()` was
+called, and are not recomputed at plot time.
 }

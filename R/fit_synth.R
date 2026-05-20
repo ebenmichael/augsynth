@@ -3,12 +3,14 @@
 #######################################################
 
 #' Make a V matrix from a vector (or null)
+#'
+#' @noRd
 make_V_matrix <- function(t0, V) {
   if(is.null(V)) {
         V <- diag(rep(1, t0))
     } else if(is.vector(V)) {
         if(length(V) != t0) {
-          stop(paste("`V` must be a vector with", t0, "elements or a", t0, 
+          stop(paste("`V` must be a vector with", t0, "elements or a", t0,
                      "x", t0, "matrix"))
         }
         V <- diag(V)
@@ -18,7 +20,7 @@ make_V_matrix <- function(t0, V) {
         V <- diag(c(V))
     } else if(nrow(V) == t0) {
     } else {
-        stop(paste("`V` must be a vector with", t0, "elements or a", t0, 
+        stop(paste("`V` must be a vector with", t0, "elements or a", t0,
                      "x", t0, "matrix"))
     }
 
@@ -61,7 +63,7 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
 #' @param V Scaling matrix
 #' @noRd
 synth_qp <- function(X1, X0, V) {
-    
+
     Pmat <- X0 %*% V %*% t(X0)
     qvec <- - t(X1) %*% V %*% t(X0)
 
@@ -74,7 +76,7 @@ synth_qp <- function(X1, X0, V) {
                                   eps_rel = 1e-8,
                                   eps_abs = 1e-8)
     sol <- osqp::solve_osqp(P = Pmat, q = qvec,
-                            A = A, l = l, u = u, 
+                            A = A, l = l, u = u,
                             pars = settings)
 
     return(sol$x)

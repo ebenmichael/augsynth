@@ -1,0 +1,426 @@
+
+
+#' Run augsynth letting each unit be the treated unit.  This
+#' implements the abadie placebo test (e.g., from tobacco paper) but
+#' with the augsynth package.
+#'
+#' @param tx.id Name/ID of treatment group (not stored in ascm)
+#'
+#' @return Dataframe With each row corresponding to a unit (including
+#'   the original treated unit) and each column corresponding to a
+#'   time point.  Each entry is the estimated impact for that unit at
+#'   that time, after fitting augsynth on that unit as the tx unit and
+#'   the other units as possible controls.
+#'
+#' @noRd
+get_placebo_gaps = function( ascm, att = TRUE ) {
+
+    tx_id <- ascm$trt_unit
+    wide_data <- ascm$data
+    synth_data <- ascm$data$synth_data
+    Z <- wide_data$Z
+    control_ids = which( wide_data$trt == 0 )
+    all_ids = 1:length(wide_data$trt)
+    t_final = length( wide_data$time )
+
+    ests <- vapply(all_ids, function(i) {
+        new_data <- swap_treat_unit(wide_data, Z, i)
+        new_ascm <- do.call(augsynth:::fit_augsynth_internal,
+                            c(list(wide = new_data$wide,
+                                   synth_data = new_data$synth_data,
+                                   Z = new_data$Z,
+                                   progfunc = ascm$progfunc, scm = ascm$scm,
+                                   fixedeff = ascm$fixedeff),
+                              ascm$extra_args))
+        est <- predict(new_ascm, att = att )
+        est
+    }, numeric(t_final) )
+
+    # Verify we recover the original treated unit by seeing if the
+    # estimates match our original fit model's estimates
+    dim( ests )
+    pds = as.numeric( predict( ascm, att = att ) )
+    pds
+    if( !all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=4 ) == 0 ) ) {
+        stop( "Two versions of estimated impacts do not correspond.  Serious error.  Please contact package maintainers." )
+    }
+
+
+
+    ests = as.data.frame( t( ests ) )
+    dim( ests )
+    ests$ID = tx_id
+    ests$ID[ control_ids ] = rownames( ascm$weights )
+
+    ests %>% dplyr::select( ID, everything() )
+}
+
+#### Generate donor unit from fit synth model ####
+
+#' Take inner data and change which unit is marked as 'treated'
+#'
+#' @noRd
+swap_treat_unit = function (wide_data, Z, i) {
+    wide_data$trt <- rep( 0, length( wide_data$trt ) )
+    wide_data$trt[i] = 1
+
+    X0 <- wide_data$X[wide_data$trt == 0, , drop = F]
+    x1 <- matrix( wide_data$X[wide_data$trt == 1, , drop = F], ncol = 1 )
+    y0 <- wide_data$y[wide_data$trt == 0, , drop = F]
+    y1 <- matrix( wide_data$y[wide_data$trt == 1, , drop = F], ncol = 1 )
+    new_synth_data <- list()
+    new_synth_data$Z0 <- t(X0)
+    new_synth_data$X0 <- t(X0)
+    new_synth_data$Z1 <- x1
+    new_synth_data$X1 <- x1
+
+    wide_data = wide_data[ c( "trt", "X", "y" ) ]
+
+    return(list(wide_data = wide_data,
+                synth_data = new_synth_data,
+                Z = Z))
+}
+
+
+
+#' Calculate MDES
+#'
+#' Use our method for Calculating SEs, p-values, and MDEs by looking
+#' at the distribution of impacts across the donor units.
+#'
+#' @param lest Entity by year estimate estimates for all treatment and control entities
+#'   (original tx and all the comparisons as pseudo-treated).  Columns
+#'   of entity ID (tx_col), treatment flag (trt), time period (time_col),
+#'   and estimated tx-synthetic control difference (ATT).
+#' @param treat_year The time period in which the treatment was introduced.
+#' @param  tx_col The name to the column containing the treatment variable.
+#' @param time_col The name of the column containing the time variable.
+#' @return List of three dataframes, one of MDES, one of RMSPEs, and
+#'   one of info on the r-statistics (the ATTs divided by the RMSPEs).
+#'
+#' @noRd
+calculate_MDES_table = function( lest, treat_year, tx_col, time_col ) {
+
+
+    stopifnot("Entity by year estimates (`lest`) are missing one of the following necessary features: `tx_col`, 'trt', `time_col`, or 'ATT'" =  all( c(  tx_col, "trt", time_col, "ATT" ) %in%
+                                                                                                                                                         names( lest ) ) )
+
+    RMSPEs = calculate_RMSPE( lest, treat_year, tx_col, time_col )
+
+    # merge calculated pre-intervention RMSPE for each county to data set
+    # of gaps for each year for each county
+
+    # Divide that year's gap by pre-intervention RMSPE.
+    rstatcalc <- full_join( lest, RMSPEs, by = tx_col ) %>%
+        mutate( rstat=ATT/RMSPE )
+
+    # Calculate the permutation p-values (permuting the r statistics)
+    pvalues = rstatcalc %>%
+        group_by( !!as.name(time_col) ) %>%
+        summarise( p_rstat = mean( abs( rstat[trt == 1] ) <= abs( rstat ) ),
+                   SE_rstat = sd( rstat[ trt != 1 ] ) * RMSPE[ trt == 1 ],
+                   p_gap = mean( abs( ATT[ trt == 1 ] ) <= abs( ATT ) ),
+                   SE_gap = sd( ATT[ trt != 1 ] ),
+                   .groups = "drop" )
+
+    # attach R statistic for the treated tract.
+    rstattract <- rstatcalc %>%
+        filter(trt==1) %>%
+        dplyr::select( -!!as.name(tx_col), -trt )
+
+    # Make table of main results with permutation p-values and add
+    # indicator of which years are treated and which not.
+    main_results <- rstattract %>%
+        full_join( pvalues, by=time_col ) %>%
+        mutate( tx = ifelse( !!as.name(time_col) >= treat_year, 1, 0 ) )
+
+
+    # Clean up column ordering and make look nice
+    main_results = main_results %>%
+        relocate( !!as.name(time_col), tx, Yobs ) %>%
+        dplyr::select( -RMSPE )
+
+    # Bundle and return all results
+    list( MDES_table = main_results,
+          RMSPEs = RMSPEs,
+          rstatcalc=rstatcalc )
+}
+
+
+
+#' Calculate RMSPE for all units on lagged outcomes
+#'
+#' This calculates the RMSPE of the difference between estimated and
+#' observed outcome, averaged across the pre-treatment years, for each
+#' county
+#'
+#' @param lest Entity by year estimate estimates for all treatment and control entities
+#'   (original tx and all the comparisons as pseudo-treated).  Columns
+#'   of entity ID (tx_col), treatment flag (trt), time period (time_col),
+#'   and estimated tx-synthetic control difference (ATT).
+#' @param treat_year The time period in which the treatment was introduced.
+#' @param  tx_col The name to the column containing the treatment variable.
+#' @param time_col The name of the column containing the time variable.
+#'
+#' @noRd
+calculate_RMSPE = function( lest, treat_year, tx_col, time_col ) {
+    stopifnot( !is.null( lest$ATT ) )
+
+    RMSPEs = lest %>% filter( !!as.name(time_col) < treat_year ) %>%
+        group_by( !!as.name(tx_col) ) %>%
+        summarise( RMSPE = sqrt( mean( ATT^2 ) ), .groups = "drop" )
+
+    return(RMSPEs)
+}
+
+
+#' Construct an organized dataframe with outcome data in long format
+#' from augsynth object
+#'
+#' @noRd
+get_long_data <- function( augsynth ) {
+
+    wide_data <- augsynth$data
+
+    tx_id <- augsynth$trt_unit
+    control_ids = which( wide_data$trt == 0 )
+
+    all_ids = 1:nrow(wide_data$X)
+    all_ids[ control_ids ] = rownames( augsynth$weights )
+    all_ids[ which( wide_data$trt == 1 ) ] = tx_id
+
+    df <- bind_cols(wide_data$X, wide_data$y) %>%
+        mutate(!!as.name(augsynth$unit_var) := all_ids) %>%
+        pivot_longer(!augsynth$unit_var,
+                     names_to = augsynth$time_var,
+                     values_to = 'Yobs',
+        ) %>%
+        mutate(!!as.name(augsynth$time_var) := as.numeric(!!as.name(augsynth$time_var)),
+               ever_Tx = ifelse(!!as.name(augsynth$unit_var) == augsynth$trt_unit, 1, 0))
+
+    df
+}
+
+
+
+add_placebo_distribution <- function(augsynth) {
+
+    # Run permutations
+    ests <- get_placebo_gaps(augsynth, att = FALSE)
+    time_cols = 2:ncol(ests)
+
+    ests$trt = augsynth$data$trt
+
+    lest = ests %>%
+        pivot_longer( cols = all_of( time_cols ),
+                      names_to = augsynth$time_var, values_to = "Yhat" ) %>%
+        mutate(!!as.name(augsynth$time_var) := as.numeric(!!as.name(augsynth$time_var)))
+
+    df <- get_long_data( augsynth )
+
+    ##### Make dataset of donor units with their weights #####
+    units = dplyr::select( df, !!as.name(augsynth$unit_var), ever_Tx ) %>%
+        unique()
+
+    tx_col = augsynth$unit_var
+    weights = data.frame( tx_col = rownames( augsynth$weights ),
+                          weights = augsynth$weights,
+                          stringsAsFactors = FALSE)
+    colnames(weights)[1] <- augsynth$unit_var
+
+    units = merge( units, weights, by=augsynth$unit_var, all=TRUE )
+
+    # Zero weights for tx units.
+    units$weights[ units$ever_Tx == 1 ] = 0
+
+    # confirm that we have placebos for every entity over every observed time period
+    stopifnot("Placebos do not cover every entity over every observed time period." = (ncol(augsynth$data$X) + ncol(augsynth$data$y)) * nrow(augsynth$data$y) == nrow(lest))
+
+    lest = rename( lest, !!as.name(augsynth$unit_var) := ID )
+
+    nn = nrow(lest)
+    lest = left_join( lest,
+                      df[ c(augsynth$unit_var, augsynth$time_var, "Yobs") ], # issue is that this is calling for original data
+                      by = names(lest)[names(lest) %in% names(df[ c(augsynth$unit_var, augsynth$time_var, "Yobs") ])] )
+    stopifnot( nrow( lest ) == nn )
+
+
+    # Impact is difference between observed and imputed control-side outcome
+    lest$impact = lest$Yobs - lest$Yhat
+
+    #### Make the actual treatment result information #####
+
+    # Get our observed series (the treated unit)
+    T_tract = filter( lest, trt == 1 )
+
+    # The raw donor pool average series
+    averages = df %>%
+        filter( ever_Tx == 0 ) %>%
+        group_by( !!as.name(augsynth$time_var) ) %>%
+        summarise( raw_average = mean( .data$Yobs ),
+                   .groups = "drop" )
+    T_tract = left_join( T_tract, averages, by = augsynth$time_var )
+
+    ##### Calculate ATT and MDES #####
+
+    lest = rename( lest, ATT = impact )
+    t0 <- ncol(augsynth$data$X)
+    treat_year = augsynth$data$time[t0 + 1]
+
+    res = calculate_MDES_table(lest, treat_year, augsynth$unit_var, augsynth$time_var)
+
+    # Add RMSPE to donor list
+    units = left_join( units, res$RMSPEs, by = names(units)[names(units) %in% names(res$RMSPEs)])
+
+    MDES_table = mutate( res$MDES_table,
+                         raw_average = T_tract$raw_average,
+                         tx = ifelse( !!as.name(augsynth$time_var) >= treat_year, 1, 0 ) ) %>%
+        relocate( raw_average, .after = Yhat )
+
+    augsynth$results$permutations <- list( placebo_dist = res$rstatcalc,
+                                           MDES_table = MDES_table)
+
+    return(augsynth)
+}
+
+
+#' Generate formatted outputs for statistical inference using permutation inference
+#'
+#' @param augsynth An augsynth object.
+#'
+#' @noRd
+permutation_inf <- function(augsynth, inf_type) {
+
+    t0 <- dim(augsynth$data$synth_data$Z0)[1]
+    tpost <- dim(augsynth$data$synth_data$Z0)[1]
+
+    out <- list()
+    out$att <- augsynth$results$permutations$MDES_table$ATT
+
+    SEg = NA
+    if (inf_type == 'permutation') {
+        SEg = augsynth$results$permutations$MDES_table$SE_gap
+        pval = augsynth$results$permutations$MDES_table$p_gap
+    } else if (inf_type == 'permutation_rstat') {
+        SEg = augsynth$results$permutations$MDES_table$SE_rstat
+        pval = augsynth$results$permutations$MDES_table$p_rstat
+    }
+    out$lb <- out$att + (qnorm(0.025) * SEg)
+    out$ub <- out$att + (qnorm(0.975) * SEg)
+    out$p_val <- pval
+
+    out$lb[c(1:t0)] <- NA
+    out$ub[c(1:t0)] <- NA
+    out$p_val[c(1:t0)] <- NA
+    out$alpha <- 0.05
+
+    return(out)
+}
+
+
+
+
+
+#' RMSPE for treated unit
+#'
+#' @param augsynth Augsynth object
+#' @return RMSPE (Root mean squared predictive error) for the treated unit in pre-treatment era
+#'
+#' @export
+RMSPE <- function( augsynth ) {
+    stopifnot( is.augsynth(augsynth) )
+
+    pd = predict( augsynth, att = TRUE )
+    sqrt( mean( pd[1:ncol(augsynth$data$X)]^2 ) )
+}
+
+
+
+
+
+#' Get placebo distribution
+#'
+#' @param augsynth Augsynth object or summery object with permutation inference of some sort.
+#'
+#' @return Data frame holding the placebo distribution, one row per placebo unit and time point.
+#'
+#' @export
+placebo_distribution <- function( augsynth ) {
+    inf_type = NA
+    if ( is_summary_augsynth(augsynth) ) {
+        inf_type = augsynth$inf_type
+    } else if ( is.augsynth(augsynth) ) {
+        augsynth <- summary( augsynth, inf_type = "permutation" )
+        inf_type = augsynth$inf_type
+    } else {
+        stop( "Object must be an Augsynth object or summary object" )
+    }
+
+    if ( !is.null( inf_type ) && inf_type %in% c( "permutation", "permutation_rstat" ) ) {
+        return( augsynth$permutations$placebo_dist )
+    } else {
+        stop( "Placebo distribution only available for permutation inference" )
+    }
+}
+
+
+
+
+
+
+
+#' Return a summary data frame for the treated unit
+#'
+#' @param augsynth Augsynth object of interest
+#'
+#' @return Dataframe of information about the treated unit, one row
+#'   per time point.  This includes the measured outcome, predicted
+#'   outcome from the synthetic unit, the average of all donor units
+#'   (as reference, called `raw_average`), and the estimated impact
+#'   (`ATT`), and the r-statistic (ATT divided by RMSPE).
+#'
+#' @seealso [donor_table()]
+#' @export
+treated_table <- function(augsynth) {
+
+    if ( is_summary_augsynth( augsynth ) ) {
+        return( augsynth$treated_table )
+    }
+
+    # Calculate the time series of the treated, the synthetic control,
+    # and the overall donor pool average
+    trt_index <- which(augsynth$data$trt == 1)
+    df <- bind_cols(augsynth$data$X, augsynth$data$y)
+    # synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
+    synth_unit <- predict(augsynth)
+    average_unit <- df[-trt_index, ] %>% colMeans()
+    treated_unit <- t(df[trt_index, ])
+    lvls = tibble(
+        time = as.numeric( colnames(df) ),
+        Yobs = as.numeric( treated_unit ),
+        Yhat = as.numeric( synth_unit ),
+        raw_average = as.numeric( average_unit )
+    )
+
+    #lvls <- df %>%
+    #    group_by( !!sym(augsynth$time_var ), ever_Tx) %>%
+    #    summarise( Yavg = mean( Yobs ), .groups="drop" ) %>%
+    #    pivot_wider( names_from = ever_Tx, values_from = Yavg )
+    #colnames(lvls)[2:3] <- c("raw_average", "Yobs")
+
+    t0 <- ncol(augsynth$data$X)
+    tpost <- ncol(augsynth$data$y)
+    lvls$tx = rep( c(0,1), c( t0, tpost ) )
+    #lvls$Yhat = predict( augsynth )
+    lvls$ATT = lvls$Yobs - lvls$Yhat
+    lvls$rstat = lvls$ATT / sqrt( mean( lvls$ATT[ lvls$tx == 0 ]^2 ) )
+
+    lvls <- dplyr::relocate( lvls,
+                             time, tx, Yobs, Yhat, raw_average, ATT, rstat )
+
+    return( lvls )
+}
+
+
+
+

@@ -122,11 +122,11 @@ test_that("Separate synth with missing control unit time drops control unit", {
   # drop a time period for unit 17
   basque %>%
     filter(!regionno %in% c(18) | year != 1970) -> basque_mis
-  
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
-  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, 
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
                       basque %>% filter(regionno != 18),
                       nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
@@ -143,10 +143,10 @@ test_that("Separate synth with missing control unit only in post-treatment perio
   dat_format <- format_data_stag(quo(gdpcap), quo(trt), quo(regionno), quo(year), basque_mis)
 
   expect_true(nrow(dat_format$X) == nrow(dat_format$y))
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
-  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, 
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
                       basque %>% filter(regionno != 18),
                       nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
@@ -163,10 +163,10 @@ test_that("Separate synth with missing control unit only in pre-treatment period
 
   expect_true(nrow(dat_format$X) == nrow(dat_format$y))
 
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
-  msyn2 <- multisynth(gdpcap ~ trt, regionno, year, 
+  msyn2 <- multisynth(gdpcap ~ trt, regionno, year,
                       basque %>% filter(regionno != 18),
                       nu = 0, scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
@@ -180,7 +180,7 @@ test_that("Multisynth with unbalanced panels runs", {
   basque %>%
     filter(!regionno %in% c(15, 17) | year != 1970) -> basque_mis
 
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
   expect_error(summary(msyn), NA)
@@ -193,7 +193,7 @@ test_that("Multisynth with unbalanced panels runs with missing post-treatment", 
   basque %>%
     filter(!regionno %in% c(15, 17) | year != 1990) -> basque_mis
 
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
   expect_error(summary(msyn), NA)
@@ -207,7 +207,7 @@ test_that("Multisynth with unbalanced panels runs", {
   basque %>%
     filter(!regionno %in% c(15) | year != 1985) -> basque_mis
 
-  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis, 
+  msyn <- multisynth(gdpcap ~ trt, regionno, year, basque_mis,
                      scm=T, eps_rel=1e-8, eps_abs=1e-8)
 
   expect_error(summary(msyn), NA)

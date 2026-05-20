@@ -4,17 +4,63 @@
 \alias{plot.augsynth}
 \title{Plot function for augsynth}
 \usage{
-\method{plot}{augsynth}(x, inf = T, cv = F, ...)
+\method{plot}{augsynth}(
+  augsynth,
+  plot_type = "estimate",
+  cv = FALSE,
+  inf = TRUE,
+  inf_type = "conformal",
+  ...
+)
 }
 \arguments{
-\item{x}{Augsynth object to be plotted}
+\item{augsynth}{An `augsynth` object to be plotted.}
 
-\item{inf}{Boolean, whether to get confidence intervals around the point estimates}
+\item{plot_type}{The style of plot to be returned. Options include
+\itemize{
+  \item{"estimate"}{ATT}
+  \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
+  \item{"cv"}{Cross-validation MSE (lambda) when using ridge for progfunc.}
+  \item{"placebo"}{The ATTs resulting from the augsynth call applied to all donor units (a placebo permutation test).}
+}}
 
-\item{cv}{If True, plot cross validation MSE against hyper-parameter, otherwise plot effects}
+\item{cv}{If `TRUE`, force plot_type to be 'cv'; this is for
+backwards compatibility.}
 
-\item{...}{Optional arguments}
+\item{inf}{If `TRUE`, add a confidence interval to plotted ATT
+estimates, if appropriate.  If `FALSE`, do not add confidence
+intervals even if inference results are available.}
+
+\item{inf_type}{Type of inference algorithm, if `inf = TRUE` and
+  `object` does not have precomputed inference. Options are
+\itemize{
+  \item{"conformal"}{Conformal inference (default)}
+  \item{"jackknife+"}{Jackknife+ algorithm over time periods}
+  \item{"jackknife"}{Jackknife over units}
+  \item{"permutation"}{Placebo permutation, raw ATT}
+  \item{"permutation_rstat"}{Placebo permutation, RMSPE-adjusted ATT}
+  \item{"None"}{Return ATT estimate only}
+}}
+
+\item{...}{Optional arguments to be passed to inference, if
+  inference needs to be calculated. For details for each
+  `inf_type`, see
+\itemize{
+  \item{"conformal"}{\code{conformal_inf}}
+  \item{"jackknife+"}{\code{time_jackknife_plus}}
+  \item{"jackknife"}{\code{jackknife_se_single}}
+  \item{"permutation"}{\code{permutation_inf}}
+}}
 }
 \description{
-Plot function for augsynth
+Generate plots for fitted `augsynth` objects. Supported plot types
+include treatment effect estimates, observed and synthetic
+outcomes, cross-validation curves, and placebo plots.
+}
+\details{
+When a fitted `augsynth` object is supplied, and `inf` is TRUE,
+plotting may internally compute a summary object to conduct needed
+inference. As a result, plotting directly from an `augsynth` object
+can be slow. For faster plotting, first create a `summary.augsynth`
+object (e.g., via `summary()`) and plot that object instead.
 }

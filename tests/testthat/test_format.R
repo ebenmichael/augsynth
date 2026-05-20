@@ -6,9 +6,9 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
                                             regionno != 17 ~0,
                                             regionno == 17 ~ 1)) %>%
     filter(regionno != 1)
-                            
+
 test_that("format_data creates matrices with the right dimensions", {
-    
+
     dat <- format_data(quo(gdpcap), quo(trt), quo(regionno), quo(year),1975, basque)
 
     test_dim <- function(obj, d) {
@@ -23,7 +23,7 @@ test_that("format_data creates matrices with the right dimensions", {
 
 
 test_that("format_synth creates matrices with the right dimensions", {
-    
+
     dat <- format_data(quo(gdpcap), quo(trt), quo(regionno), quo(year),1975, basque)
     syn_dat <- format_synth(dat$X, dat$trt, dat$y)
     test_dim <- function(obj, d) {

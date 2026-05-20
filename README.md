@@ -7,6 +7,11 @@
 
 ## Overview
 This package implements the Augmented Synthetic Control Method (ASCM).
+In particular, there are three types of ASCM implemented in this package:
+
+1. **single_augsynth**: The ASCM version of the classic synthetic control approach with a single treated unit.
+2. **multisynth**: ASCM that estimates the treatment effect for multiple treated units with staggered adoption.
+3. **augsynth_multiout**: ASCM for a single treated unit with multiple outcomes.
 
 For a more detailed description of the main functionality check out:
 - [the vignette for simultaneous adoption](https://github.com/ebenmichael/augsynth/blob/master/vignettes/singlesynth-vignette.md)

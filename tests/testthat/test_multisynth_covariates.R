@@ -92,7 +92,7 @@ test_that("K-NN finds the right number of neighbors", {
       data.frame(regionno = regions,
                  Z1 = Z[, 1], Z2 = Z[, 2], Z3 = Z[, 3]),
       by = "regionno") -> basque2
-  
+
   dat <- format_data_stag(quo(gdpcap), quo(trt), quo(regionno),
                           quo(year), basque2)
   k <- 3
@@ -115,27 +115,27 @@ test_that("Getting eligible donor units by knn matching works", {
       by = "regionno") -> basque2
 
   # error if no k is supplied
-  expect_error(multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3, regionno, 
+  expect_error(multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3, regionno,
                           year, basque2,
                           scm = T, how_match = "knn"),
               "Number of neighbors for knn not selected, please choose k.")
 
   k <- 5
-  msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3, regionno, year, 
+  msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3, regionno, year,
                      basque2, scm = T, how_match = "knn", k = k)
 
   # check that at most k units recieve non-0 weight
   expect_lte(sum(msyn$weights[, 1] != 0), k)
   expect_lte(sum(msyn$weights[, 2] != 0), k)
 
-  
+
 
   # again with fixed effect
   msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3, regionno, year,
                        basque2, scm = T, fixedeff = T, how_match = "knn", k = k)
   # check that all but k units recieve exactly 0 weight
   expect_lte(sum(msyn$weights[, 1] != 0), k)
-  expect_lte(sum(msyn$weights[, 2] != 0), k) 
+  expect_lte(sum(msyn$weights[, 2] != 0), k)
 
   # without synth weights, weights are uniform
   k <- 2
@@ -149,9 +149,9 @@ test_that("Getting eligible donor units by knn matching works", {
                      scm = T, how_match = "knn", k = 2.5 * k, lambda = 1e10)
 
   trtZ <- Z[regions %in% c(16, 17),]
-  imbal1 <- sqrt(sum(sapply(1:2, 
+  imbal1 <- sqrt(sum(sapply(1:2,
                 function(i) sum(unimatch$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
-  imbal2 <- sqrt(sum(sapply(1:2, 
+  imbal2 <- sqrt(sum(sapply(1:2,
                 function(i) sum(unimatch2$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
 
   expect_lt(imbal1, imbal2)
@@ -159,8 +159,7 @@ test_that("Getting eligible donor units by knn matching works", {
 })
 
 
-test_that("Getting eligible donor units by exact and knn matching works", {
-
+test_that("Getting eligible donor units by exact and knn matching works", {4
   # binary variable to split on
   fake_bin <- sample(c(0, 1), length(regions), replace = T)
 
@@ -177,25 +176,25 @@ test_that("Getting eligible donor units by exact and knn matching works", {
       by = "regionno") -> basque2
 
   # error if no k is supplied
-  expect_error(multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3 | Z_bin, regionno, 
+  expect_error(multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3 | Z_bin, regionno,
                           year, basque2,
                           scm = T, how_match = "knn"),
               "Number of neighbors for knn not selected, please choose k.")
 
   k <- 3
-  msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3 | Z_bin, regionno, year, 
+  msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3 | Z_bin, regionno, year,
                      basque2, scm = T, how_match = "knn", k = k)
-  
+
   # check that there is actually no weight on donors with different Z
   expect_equal(sum(msyn$weights[fake_bin == 1, 1]), 1, tolerance = 1e-4)
   expect_equal(sum(msyn$weights[fake_bin == 0, 1]), 0, tolerance = 1e-4)
   expect_equal(sum(msyn$weights[fake_bin == 1, 2]), 0, tolerance = 1e-4)
   expect_equal(sum(msyn$weights[fake_bin == 0, 2]), 1, tolerance = 1e-4)
-  
+
   # check that at most k units recieve non-0 weight
   expect_lte(sum(msyn$weights[, 1] != 0), k)
   expect_lte(sum(msyn$weights[, 2] != 0), k)
-  
+
   # again with fixed effect
     msyn <- multisynth(gdpcap ~ trt | 0 | Z1 + Z2 + Z3 | Z_bin, regionno, year,
                        basque2, scm = T, fixedeff = T, how_match = "knn", k = k)
@@ -207,7 +206,7 @@ test_that("Getting eligible donor units by exact and knn matching works", {
   expect_equal(sum(msyn$weights[fake_bin == 1, 1]), 1, tolerance = 1e-4)
   expect_equal(sum(msyn$weights[fake_bin == 0, 1]), 0, tolerance = 1e-4)
   expect_equal(sum(msyn$weights[fake_bin == 1, 2]), 0, tolerance = 1e-4)
-  expect_equal(sum(msyn$weights[fake_bin == 0, 2]), 1, tolerance = 1e-4) 
+  expect_equal(sum(msyn$weights[fake_bin == 0, 2]), 1, tolerance = 1e-4)
 
   k <- 3
   # without synth weights, weights are uniform
@@ -221,9 +220,9 @@ test_that("Getting eligible donor units by exact and knn matching works", {
                     basque2, scm = T, how_match = "knn", k = k, lambda = 1e10)
 
   trtZ <- Z[regions %in% c(16, 17),]
-  imbal1 <- sqrt(sum(sapply(1:2, 
+  imbal1 <- sqrt(sum(sapply(1:2,
                 function(i) sum(unimatch$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
-  imbal2 <- sqrt(sum(sapply(1:2, 
+  imbal2 <- sqrt(sum(sapply(1:2,
                 function(i) sum(unimatch2$weights[,i] * (trtZ[i,] - Z) ^ 2 ))))
 
   expect_lt(imbal2, imbal1)
@@ -245,7 +244,7 @@ test_that("An error is thrown if trying to match with time cohorts or the formul
         mutate(Z_bin = case_when(regionno == 17 ~ 0,
                              regionno == 16 ~ 1,
                              TRUE ~ Z_bin)),
-      by = "regionno") %>% 
+      by = "regionno") %>%
     mutate(trt = case_when((regionno == 17) & (year >= 1975) ~ 1,
                             (regionno == 16) & (year >= 1975) ~ 1,
                                               TRUE ~ 0)) %>%
@@ -265,7 +264,7 @@ test_that("multisynth with covariates doesn't depend on unit or time order ", {
   data %>%
     filter(!State %in% c("DC", "WI"),
            year >= 1959, year <= 1997) %>%
-    mutate(YearCBrequired = ifelse(is.na(YearCBrequired), 
+    mutate(YearCBrequired = ifelse(is.na(YearCBrequired),
                                    Inf, YearCBrequired),
            cbr = 1 * (year >= YearCBrequired)) -> analysis_df
 
@@ -273,7 +272,7 @@ test_that("multisynth with covariates doesn't depend on unit or time order ", {
   select(State, year, agr, pnwht, purban, perinc, studteachratio) %>%
   group_by(State) %>%
   summarise(perinc_1959 = perinc[year == 1959],
-            studteachratio_1959 = studteachratio[year == 1959]) %>% 
+            studteachratio_1959 = studteachratio[year == 1959]) %>%
   # filter to lower 48 where we have data
   filter(!State %in% c("AK", "HI"))  -> cov_data
 
