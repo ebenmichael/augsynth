@@ -584,9 +584,11 @@ summary.augsynth <- function(object, inf_type = 'conformal', ...) {
     summ$n_time <- n_time(augsynth)
     summ$n_tx <- n_treated(augsynth)[1]
     summ$time_tx <- t0
-    summ$donor_table <- donor_table( augsynth )
+    summ$donor_table <- donor_table(augsynth,
+        include_RMSPE = inf_type %in% c("permutation", "permutation_rstat")
+      )
 
-    summ$treated_table <- treated_table( augsynth )
+    summ$treated_table <- treated_table(augsynth)
 
     class(summ) <- "summary.augsynth"
     return(summ)
