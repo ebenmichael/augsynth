@@ -20,6 +20,17 @@
 #' @param scm Whether the SCM weighting function is used.  If FALSE, then package will fit the outcome model, but not calculate new donor weights to match pre-treatment covariates.  Instead, each donor unit will be equally weighted.  If TRUE, weights on donor pool will be calculated.
 #' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
+#' @param solver Solver for the synthetic control weights: "osqp" (the
+#'        default, solves the quadratic program exactly after forming the
+#'        n0 x n0 donor Gram matrix) or "frank_wolfe" (Frank-Wolfe with
+#'        exact line search — the synthdid algorithm — to identify the
+#'        active donor set, then an exact QP restricted to that support
+#'        with a KKT re-admission screen; the full n0 x n0 Gram matrix is
+#'        never formed, so memory stays O(n0 t0) — useful for very large
+#'        donor pools). May also be a function (X1, X0, V) -> weights to
+#'        plug in a custom solver. Applies wherever SCM weights are solved,
+#'        including the ridge lambda cross-validation refits, and is
+#'        remembered by inference/permutation refits.
 #' @return augsynth object that contains:
 #'         \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
@@ -35,6 +46,7 @@ single_augsynth <- function(form, unit, time, t_int, data,
                             scm=T,
                             fixedeff = FALSE,
                             cov_agg=NULL,
+                            solver = "osqp",
                             ...) {
 
     call_name <- match.call()
@@ -63,9 +75,10 @@ single_augsynth <- function(form, unit, time, t_int, data,
         Z <- NULL
     }
 
-    # fit augmented SCM
+    # fit augmented SCM; `solver` travels through `...` so it lands in
+    # extra_args and is replayed by inference/permutation/cv refits
     augsynth <- fit_augsynth_internal(wide, synth_data, Z, progfunc,
-                                      scm, fixedeff, ...)
+                                      scm, fixedeff, solver = solver, ...)
 
     # add some extra data
     augsynth$data$time <- data %>% distinct(!!time) %>%

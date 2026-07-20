@@ -25,6 +25,7 @@
 #'       \item{"scm"}{Whether the SCM weighting function is used}
 #'       \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
 #'       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
+#'       \item{"solver"}{Solver for the SCM weights: "osqp" (default, exact QP on the full n0 x n0 donor Gram matrix) or "frank_wolfe" (Frank-Wolfe support identification plus an exact QP on that support; never forms the full Gram matrix, useful for very large donor pools), or a custom function (X1, X0, V) -> weights}
 #'     }
 #'   \item Multi period (staggered) augsynth
 #'    \itemize{
@@ -78,6 +79,9 @@ augsynth <- function(form, unit, time, data, t_int=NULL, ...) {
     message("More than one treatment time found. Running multisynth.")
     if("progfunc" %in% names(list(...))) {
       warning("`progfunc` is not an argument for multisynth, so it is ignored")
+    }
+    if("solver" %in% names(list(...))) {
+      warning("`solver` is not an argument for multisynth, so it is ignored")
     }
     return(multisynth(form, !!enquo(unit), !!enquo(time), data, ...))
   } else {

@@ -14,6 +14,7 @@ single_augsynth(
   scm = T,
   fixedeff = FALSE,
   cov_agg = NULL,
+  solver = "osqp",
   ...
 )
 }
@@ -41,6 +42,18 @@ causalimpact=Bayesian structural time series with CausalImpact}
 \item{fixedeff}{Whether to include a unit fixed effect, default F}
 
 \item{cov_agg}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
+
+\item{solver}{Solver for the synthetic control weights: "osqp" (the
+default, solves the quadratic program exactly after forming the
+n0 x n0 donor Gram matrix) or "frank_wolfe" (Frank-Wolfe with
+exact line search — the synthdid algorithm — to identify the
+active donor set, then an exact QP restricted to that support
+with a KKT re-admission screen; the full n0 x n0 Gram matrix is
+never formed, so memory stays O(n0 t0) — useful for very large
+donor pools). May also be a function (X1, X0, V) -> weights to
+plug in a custom solver. Applies wherever SCM weights are solved,
+including the ridge lambda cross-validation refits, and is
+remembered by inference/permutation refits.}
 
 \item{...}{optional arguments for outcome model}
 }

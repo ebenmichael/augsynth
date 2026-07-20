@@ -14,7 +14,7 @@
 #' @param scm Include SCM or not
 #' @noRd
 #' @return List of lambda errors for each corresponding lambda in the lambdas parameter.
-get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T) {
+get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length=1, scm=T, solver = "osqp") {
   # vector that stores the sum MSE across all CV sets
   errors <- matrix(0, nrow = ncol(X_c) - holdout_length, ncol = length(lambdas))
   lambda_errors = numeric(length(lambdas)) 
@@ -32,7 +32,7 @@ get_lambda_errors <- function(lambdas, X_c, X_t, synth_data, trt, holdout_length
     new_synth_data$X0 <- t(X_0)
 
     if(scm) {
-      syn <- fit_synth_formatted(new_synth_data)$weights
+      syn <- fit_synth_formatted(new_synth_data, solver = solver)$weights
     } else {
       syn <- rep(1/sum(trt==0), sum(trt==0))
     }

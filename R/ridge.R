@@ -37,7 +37,8 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                    lambda_max = NULL,
                                    holdout_length = 1, min_1se = T,
                                    V = NULL,
-                                   residualize = FALSE, ...) {
+                                   residualize = FALSE, solver = "osqp",
+                                   ...) {
     extra_params = list(...)
     if (length(extra_params) > 0) {
         warning("Unused parameters in using ridge augmented weights: ", paste(names(extra_params), collapse = ", "))
@@ -122,7 +123,7 @@ fit_ridgeaug_formatted <- function(wide_data, synth_data,
                                lambda, ridge, scm,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
-                               holdout_length, min_1se)
+                               holdout_length, min_1se, solver = solver)
 
     weights <- out$weights
     synw <- out$synw
@@ -225,14 +226,14 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
                                lambda, ridge, scm,
                                lambda_min_ratio, n_lambda,
                                lambda_max,
-                               holdout_length, min_1se) {
+                               holdout_length, min_1se, solver = "osqp") {
     lambda_errors <- NULL
     lambda_errors_se <- NULL
     lambdas <- NULL
 
     ## if SCM fit scm
     if(scm) {
-        syn <- fit_synth_formatted(synth_data)$weights
+        syn <- fit_synth_formatted(synth_data, solver = solver)$weights
     } else {
         ## else use uniform weights
         syn <- rep(1 / sum(trt == 0), sum(trt == 0))
@@ -240,7 +241,8 @@ fit_ridgeaug_inner <- function(X_c, X_1, trt, synth_data,
     if(ridge) {
         if(is.null(lambda)) {
             cv_out <- cv_lambda(X_c, X_1, synth_data, trt, holdout_length, scm,
-                      lambda_max, lambda_min_ratio, n_lambda, min_1se)
+                      lambda_max, lambda_min_ratio, n_lambda, min_1se,
+                      solver = solver)
 
             lambda <- cv_out$lambda
             lambda_errors <- cv_out$lambda_errors
@@ -322,7 +324,8 @@ choose_lambda <- function(lambdas, lambda_errors, lambda_errors_se, min_1se) {
 #'          \item{"lambda_errors_se"}{"The SE of the MSE associated with each lambda term}
 #' }
 cv_lambda <- function(X_c, X_1, synth_data, trt, holdout_length, scm,
-                      lambda_max, lambda_min_ratio, n_lambda, min_1se) {
+                      lambda_max, lambda_min_ratio, n_lambda, min_1se,
+                      solver = "osqp") {
     if(is.null(lambda_max)) {
         lambda_max <- get_lambda_max(X_c) 
     }
@@ -331,7 +334,8 @@ cv_lambda <- function(X_c, X_1, synth_data, trt, holdout_length, scm,
     
     lambda_out <- get_lambda_errors(lambdas, X_c, X_1,
                                         synth_data, trt,
-                                        holdout_length, scm)
+                                        holdout_length, scm,
+                                        solver = solver)
     lambda_errors <- lambda_out$lambda_errors
     lambda_errors_se <- lambda_out$lambda_errors_se
 

@@ -82,7 +82,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #' }
 fit_augsyn <- function(wide_data, synth_data,
                        progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
-                       scm=T, ...) {
+                       scm=T, solver = "osqp", ...) {
     ## prognostic score and weight functions to use
     progfunc = tolower(progfunc)
     if(progfunc == "en") {
@@ -104,7 +104,7 @@ fit_augsyn <- function(wide_data, synth_data,
     }
 
     if(scm) {
-        weightf <- fit_synth_formatted
+        weightf <- function(sd) fit_synth_formatted(sd, solver = solver)
     } else {
         ## still fit synth even if none
         ## TODO: This is a dumb wasteful hack
