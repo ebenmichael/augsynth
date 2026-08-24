@@ -195,9 +195,10 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     long_df_y = gather(df_y, time, obs, -c(unit,trt))
     long_df = rbind(long_df_x, long_df_y)
 
-    transform(long_df, time = as.numeric(time))
-    transform(long_df, unit = as.numeric(unit))
-    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", 
+    ## time comes from gathered column names as character (#107); recode to
+    ## consecutive integers since the names need not be numeric strings
+    long_df$time <- match(long_df$time, unique(long_df$time))
+    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt",
                            index = c("unit", "time"), force = force, CV = CV, r = r)
 
     t0 <- dim(X)[2]
