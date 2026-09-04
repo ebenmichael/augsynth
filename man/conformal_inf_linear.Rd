@@ -31,7 +31,6 @@ conformal_inf_linear(
 }
 \value{
 List that contains:
-        \itemize{
          \item{"att"}{Vector of ATT estimates}
          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
          \item{"se"}{Standard error, always NA but returned for compatibility}
@@ -39,7 +38,6 @@ List that contains:
          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
          \item{"p_val"}{p-value for test of no post-treatment effect}
          \item{"alpha"}{Level of confidence interval}
-        }
 }
 \description{
 Conformal inference procedure to compute a confidence interval for a linear in time effect

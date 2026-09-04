@@ -7,3 +7,5 @@ figure$
 cache$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.claude$
+^LICENSE\.md$

@@ -11,11 +11,11 @@
 
 \item{inf}{whether or not to perform inference}
 
+\item{inf_type}{Type of inference, default is "conformal"}
+
 \item{grid_size}{Grid to compute prediction intervals over, default is 1 and only p-values are computed}
 
-\item{...}{Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}}
-
-\item{inf_typ}{Type of inference, default is "conformal"}
+\item{...}{Optional arguments, including \describe{\item{"se"}{Whether to plot standard error}}}
 }
 \description{
 Summary function for augsynth

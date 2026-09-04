@@ -44,6 +44,7 @@ get_eligible_donors <- function(trt, time_cohort, n_leads) {
 }
 
 #' Get donors that don't have missing outcomes where treated units have outcomes
+#' @noRd
 get_nona_donors <- function(X, y, trt, n_lags, n_leads, time_cohort) {
 
   n <- length(trt)

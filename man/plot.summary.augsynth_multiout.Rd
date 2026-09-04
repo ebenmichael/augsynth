@@ -12,6 +12,8 @@
 \item{inf}{Boolean, whether to plot uncertainty intervals, default TRUE}
 
 \item{plt_avg}{Boolean, whether to plot the average of the outcomes, default FALSE}
+
+\item{...}{Optional arguments}
 }
 \description{
 Plot function for summary function for augsynth

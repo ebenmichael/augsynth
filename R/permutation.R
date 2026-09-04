@@ -25,7 +25,7 @@ get_placebo_gaps = function( ascm, att = TRUE ) {
 
     ests <- vapply(all_ids, function(i) {
         new_data <- swap_treat_unit(wide_data, Z, i)
-        new_ascm <- do.call(augsynth:::fit_augsynth_internal,
+        new_ascm <- do.call(fit_augsynth_internal,
                             c(list(wide = new_data$wide,
                                    synth_data = new_data$synth_data,
                                    Z = new_data$Z,

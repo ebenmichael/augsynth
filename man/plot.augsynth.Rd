@@ -5,7 +5,7 @@
 \title{Plot function for augsynth}
 \usage{
 \method{plot}{augsynth}(
-  augsynth,
+  x,
   plot_type = "estimate",
   cv = FALSE,
   inf = TRUE,
@@ -14,10 +14,10 @@
 )
 }
 \arguments{
-\item{augsynth}{An `augsynth` object to be plotted.}
+\item{x}{An `augsynth` object to be plotted.}
 
 \item{plot_type}{The style of plot to be returned. Options include
-\itemize{
+\describe{
   \item{"estimate"}{ATT}
   \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
   \item{"cv"}{Cross-validation MSE (lambda) when using ridge for progfunc.}
@@ -33,7 +33,7 @@ intervals even if inference results are available.}
 
 \item{inf_type}{Type of inference algorithm, if `inf = TRUE` and
   `object` does not have precomputed inference. Options are
-\itemize{
+\describe{
   \item{"conformal"}{Conformal inference (default)}
   \item{"jackknife+"}{Jackknife+ algorithm over time periods}
   \item{"jackknife"}{Jackknife over units}
@@ -45,7 +45,7 @@ intervals even if inference results are available.}
 \item{...}{Optional arguments to be passed to inference, if
   inference needs to be calculated. For details for each
   `inf_type`, see
-\itemize{
+\describe{
   \item{"conformal"}{\code{conformal_inf}}
   \item{"jackknife+"}{\code{time_jackknife_plus}}
   \item{"jackknife"}{\code{jackknife_se_single}}

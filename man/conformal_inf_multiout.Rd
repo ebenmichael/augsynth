@@ -16,6 +16,8 @@ conformal_inf_multiout(
 )
 }
 \arguments{
+\item{ascm_multi}{Fitted `augsynth_multiout` object}
+
 \item{alpha}{Confidence level}
 
 \item{stat_func}{Function to compute test statistic}
@@ -28,11 +30,12 @@ conformal_inf_multiout(
 
 \item{grid_size}{Number of grid points to use when inverting the hypothesis test (default is 1, so only to test joint null)}
 
-\item{ascm}{Fitted `augsynth` object}
+\item{lin_h0}{Optional vector of per-outcome coefficients defining a linear
+combination of the outcome effects to test; if NULL (default), each
+outcome's null hypothesis grid is searched independently}
 }
 \value{
 List that contains:
-        \itemize{
          \item{"att"}{Vector of ATT estimates}
          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
          \item{"se"}{Standard error, always NA but returned for compatibility}
@@ -40,7 +43,6 @@ List that contains:
          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
          \item{"p_val"}{p-value for test of no post-treatment effect}
          \item{"alpha"}{Level of confidence interval}
-        }
 }
 \description{
 Conformal inference procedure to compute p-values and point-wise confidence intervals

@@ -11,19 +11,18 @@ Imports:
     magrittr,
     ggplot2,
     MASS,
-    LiblineaR,
     Formula,
     Matrix,
     osqp (>= 1.0.0),
     rlang,
     purrr,
-    FNN
+    FNN,
+    scales
 Remotes:
     susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.3
 Suggests:
     testthat,
     CausalImpact,
@@ -36,5 +35,9 @@ Suggests:
     glmnet,
     randomForest,
     kableExtra,
-    ggrepel
+    ggrepel,
+    Synth,
+    glue,
+    tidyverse
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.1.0

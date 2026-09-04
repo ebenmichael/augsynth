@@ -45,13 +45,11 @@ None=No outcome model,}
 }
 \value{
 augsynth object that contains:
-        \itemize{
          \item{"weights"}{Ridge ASCM weights}
          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
          \item{"mhat"}{Outcome model estimate}
          \item{"data"}{Panel data as matrices}
-        }
 }
 \description{
 Fit Augmented SCM with multiple outcomes

@@ -14,13 +14,11 @@
 #' @param ... optional arguments for outcome model
 #'
 #' @return augsynth object that contains:
-#'         \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #'          \item{"mhat"}{Outcome model estimate}
 #'          \item{"data"}{Panel data as matrices}
-#'         }
 #' @export
 augsynth_multiout <- function(form, unit, time, t_int, data,
                               progfunc=c("Ridge", "None"),
@@ -263,7 +261,7 @@ combine_outcomes <- function(wide_list, combine_method, fixedeff,
 
 #' Get prediction of ATT or average outcome under control
 #' @param object augsynth_multiout object
-#' @param ... Optional arguments, including \itemize{\item{"att"}{Whether to return the ATT or average outcome under control}}
+#' @param ... Optional arguments, including \describe{\item{"att"}{Whether to return the ATT or average outcome under control}}
 #'
 #' @return Vector of predicted post-treatment control averages
 #' @export
@@ -332,9 +330,9 @@ print.augsynth_multiout <- function(x, ...) {
 #' Summary function for augsynth
 #' @param object augsynth_multiout object
 #' @param inf whether or not to perform inference
-#' @param inf_typ Type of inference, default is "conformal"
+#' @param inf_type Type of inference, default is "conformal"
 #' @param grid_size Grid to compute prediction intervals over, default is 1 and only p-values are computed
-#' @param ... Optional arguments, including \itemize{\item{"se"}{Whether to plot standard error}}
+#' @param ... Optional arguments, including \describe{\item{"se"}{Whether to plot standard error}}
 #' @export
 
 summary.augsynth_multiout <- function(object, inf = T, inf_type = "conformal", grid_size = 1, ...) {
@@ -544,6 +542,7 @@ plot.augsynth_multiout  <- function(x, inf = T, plt_avg = F, ...) {
 #' @param x summary.augsynth_multiout object
 #' @param inf Boolean, whether to plot uncertainty intervals, default TRUE
 #' @param plt_avg Boolean, whether to plot the average of the outcomes, default FALSE
+#' @param ... Optional arguments
 #'
 #' @export
 plot.summary.augsynth_multiout <- function(x, inf = F, plt_avg = F, ...) {

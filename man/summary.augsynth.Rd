@@ -11,7 +11,7 @@
 
 \item{inf_type}{Type of inference algorithm to compute. Defaults to
 `"conformal"`. Options are
-\itemize{
+\describe{
   \item{"conformal"}{Conformal inference (default)}
   \item{"jackknife+"}{Jackknife+ algorithm over time periods}
   \item{"jackknife"}{Jackknife over units}

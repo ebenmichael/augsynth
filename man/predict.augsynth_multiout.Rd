@@ -9,7 +9,7 @@
 \arguments{
 \item{object}{augsynth_multiout object}
 
-\item{...}{Optional arguments, including \itemize{\item{"att"}{Whether to return the ATT or average outcome under control}}}
+\item{...}{Optional arguments, including \describe{\item{"att"}{Whether to return the ATT or average outcome under control}}}
 }
 \value{
 Vector of predicted post-treatment control averages

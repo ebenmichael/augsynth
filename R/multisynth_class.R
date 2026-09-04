@@ -6,7 +6,7 @@
 
 #' Fit staggered synth
 #' @param form outcome ~ treatment | weighting covariates | approximate matching covaraites | exact matching covariates
-#' \itemize{
+#' \describe{
 #'    \item{outcome}{Name of the outcome of interest}
 #'    \item{treatment}{Name of the treatment assignment variable}
 #'    \item{weighting covariates}{Auxiliary covariates to weight on}
@@ -25,6 +25,7 @@
 #' @param fixedeff Whether to include a unit fixed effect, default TRUE
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts, default FALSE
+#' @param how_match Method for matching donor units on covariates, default "knn"
 #' @param cov_agg Covariate aggregation function
 #' @param eps_abs Absolute error tolerance for osqp
 #' @param eps_rel Relative error tolerance for osqp
@@ -32,7 +33,6 @@
 #' @param ... Extra arguments
 #'
 #' @return multisynth object that contains:
-#'         \itemize{
 #'          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
 #'          \item{"data"}{Panel data as matrices}
 #'          \item{"imbalance"}{Matrix of treatment minus synthetic control for pre-treatment time periods, each column corresponds to a treated unit}
@@ -47,7 +47,6 @@
 #'          \item{"grps"}{Time periods for treated units}
 #'          \item{"y0hat"}{Pilot estimates of control outcomes}
 #'          \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
-#'         }
 #' @export
 multisynth <- function(form, unit, time, data,
                        n_leads=NULL, n_lags=NULL,
@@ -585,6 +584,7 @@ predict.multisynth <- function(object, att = F, att_weight = NULL, bs_weight = N
 
 #' Print function for multisynth
 #' @param x multisynth object
+#' @param att_weight Weights to place on individual units/groups when averaging
 #' @param ... Optional arguments
 #' @export
 print.multisynth <- function(x, att_weight = NULL, ...) {
@@ -608,7 +608,7 @@ print.multisynth <- function(x, att_weight = NULL, ...) {
 #' @importFrom graphics plot
 #' @param x Augsynth object to be plotted
 #' @param inf_type Type of inference to perform:
-#'  \itemize{
+#'  \describe{
 #'    \item{bootstrap}{Wild bootstrap, the default option}
 #'    \item{jackknife}{Jackknife}
 #' }
@@ -657,21 +657,20 @@ plot.multisynth <- function(x, inf_type = "bootstrap", inf = T,
 #' Summary function for multisynth
 #' @param object multisynth object
 #' @param inf_type Type of inference to perform:
-#'  \itemize{
+#'  \describe{
 #'    \item{bootstrap}{Wild bootstrap, the default option}
 #'    \item{jackknife}{Jackknife}
 #' }
+#' @param att_weight Weights to place on individual units/groups when averaging
 #' @param ... Optional arguments
 #'
 #' @return summary.multisynth object that contains:
-#'         \itemize{
 #'          \item{"att"}{Dataframe with ATT estimates, standard errors for each treated unit}
 #'          \item{"global_l2"}{L2 imbalance for the pooled synthetic control}
 #'          \item{"scaled_global_l2"}{L2 imbalance for the pooled synthetic control, scaled by the imbalance for unitform weights}
 #'          \item{"ind_l2"}{Average L2 imbalance for the individual synthetic controls}
 #'          \item{"scaled_ind_l2"}{Average L2 imbalance for the individual synthetic controls, scaled by the imbalance for unitform weights}
 #'         \item{"n_leads", "n_lags"}{Number of post treatment outcomes (leads) and pre-treatment outcomes (lags) to include in the analysis}
-#'         }
 #' @export
 summary.multisynth <- function(object, inf_type = "bootstrap", att_weight = NULL, ...) {
 
@@ -961,6 +960,8 @@ plot.summary.multisynth <- function(x, inf = T, levels = NULL, label = T,
 
 
 
+#' @param x multisynth object
+#' @param ... Optional arguments
 #'
 #' @return dim: Dimension of data as pair of (# units, # time points).
 #'

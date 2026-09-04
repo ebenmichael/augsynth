@@ -10,7 +10,7 @@ add_inference(object, inf_type = "conformal", linear_effect = F, ...)
 \item{object}{augsynth object}
 
 \item{inf_type}{Type of inference algorithm. Options are
-\itemize{
+\describe{
  \item{"conformal"}{Conformal inference (default)}
  \item{"jackknife+"}{Jackknife+ algorithm over time periods}
  \item{"jackknife"}{Jackknife over units}
@@ -24,7 +24,7 @@ linear-in-time treatment effect: intercept + slope * time}
 
 \item{...}{Optional arguments for inference, for more details for
 each `inf_type` see
-      \itemize{
+      \describe{
        \item{"conformal"}{`conformal_inf`}
        \item{"jackknife+"}{`time_jackknife_plus`}
        \item{"jackknife"}{`jackknife_se_single`}

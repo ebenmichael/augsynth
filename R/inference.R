@@ -7,14 +7,12 @@
 #' @param alpha Confidence level
 #' @param conservative Whether to use the conservative jackknife+ procedure
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
 #'          \item{"se"}{Standard error, always NA but returned for compatibility}
 #'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
 time_jackknife_plus <- function(ascm, alpha = 0.05, conservative = F) {
     wide_data <- ascm$data
     synth_data <- ascm$data$synth_data
@@ -125,7 +123,6 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #' @param ns Number of resamples for "iid" permutations
 #' @param grid_size Number of grid points to use when inverting the hypothesis test
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
 #'          \item{"se"}{Standard error, always NA but returned for compatibility}
@@ -133,9 +130,8 @@ drop_time_t <- function(wide_data, Z, t_drop) {
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
 
-conformal_inf <- function(ascm, alpha = 0.05, 
+conformal_inf <- function(ascm, alpha = 0.05,
                           stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
@@ -202,7 +198,6 @@ conformal_inf <- function(ascm, alpha = 0.05,
 #' @param ns Number of resamples for "iid" permutations
 #' @param grid_size Number of grid points to use when inverting the hypothesis test
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
 #'          \item{"se"}{Standard error, always NA but returned for compatibility}
@@ -210,8 +205,7 @@ conformal_inf <- function(ascm, alpha = 0.05,
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
-conformal_inf_linear <- function(ascm, alpha = 0.05, 
+conformal_inf_linear <- function(ascm, alpha = 0.05,
                           stat_func = NULL, type = "iid",
                           q = 1, ns = 1000, grid_size = 50) {
   wide_data <- ascm$data
@@ -423,18 +417,16 @@ compute_permute_ci_linear <- function(wide_data, ascm, grid_int, grid_slope,
 
 
 #' Jackknife+ algorithm over time
-#' @param ascm Fitted `augsynth` object
+#' @param ascm_multi Fitted `augsynth_multiout` object
 #' @param alpha Confidence level
 #' @param conservative Whether to use the conservative jackknife+ procedure
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
 #'          \item{"se"}{Standard error, always NA but returned for compatibility}
 #'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
 time_jackknife_plus_multiout <- function(ascm_multi, alpha = 0.05, conservative = F) {
     wide_data <- ascm_multi$data
     data_list <- ascm_multi$data_list
@@ -541,15 +533,17 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 
 
 #' Conformal inference procedure to compute p-values and point-wise confidence intervals
-#' @param ascm Fitted `augsynth` object
+#' @param ascm_multi Fitted `augsynth_multiout` object
 #' @param alpha Confidence level
 #' @param stat_func Function to compute test statistic
 #' @param type Either "iid" for iid permutations or "block" for moving block permutations
 #' @param q The norm for the test static `((sum(x ^ q))) ^ (1/q)`
 #' @param ns Number of resamples for "iid" permutations
 #' @param grid_size Number of grid points to use when inverting the hypothesis test (default is 1, so only to test joint null)
+#' @param lin_h0 Optional vector of per-outcome coefficients defining a linear
+#'   combination of the outcome effects to test; if NULL (default), each
+#'   outcome's null hypothesis grid is searched independently
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
 #'          \item{"se"}{Standard error, always NA but returned for compatibility}
@@ -557,7 +551,6 @@ drop_time_t_multiout <- function(data_list, Z, t_drop) {
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"p_val"}{p-value for test of no post-treatment effect}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
 conformal_inf_multiout <- function(ascm_multi, alpha = 0.05,
                                     stat_func = NULL, type = "iid",
                                     q = 1, ns = 1000, grid_size = 1,
@@ -893,13 +886,11 @@ drop_unit_i_multiout <- function(wide_list, Z, i) {
 #' @param ascm Fitted augsynth object
 #'
 #' @return List that contains:
-#'         \itemize{
 #'          \item{"att"}{Vector of ATT estimates}
 #'          \item{"se"}{Standard error estimate}
 #'          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
 #'          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
 #'          \item{"alpha"}{Level of confidence interval}
-#'         }
 jackknife_se_single <- function(ascm) {
 
     wide_data <- ascm$data

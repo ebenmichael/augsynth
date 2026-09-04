@@ -12,6 +12,11 @@ n_time(x, ...)
 
 n_treated(x, ...)
 }
+\arguments{
+\item{x}{Object to compute on}
+
+\item{...}{Optional arguments}
+}
 \value{
 Single number (of unique units).
 

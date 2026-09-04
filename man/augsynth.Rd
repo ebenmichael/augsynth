@@ -21,14 +21,14 @@ only)}
 \item{...}{Optional arguments
 \itemize{
   \item Single period augsynth with/without multiple outcomes
-    \itemize{
+    \describe{
       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
       \item{"scm"}{Whether the SCM weighting function is used}
       \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}
     }
   \item Multi period (staggered) augsynth
-   \itemize{
+   \describe{
          \item{"relative"}{Whether to compute balance by relative time}
          \item{"n_leads"}{How long past treatment effects should be estimated for}
          \item{"n_lags"}{Number of pre-treatment periods to balance, default is to balance all periods}
@@ -40,10 +40,8 @@ only)}
 }
 \value{
 augsynth or multisynth object (depending on dispatch) that contains (among other things):
-        \itemize{
          \item{"weights"}{weights}
          \item{"data"}{Panel data as matrices}
-        }
 }
 \description{
 The general `augsynth()` method dispatches to `single_augsynth`,

@@ -15,6 +15,11 @@
 
 \method{n_treated}{multisynth}(x, ...)
 }
+\arguments{
+\item{x}{multisynth object}
+
+\item{...}{Optional arguments}
+}
 \value{
 dim: Dimension of data as pair of (# units, # time points).
 

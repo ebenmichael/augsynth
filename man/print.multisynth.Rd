@@ -9,6 +9,8 @@
 \arguments{
 \item{x}{multisynth object}
 
+\item{att_weight}{Weights to place on individual units/groups when averaging}
+
 \item{...}{Optional arguments}
 }
 \description{

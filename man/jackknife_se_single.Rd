@@ -12,13 +12,11 @@ jackknife_se_single(ascm)
 }
 \value{
 List that contains:
-        \itemize{
          \item{"att"}{Vector of ATT estimates}
          \item{"se"}{Standard error estimate}
          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
          \item{"alpha"}{Level of confidence interval}
-        }
 }
 \description{
 Estimate standard errors for single ASCM with the jackknife

@@ -20,6 +20,8 @@ is.augsynth(x)
 }
 \arguments{
 \item{x}{augsynth result object}
+
+\item{...}{Optional arguments}
 }
 \value{
 is.augsynth: TRUE if object is a augsynth object.

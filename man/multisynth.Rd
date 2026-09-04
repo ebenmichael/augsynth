@@ -27,7 +27,7 @@ multisynth(
 }
 \arguments{
 \item{form}{outcome ~ treatment | weighting covariates | approximate matching covaraites | exact matching covariates
-\itemize{
+\describe{
    \item{outcome}{Name of the outcome of interest}
    \item{treatment}{Name of the treatment assignment variable}
    \item{weighting covariates}{Auxiliary covariates to weight on}
@@ -58,6 +58,8 @@ If covariates are time-varying, their average value before the first unit is tre
 
 \item{time_cohort}{Whether to average synthetic controls into time cohorts, default FALSE}
 
+\item{how_match}{Method for matching donor units on covariates, default "knn"}
+
 \item{cov_agg}{Covariate aggregation function}
 
 \item{eps_abs}{Absolute error tolerance for osqp}
@@ -70,7 +72,6 @@ If covariates are time-varying, their average value before the first unit is tre
 }
 \value{
 multisynth object that contains:
-        \itemize{
          \item{"weights"}{weights matrix where each column is a set of weights for a treated unit}
          \item{"data"}{Panel data as matrices}
          \item{"imbalance"}{Matrix of treatment minus synthetic control for pre-treatment time periods, each column corresponds to a treated unit}
@@ -85,7 +86,6 @@ multisynth object that contains:
          \item{"grps"}{Time periods for treated units}
          \item{"y0hat"}{Pilot estimates of control outcomes}
          \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
-        }
 }
 \description{
 Fit staggered synth

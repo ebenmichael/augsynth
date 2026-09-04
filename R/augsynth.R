@@ -21,13 +21,11 @@
 #' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
 #' @return augsynth object that contains:
-#'         \itemize{
 #'          \item{"weights"}{Ridge ASCM weights}
 #'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
 #'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
 #'          \item{"mhat"}{Outcome model estimate}
 #'          \item{"data"}{Panel data as matrices}
-#'         }
 #' @param ... optional arguments for outcome model
 #' @export
 single_augsynth <- function(form, unit, time, t_int, data,
@@ -221,7 +219,7 @@ predict.augsynth <- function(object, att = F, ...) {
 #'
 #' @param object augsynth object
 #' @param inf_type Type of inference algorithm. Options are
-#'         \itemize{
+#'         \describe{
 #'          \item{"conformal"}{Conformal inference (default)}
 #'          \item{"jackknife+"}{Jackknife+ algorithm over time periods}
 #'          \item{"jackknife"}{Jackknife over units}
@@ -233,7 +231,7 @@ predict.augsynth <- function(object, att = F, ...) {
 #'   linear-in-time treatment effect: intercept + slope * time
 #' @param ... Optional arguments for inference, for more details for
 #'   each `inf_type` see
-#'         \itemize{
+#'         \describe{
 #'          \item{"conformal"}{`conformal_inf`}
 #'          \item{"jackknife+"}{`time_jackknife_plus`}
 #'          \item{"jackknife"}{`jackknife_se_single`}
@@ -382,9 +380,9 @@ print.augsynth <- function(x, ...) {
 #' object (e.g., via `summary()`) and plot that object instead.
 #'
 #' @importFrom graphics plot
-#' @param augsynth An `augsynth` object to be plotted.
+#' @param x An `augsynth` object to be plotted.
 #' @param plot_type The style of plot to be returned. Options include
-#' \itemize{
+#' \describe{
 #'   \item{"estimate"}{ATT}
 #'   \item{"outcomes"}{The level of the outcome variable for the treated and synthetic control units.}
 #'   \item{"cv"}{Cross-validation MSE (lambda) when using ridge for progfunc.}
@@ -397,7 +395,7 @@ print.augsynth <- function(x, ...) {
 #'   intervals even if inference results are available.
 #' @param inf_type Type of inference algorithm, if `inf = TRUE` and
 #'   `object` does not have precomputed inference. Options are
-#' \itemize{
+#' \describe{
 #'   \item{"conformal"}{Conformal inference (default)}
 #'   \item{"jackknife+"}{Jackknife+ algorithm over time periods}
 #'   \item{"jackknife"}{Jackknife over units}
@@ -408,14 +406,14 @@ print.augsynth <- function(x, ...) {
 #' @param ... Optional arguments to be passed to inference, if
 #'   inference needs to be calculated. For details for each
 #'   `inf_type`, see
-#' \itemize{
+#' \describe{
 #'   \item{"conformal"}{\code{conformal_inf}}
 #'   \item{"jackknife+"}{\code{time_jackknife_plus}}
 #'   \item{"jackknife"}{\code{jackknife_se_single}}
 #'   \item{"permutation"}{\code{permutation_inf}}
 #' }
 #' @export
-plot.augsynth <- function(augsynth,
+plot.augsynth <- function(x,
                           plot_type = 'estimate',
                           cv = FALSE,
                           inf = TRUE,
@@ -425,7 +423,7 @@ plot.augsynth <- function(augsynth,
         plot_type = 'cv'
     }
 
-    plot_augsynth_results( augsynth=augsynth,
+    plot_augsynth_results( augsynth=x,
                            inf=inf,
                            plot_type=plot_type,
                            inf_type=inf_type, ... )
@@ -436,6 +434,7 @@ plot.augsynth <- function(augsynth,
 #'
 #'
 #' @param x augsynth result object
+#' @param ... Optional arguments
 #'
 #' @rdname augsynth_class
 #'
@@ -460,6 +459,8 @@ dim.augsynth <- function(x, ... ) {
 }
 
 
+#' @param x Object to compute on
+#' @param ... Optional arguments
 #'
 #' @return Single number (of unique units).
 #'
@@ -539,7 +540,7 @@ n_treated.augsynth <- function(x, ... ) {
 #' @param object An `augsynth` object.
 #' @param inf_type Type of inference algorithm to compute. Defaults to
 #'   `"conformal"`. Options are
-#'   \itemize{
+#'   \describe{
 #'     \item{"conformal"}{Conformal inference (default)}
 #'     \item{"jackknife+"}{Jackknife+ algorithm over time periods}
 #'     \item{"jackknife"}{Jackknife over units}

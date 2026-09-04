@@ -18,7 +18,7 @@
 \item{x}{Augsynth object to be plotted}
 
 \item{inf_type}{Type of inference to perform:
- \itemize{
+ \describe{
    \item{bootstrap}{Wild bootstrap, the default option}
    \item{jackknife}{Jackknife}
 }}

@@ -15,14 +15,12 @@ time_jackknife_plus(ascm, alpha = 0.05, conservative = F)
 }
 \value{
 List that contains:
-        \itemize{
          \item{"att"}{Vector of ATT estimates}
          \item{"heldout_att"}{Vector of ATT estimates with the time period held out}
          \item{"se"}{Standard error, always NA but returned for compatibility}
          \item{"lb"}{Lower bound of 1 - alpha confidence interval}
          \item{"ub"}{Upper bound of 1 - alpha confidence interval}
          \item{"alpha"}{Level of confidence interval}
-        }
 }
 \description{
 Jackknife+ algorithm over time
