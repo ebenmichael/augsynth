@@ -18,22 +18,14 @@ Imports:
     purrr,
     FNN,
     scales
-Remotes:
-    susanathey/MCPanel
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Suggests:
     testthat,
-    CausalImpact,
-    keras,
     gsynth (>= 1.3.0),
     knitr,
     rmarkdown,
-    softImpute,
-    MCPanel,
-    glmnet,
-    randomForest,
     kableExtra,
     ggrepel,
     Synth,

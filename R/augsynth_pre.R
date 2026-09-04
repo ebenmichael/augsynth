@@ -21,7 +21,7 @@
 #' \itemize{
 #'   \item Single period augsynth with/without multiple outcomes
 #'     \describe{
-#'       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression (allows for standard errors), None=No outcome model, EN=Elastic Net, RF=Random Forest, GSYN=gSynth, MCP=MCPanel, CITS=CITS, CausalImpact=Bayesian structural time series with CausalImpact, seq2seq=Sequence to sequence learning with feedforward nets}
+#'       \item{"progfunc"}{What function to use to impute control outcomes: Ridge=Ridge regression, None=No outcome model, GSYN=gSynth}
 #'       \item{"scm"}{Whether the SCM weighting function is used}
 #'       \item{"fixedeff"}{Whether to include a unit fixed effect, default is FALSE }
 #'       \item{"cov_agg"}{Covariate aggregation functions, if NULL then use mean with NAs omitted}

@@ -5,7 +5,7 @@
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
 #' @param progfunc What function to use to impute control outcomes
-#'                 Ridge=Ridge regression (allows for standard errors),
+#'                 Ridge=Ridge regression,
 #'                 None=No outcome model,
 #' @param scm Whether the SCM weighting function is used
 #' @param fixedeff Whether to include a unit fixed effect, default F

@@ -16,7 +16,7 @@ vignette: >
 You can install `augsynth` from github using `devtools`.
 
 
-```r
+``` r
 # Install devtools if not already installed
 install.packages("devtools", repos='http://cran.us.r-project.org')
 # Install augsynth from github
@@ -29,7 +29,7 @@ devtools::install_github("ebenmichael/augsynth")
 To show the usage and features of `augsynth`, we'll use data on the impact of personal income tax cuts in Kansas that comes with the `AugSynth` package. Our interest is in estimating the effect of income tax cuts on gross state product (GSP) per capita.
 
 
-```r
+``` r
 library(magrittr)
 library(dplyr)
 library(augsynth)
@@ -41,7 +41,7 @@ The `kansas` dataset contains the GSP per capita (the outcome measure) `lngdpcap
 To run `augsynth`, we need to include a treatment status column that indicates which region was treated and at what time. The table in `kansas` contains the column `treated` to denote this. In the original study, the second quarter of 2012 was the implementation of the tax cut in Kansas.
 
 
-```r
+``` r
 kansas %>% 
   select(year, qtr, year_qtr, state, treated, gdp, lngdpcapita) %>% 
   filter(state == "Kansas" & year_qtr >= 2012 & year_qtr < 2013) 
@@ -59,7 +59,7 @@ kansas %>%
 Now to find a synthetic control using the entire series of pre-intervention outcomes (and no auxiliary covariates), we can use `augsynth`. To do so we just need to give `augsynth` a formula like `outcome ~ treatment`, tell it what the unit and time variables are, optionally provide when intervention took place (the code will automatically determine this if `t_int` is not provided), and specify that we don't want to fit an outcome model
 
 
-```r
+``` r
 library(augsynth)
 syn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
                 progfunc = "None", scm = T)
@@ -70,7 +70,7 @@ We'll also see the quality of the synthetic control fit measured by the L2 dista
 By default, we'll also see pointwise confidence intervals using a [conformal inference procedure](https://arxiv.org/abs/1712.09089).
 
 
-```r
+``` r
 summary(syn)
 #> 
 #> Call:
@@ -80,7 +80,7 @@ summary(syn)
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 7 donor units used with weights of 0.053 to 0.301
-#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.34 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.31 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -89,28 +89,28 @@ summary(syn)
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.018             -0.042              0.006   0.123
+#>  2012.25   -0.018             -0.045              0.008   0.097
 #>  2012.50   -0.041             -0.070             -0.007   0.026
-#>  2012.75   -0.033             -0.060             -0.001   0.041
-#>  2013.00   -0.019             -0.046              0.005   0.104
-#>  2013.25   -0.029             -0.053              0.000   0.042
-#>  2013.50   -0.046             -0.075             -0.015   0.018
-#>  2013.75   -0.032             -0.056             -0.010   0.027
-#>  2014.00   -0.045             -0.074             -0.013   0.016
-#>  2014.25   -0.043             -0.079             -0.014   0.019
-#>  2014.50   -0.029             -0.066              0.000   0.036
-#>  2014.75   -0.018             -0.053              0.018   0.123
-#>  2015.00   -0.029             -0.074              0.005   0.083
-#>  2015.25   -0.019             -0.051              0.013   0.122
-#>  2015.50   -0.022             -0.058              0.007   0.105
-#>  2015.75   -0.019             -0.055              0.013   0.172
-#>  2016.00   -0.028             -0.067              0.008   0.102
+#>  2012.75   -0.033             -0.065             -0.007   0.039
+#>  2013.00   -0.019             -0.046              0.005   0.116
+#>  2013.25   -0.029             -0.056             -0.005   0.043
+#>  2013.50   -0.046             -0.073             -0.022   0.023
+#>  2013.75   -0.032             -0.056             -0.003   0.022
+#>  2014.00   -0.045             -0.076             -0.018   0.025
+#>  2014.25   -0.043             -0.079             -0.006   0.020
+#>  2014.50   -0.029             -0.061              0.002   0.044
+#>  2014.75   -0.018             -0.053              0.011   0.151
+#>  2015.00   -0.029             -0.066              0.007   0.072
+#>  2015.25   -0.019             -0.051              0.013   0.119
+#>  2015.50   -0.022             -0.056              0.007   0.109
+#>  2015.75   -0.019             -0.055              0.018   0.198
+#>  2016.00   -0.028             -0.072              0.008   0.090
 ```
 
 
 The default test statistic is the sum of the absolute treatment efects `function(x) sum(abs(x))`. We can change the test statistic via the `stat_func` argument. For instance, if we want to perform a one-way test against postive effects, we can set the test stastic to be the negative sum `function(x) -sum(x)`:
 
-```r
+``` r
 summary(syn, stat_func = function(x) -sum(x))
 #> 
 #> Call:
@@ -120,7 +120,7 @@ summary(syn, stat_func = function(x) -sum(x))
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 7 donor units used with weights of 0.053 to 0.301
-#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.16 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.17 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -129,26 +129,26 @@ summary(syn, stat_func = function(x) -sum(x))
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.018             -0.080              0.006   0.062
+#>  2012.25   -0.018             -0.080              0.003   0.062
 #>  2012.50   -0.041             -0.103             -0.015   0.026
-#>  2012.75   -0.033             -0.095             -0.007   0.035
+#>  2012.75   -0.033             -0.095             -0.007   0.043
 #>  2013.00   -0.019             -0.081              0.005   0.071
-#>  2013.25   -0.029             -0.091             -0.005   0.024
-#>  2013.50   -0.046             -0.108             -0.022   0.024
-#>  2013.75   -0.032             -0.094             -0.010   0.029
-#>  2014.00   -0.045             -0.107             -0.021   0.025
-#>  2014.25   -0.043             -0.105             -0.014   0.027
-#>  2014.50   -0.029             -0.091              0.000   0.031
-#>  2014.75   -0.018             -0.080              0.011   0.074
-#>  2015.00   -0.029             -0.091              0.005   0.066
-#>  2015.25   -0.019             -0.081              0.007   0.082
-#>  2015.50   -0.022             -0.084              0.005   0.059
-#>  2015.75   -0.019             -0.081              0.013   0.116
-#>  2016.00   -0.028             -0.090              0.008   0.063
+#>  2013.25   -0.029             -0.091             -0.005   0.034
+#>  2013.50   -0.046             -0.108             -0.022   0.032
+#>  2013.75   -0.032             -0.094             -0.010   0.024
+#>  2014.00   -0.045             -0.107             -0.021   0.033
+#>  2014.25   -0.043             -0.105             -0.014   0.026
+#>  2014.50   -0.029             -0.091              0.000   0.030
+#>  2014.75   -0.018             -0.080              0.011   0.078
+#>  2015.00   -0.029             -0.091              0.000   0.048
+#>  2015.25   -0.019             -0.081              0.010   0.080
+#>  2015.50   -0.022             -0.084              0.007   0.071
+#>  2015.75   -0.019             -0.081              0.013   0.094
+#>  2016.00   -0.028             -0.090              0.008   0.069
 ```
 Or if we want to priotize testing the average post-treatment effect, we can set it to be the absolute sum:
 
-```r
+``` r
 summary(syn, stat_func = function(x) abs(sum(x)))
 #> 
 #> Call:
@@ -158,7 +158,7 @@ summary(syn, stat_func = function(x) abs(sum(x)))
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 7 donor units used with weights of 0.053 to 0.301
-#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.3 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0294   ( 0.31 )
 #> L2 Imbalance: 0.083
 #> Percent improvement from uniform weights: 79.5%
 #> 
@@ -167,29 +167,29 @@ summary(syn, stat_func = function(x) abs(sum(x)))
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.018             -0.045              0.014   0.091
-#>  2012.50   -0.041             -0.068             -0.007   0.021
-#>  2012.75   -0.033             -0.065              0.000   0.057
-#>  2013.00   -0.019             -0.046              0.005   0.112
-#>  2013.25   -0.029             -0.053             -0.005   0.048
-#>  2013.50   -0.046             -0.073             -0.022   0.019
+#>  2012.25   -0.018             -0.045              0.014   0.103
+#>  2012.50   -0.041             -0.068             -0.012   0.029
+#>  2012.75   -0.033             -0.062              0.000   0.052
+#>  2013.00   -0.019             -0.046              0.005   0.101
+#>  2013.25   -0.029             -0.056              0.000   0.045
+#>  2013.50   -0.046             -0.073             -0.022   0.017
 #>  2013.75   -0.032             -0.056             -0.003   0.021
-#>  2014.00   -0.045             -0.074             -0.018   0.022
-#>  2014.25   -0.043             -0.074             -0.006   0.019
-#>  2014.50   -0.029             -0.061              0.000   0.043
-#>  2014.75   -0.018             -0.058              0.011   0.149
-#>  2015.00   -0.029             -0.074              0.005   0.070
-#>  2015.25   -0.019             -0.051              0.007   0.122
-#>  2015.50   -0.022             -0.056              0.007   0.120
-#>  2015.75   -0.019             -0.060              0.016   0.184
-#>  2016.00   -0.028             -0.070              0.011   0.102
+#>  2014.00   -0.045             -0.074             -0.016   0.023
+#>  2014.25   -0.043             -0.074             -0.014   0.021
+#>  2014.50   -0.029             -0.061              0.000   0.037
+#>  2014.75   -0.018             -0.058              0.013   0.146
+#>  2015.00   -0.029             -0.074              0.005   0.075
+#>  2015.25   -0.019             -0.051              0.013   0.124
+#>  2015.50   -0.022             -0.063              0.010   0.119
+#>  2015.75   -0.019             -0.063              0.013   0.169
+#>  2016.00   -0.028             -0.075              0.008   0.100
 ```
 
 
 It's easier to see this information visually. Below we plot the difference between Kansas and it's synthetic control. Before the tax cuts (to the left of the dashed line) we expect these to be close, and after the tax cuts we measure the effect (with point-wise confidence intervals).
 
 
-```r
+``` r
 plot(syn)
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -203,7 +203,7 @@ plot(syn)
 ### Augmenting synth with an outcome model
 In this example the pre-intervention synthetic control fit has an L2 imbalance of 0.083, about 20% of the imbalance between Kansas and the average of the other states. We can reduce this by _augmenting_ synth with ridge regression. To do this we change `progfunc` to `"Ridge"`. We can also choose the ridge hyper-parameter by setting `lambda`, while not specifying `lambda` will determine one through cross validation:
 
-```r
+``` r
 asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
                 progfunc = "Ridge", scm = T)
 ```
@@ -211,7 +211,7 @@ asyn <- augsynth(lngdpcapita ~ treated, fips, year_qtr, kansas,
 We can plot the cross-validation MSE when dropping pre-treatment time periods by setting `plot_type = "cv"` in the `plot` function:
 
 
-```r
+``` r
 plot(asyn, plot_type = "cv")
 ```
 
@@ -225,7 +225,7 @@ By default, the CV procedure chooses the maximal value of `lambda` with MSE with
 
 We can look at the summary and plot the results. Now in the summary output we see an estimate of the overall bias of synth; we measure this with the average amount that augmentation changes the synth estimate. Notice that the estimates become somewhat larger in magnitude, and the standard errors are tighter.
 
-```r
+``` r
 summary(asyn)
 #> 
 #> Call:
@@ -235,7 +235,7 @@ summary(asyn)
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 49 donor units used with weights of 0.001 to 0.316
-#> Average ATT Estimate (p Value for Joint Null):  -0.0401   ( 0.071 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0401   ( 0.084 )
 #> L2 Imbalance: 0.062
 #> Percent improvement from uniform weights: 84.7%
 #> 
@@ -244,26 +244,26 @@ summary(asyn)
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.022             -0.044              0.003   0.057
-#>  2012.50   -0.047             -0.072             -0.018   0.020
-#>  2012.75   -0.043             -0.071             -0.010   0.023
-#>  2013.00   -0.030             -0.055             -0.004   0.026
-#>  2013.25   -0.041             -0.067             -0.016   0.024
-#>  2013.50   -0.059             -0.091             -0.030   0.023
-#>  2013.75   -0.045             -0.073             -0.019   0.024
-#>  2014.00   -0.058             -0.087             -0.026   0.020
-#>  2014.25   -0.055             -0.094             -0.020   0.023
-#>  2014.50   -0.041             -0.080             -0.006   0.038
-#>  2014.75   -0.029             -0.072              0.006   0.051
+#>  2012.25   -0.022             -0.044              0.000   0.065
+#>  2012.50   -0.047             -0.076             -0.018   0.022
+#>  2012.75   -0.043             -0.075             -0.010   0.017
+#>  2013.00   -0.030             -0.052             -0.001   0.042
+#>  2013.25   -0.041             -0.070             -0.016   0.024
+#>  2013.50   -0.059             -0.091             -0.030   0.024
+#>  2013.75   -0.045             -0.073             -0.016   0.028
+#>  2014.00   -0.058             -0.087             -0.026   0.021
+#>  2014.25   -0.055             -0.091             -0.020   0.024
+#>  2014.50   -0.041             -0.080             -0.006   0.028
+#>  2014.75   -0.029             -0.068              0.006   0.062
 #>  2015.00   -0.040             -0.082              0.000   0.055
-#>  2015.25   -0.030             -0.069              0.002   0.045
-#>  2015.50   -0.033             -0.072              0.000   0.059
-#>  2015.75   -0.029             -0.071              0.010   0.056
-#>  2016.00   -0.038             -0.091              0.004   0.049
+#>  2015.25   -0.030             -0.066              0.000   0.063
+#>  2015.50   -0.033             -0.072              0.003   0.047
+#>  2015.75   -0.029             -0.071              0.010   0.055
+#>  2016.00   -0.038             -0.091              0.004   0.065
 ```
 
 
-```r
+``` r
 plot(asyn)
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -276,17 +276,18 @@ plot(asyn)
 There are also several auxiliary covariates. We can include these in the augmentation by fitting an outcome model using the auxiliary covariates. To do this we simply add the covariates into the formula after `|`. By default this will create time invariant covariates by averaging the auxiliary covariates over the pre-intervention period, dropping `NA` values. We can use a custom aggregation function by setting the `cov_agg` argument. Then the lagged outcomes and the auxiliary covariates are jointly balanced by SCM and the ridge outcome model includes both.
 
 
-```r
+``` r
 covsyn <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) +
                                            log(revlocalcapita) + log(avgwklywagecapita) +
                                            estabscapita + emplvlcapita,
                    fips, year_qtr, kansas,
                    progfunc = "ridge", scm = T)
+
 ```
 
 Again we can look at the summary and plot the results.
 
-```r
+``` r
 summary(covsyn)
 #> 
 #> Call:
@@ -296,7 +297,7 @@ summary(covsyn)
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 49 donor units used with weights of 0.004 to 0.356
-#> Average ATT Estimate (p Value for Joint Null):  -0.0609   ( 0.14 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0609   ( 0.11 )
 #> L2 Imbalance: 0.054
 #> Percent improvement from uniform weights: 86.6%
 #> 
@@ -308,26 +309,26 @@ summary(covsyn)
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.021             -0.039              0.002   0.076
-#>  2012.50   -0.047             -0.076             -0.014   0.035
-#>  2012.75   -0.050             -0.083             -0.007   0.040
-#>  2013.00   -0.045             -0.074             -0.012   0.046
-#>  2013.25   -0.055             -0.088             -0.022   0.030
-#>  2013.50   -0.071             -0.105             -0.033   0.024
-#>  2013.75   -0.058             -0.091             -0.030   0.034
-#>  2014.00   -0.081             -0.125             -0.037   0.024
-#>  2014.25   -0.078             -0.121             -0.019   0.017
-#>  2014.50   -0.065             -0.114             -0.027   0.033
-#>  2014.75   -0.057             -0.110             -0.003   0.046
-#>  2015.00   -0.075             -0.124             -0.027   0.025
-#>  2015.25   -0.063             -0.106              0.000   0.056
-#>  2015.50   -0.067             -0.106             -0.019   0.019
-#>  2015.75   -0.063             -0.096             -0.009   0.020
-#>  2016.00   -0.078             -0.122             -0.019   0.022
+#>  2012.25   -0.021             -0.044              0.002   0.065
+#>  2012.50   -0.047             -0.081             -0.019   0.037
+#>  2012.75   -0.050             -0.083             -0.007   0.024
+#>  2013.00   -0.045             -0.074             -0.017   0.037
+#>  2013.25   -0.055             -0.088             -0.022   0.013
+#>  2013.50   -0.071             -0.105             -0.038   0.028
+#>  2013.75   -0.058             -0.091             -0.014   0.022
+#>  2014.00   -0.081             -0.119             -0.037   0.022
+#>  2014.25   -0.078             -0.127             -0.024   0.029
+#>  2014.50   -0.065             -0.114             -0.011   0.038
+#>  2014.75   -0.057             -0.105              0.007   0.044
+#>  2015.00   -0.075             -0.124             -0.022   0.023
+#>  2015.25   -0.063             -0.106             -0.014   0.031
+#>  2015.50   -0.067             -0.100             -0.019   0.019
+#>  2015.75   -0.063             -0.101             -0.009   0.018
+#>  2016.00   -0.078             -0.122             -0.019   0.019
 ```
 
 
-```r
+``` r
 plot(covsyn)
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -339,7 +340,7 @@ plot(covsyn)
 
 Now we can additionally fit ridge ASCM on the residuals, look at the summary, and plot the results.
 
-```r
+``` r
 
 covsyn_resid <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapita) +
                                            log(revlocalcapita) + log(avgwklywagecapita) +
@@ -350,7 +351,7 @@ covsyn_resid <- augsynth(lngdpcapita ~ treated | lngdpcapita + log(revstatecapit
 ```
 
 
-```r
+``` r
 summary(covsyn_resid)
 #> 
 #> Call:
@@ -361,7 +362,7 @@ summary(covsyn_resid)
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 49 donor units used with weights of 0.000 to 0.346
-#> Average ATT Estimate (p Value for Joint Null):  -0.0548   ( 0.26 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0548   ( 0.24 )
 #> L2 Imbalance: 0.067
 #> Percent improvement from uniform weights: 83.4%
 #> 
@@ -373,27 +374,27 @@ summary(covsyn_resid)
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.025             -0.046             -0.005   0.046
-#>  2012.50   -0.051             -0.076             -0.026   0.012
+#>  2012.25   -0.025             -0.046              0.000   0.039
+#>  2012.50   -0.051             -0.076             -0.026   0.014
 #>  2012.75   -0.045             -0.070             -0.020   0.007
-#>  2013.00   -0.044             -0.069             -0.019   0.014
-#>  2013.25   -0.051             -0.077             -0.026   0.007
-#>  2013.50   -0.069             -0.094             -0.044   0.011
-#>  2013.75   -0.051             -0.077             -0.026   0.014
-#>  2014.00   -0.069             -0.095             -0.040   0.006
+#>  2013.00   -0.044             -0.069             -0.019   0.016
+#>  2013.25   -0.051             -0.077             -0.031   0.013
+#>  2013.50   -0.069             -0.094             -0.044   0.009
+#>  2013.75   -0.051             -0.077             -0.026   0.010
+#>  2014.00   -0.069             -0.095             -0.040   0.010
 #>  2014.25   -0.067             -0.097             -0.037   0.010
-#>  2014.50   -0.053             -0.083             -0.024   0.014
-#>  2014.75   -0.045             -0.075             -0.015   0.023
-#>  2015.00   -0.064             -0.093             -0.034   0.012
-#>  2015.25   -0.051             -0.076             -0.026   0.010
-#>  2015.50   -0.059             -0.089             -0.038   0.016
-#>  2015.75   -0.058             -0.087             -0.023   0.021
-#>  2016.00   -0.074             -0.108             -0.044   0.012
+#>  2014.50   -0.053             -0.083             -0.024   0.015
+#>  2014.75   -0.045             -0.075             -0.020   0.017
+#>  2015.00   -0.064             -0.093             -0.029   0.015
+#>  2015.25   -0.051             -0.076             -0.026   0.016
+#>  2015.50   -0.059             -0.089             -0.034   0.009
+#>  2015.75   -0.058             -0.087             -0.028   0.013
+#>  2016.00   -0.074             -0.103             -0.044   0.007
 ```
 
 
 
-```r
+``` r
 plot(covsyn_resid)
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -406,7 +407,7 @@ plot(covsyn_resid)
 
 Finally, we can augment synth with many different outcome models. The simplest outcome model is a unit fixed effect model, which we can include by setting `fixedeff = T`.
 
-```r
+``` r
 
 desyn <- augsynth(lngdpcapita ~ treated,
                    fips, year_qtr, kansas,
@@ -416,7 +417,7 @@ desyn <- augsynth(lngdpcapita ~ treated,
 
 
 
-```r
+``` r
 summary(desyn)
 #> 
 #> Call:
@@ -427,7 +428,7 @@ summary(desyn)
 #> Fit to 50 units and 89+16 = 105 time points; 1 treated at year_qtr 2012.25.
 #> 
 #> 7 donor units used with weights of 0.026 to 0.308
-#> Average ATT Estimate (p Value for Joint Null):  -0.0335   ( 0.29 )
+#> Average ATT Estimate (p Value for Joint Null):  -0.0335   ( 0.32 )
 #> L2 Imbalance: 0.082
 #> Percent improvement from uniform weights: 55.1%
 #> 
@@ -436,27 +437,27 @@ summary(desyn)
 #> Inference type: Conformal inference
 #> 
 #>     Time Estimate 95% CI Lower Bound 95% CI Upper Bound p Value
-#>  2012.25   -0.022             -0.046              0.006   0.078
-#>  2012.50   -0.046             -0.070             -0.010   0.017
-#>  2012.75   -0.038             -0.062              0.001   0.045
-#>  2013.00   -0.024             -0.048              0.006   0.088
-#>  2013.25   -0.033             -0.057              0.000   0.036
-#>  2013.50   -0.050             -0.074             -0.023   0.023
-#>  2013.75   -0.035             -0.056             -0.010   0.016
-#>  2014.00   -0.049             -0.073             -0.013   0.023
-#>  2014.25   -0.047             -0.071             -0.014   0.015
-#>  2014.50   -0.033             -0.057              0.005   0.068
-#>  2014.75   -0.023             -0.050              0.016   0.114
-#>  2015.00   -0.034             -0.061              0.004   0.067
-#>  2015.25   -0.023             -0.047              0.010   0.095
-#>  2015.50   -0.026             -0.058              0.007   0.100
-#>  2015.75   -0.023             -0.050              0.018   0.133
-#>  2016.00   -0.033             -0.066              0.011   0.078
+#>  2012.25   -0.022             -0.046              0.006   0.083
+#>  2012.50   -0.046             -0.070             -0.007   0.023
+#>  2012.75   -0.038             -0.062             -0.005   0.047
+#>  2013.00   -0.024             -0.048              0.003   0.071
+#>  2013.25   -0.033             -0.057             -0.006   0.026
+#>  2013.50   -0.050             -0.074             -0.023   0.027
+#>  2013.75   -0.035             -0.059             -0.008   0.025
+#>  2014.00   -0.049             -0.073             -0.016   0.030
+#>  2014.25   -0.047             -0.068             -0.014   0.025
+#>  2014.50   -0.033             -0.055              0.000   0.049
+#>  2014.75   -0.023             -0.047              0.010   0.107
+#>  2015.00   -0.034             -0.067              0.004   0.081
+#>  2015.25   -0.023             -0.053              0.010   0.104
+#>  2015.50   -0.026             -0.053              0.010   0.082
+#>  2015.75   -0.023             -0.050              0.018   0.136
+#>  2016.00   -0.033             -0.066              0.011   0.089
 ```
 
 
 
-```r
+``` r
 plot(desyn)
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -467,13 +468,13 @@ plot(desyn)
 </div>
 
 <!-- We can incorporate other outcome models by changing the `progfunc`.
-Several outcome models are available, including, fitting the factor model directly with `gsynth`, general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details. -->
+Besides ridge regression, fitting the factor model directly with `gsynth` is also available. For each outcome model you can supply an optional set of parameters, see documentation for details. -->
 
 ### Additional plot types and inference options
 
 We can plot the distribution of "placebo" effect estimates where we estimate a synthetic control for each control unit by setting the `plot_type` argument to `"placebo"`. This can be used to visually assess whether the estimated effect for the treated unit is large relative to what you would see for control units.
 
-```r
+``` r
 plot(asyn, plot_type = "placebo")
 #> Warning: Placebo plots are only available for permutation-based inference.
 #> Switching to `inf_type = "permutation"`.
@@ -489,7 +490,7 @@ plot(asyn, plot_type = "placebo")
 We can also compute point-wise confidence intervals computed by inverting a permutation test over this "placebo" distribution by changing the `inf_type` argument, although this requires that the treated unit is exchangeable with the control units and will not be as robust as the default conformal approach.
 
 
-```r
+``` r
 plot(asyn, inf_type = "permutation")
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -501,7 +502,7 @@ plot(asyn, inf_type = "permutation")
 
 Another option is to plot the observed outcomes for the treated unit and its synthetic control, which can be done by setting `plot_type = "outcomes"`. 
 
-```r
+``` r
 plot(asyn, plot_type = "outcomes")
 #> Plotting augsynth objects with inf=TRUE may be slow. For faster results, first create a summary object and plot that object directly (e.g., s <- summary(augsynth_obj); plot(s)).
 ```
@@ -512,7 +513,7 @@ plot(asyn, plot_type = "outcomes")
 </div>
 For this plot as well as the standard gap plot, we can optionally remove the confidence intervals by setting `inf = FALSE` in the `plot` function.
 
-```r
+``` r
 plot(asyn, inf = FALSE)
 ```
 
@@ -521,7 +522,7 @@ plot(asyn, inf = FALSE)
 <p class="caption">plot of chunk fig_syn_noinf</p>
 </div>
 
-```r
+``` r
 plot(asyn, plot_type = "outcomes", inf = FALSE)
 ```
 

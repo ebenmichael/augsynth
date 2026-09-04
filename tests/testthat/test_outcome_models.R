@@ -11,45 +11,6 @@ basque <- basque %>% mutate(trt = case_when(year < 1975 ~ 0,
 
 
 
-test_that("Augmenting synth with glmnet runs", {
-
-    if(!requireNamespace("glmnet", quietly = TRUE)) {
-        ## should fail because glmnet isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="EN", scm=T),
-                     "you must install the glmnet package")
-
-        ## install glmnet
-        install.packages("glmnet", repos = "http://cran.us.r-project.org")
-    }
-
-    ## should run because glmnet is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="EN", scm=T),
-                 NA)
-}
-)
-
-
-
-test_that("Augmenting synth with random forest runs", {
-
-    if(!requireNamespace("randomForest", quietly = TRUE)) {
-        ## should fail because randomForest isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="RF", scm=T),
-                     "you must install the randomForest package")
-
-        ## install randomForest
-        install.packages("randomForest", repos = "http://cran.us.r-project.org")
-    }
-
-    ## should run because randomForest is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="RF", scm=T),
-                 NA)
-}
-)
-
-
-
-
 test_that("Augmenting synth with gsynth runs and produces the correct result", {
 
     if(!requireNamespace("gsynth", quietly = TRUE)) {
@@ -71,43 +32,5 @@ test_that("Augmenting synth with gsynth runs and produces the correct result", {
                           progfunc = "GSYN", scm = F, CV = 0, r = 4)
     expect_equal(summary(asyn_gsyn, inf_type = 'none')$average_att$Estimate,
                  -0.1444637, tolerance=1e-4)
-}
-)
-
-
-
-test_that("Augmenting synth with MCPanel runs", {
-
-    if(!requireNamespace("MCPanel", quietly = TRUE)) {
-        ## should fail because MCPanel isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
-                     "you must install the MCPanel package")
-    } else {
-        ## should run because MCPanel is installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="MCP", scm=T),
-                     NA)
-    }
-
-
-}
-)
-
-
-
-
-test_that("Augmenting synth with CausalImpact runs", {
-
-    if(!requireNamespace("CausalImpact", quietly = TRUE)) {
-        ## should fail because CausalImpact isn't installed
-        expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="CausalImpact", scm=T),
-                     "you must install the CausalImpact package")
-
-        ## install CausalImpact
-        install.packages("CausalImpact", repos = "http://cran.us.r-project.org")
-    }
-
-    ## should run because CausalImpact is installed
-    expect_error(augsynth(gdpcap ~ trt, regionno, year, basque, progfunc="CausalImpact", scm=T),
-                 NA)
 }
 )

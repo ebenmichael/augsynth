@@ -29,12 +29,9 @@ single_augsynth(
 \item{data}{Panel data as dataframe}
 
 \item{progfunc}{What function to use to impute control outcomes
-ridge=Ridge regression (allows for standard errors),
+ridge=Ridge regression,
 none=No outcome model,
-en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-mcp=MCPanel,
-cits=Comparitive Interuppted Time Series
-causalimpact=Bayesian structural time series with CausalImpact}
+gsyn=gSynth}
 
 \item{scm}{Whether the SCM weighting function is used.  If FALSE, then package will fit the outcome model, but not calculate new donor weights to match pre-treatment covariates.  Instead, each donor unit will be equally weighted.  If TRUE, weights on donor pool will be calculated.}
 

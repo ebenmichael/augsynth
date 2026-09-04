@@ -172,7 +172,7 @@ plot(desyn)
 ```
 
 <!-- We can incorporate other outcome models by changing the `progfunc`.
-Several outcome models are available, including, fitting the factor model directly with `gsynth`, general elastic net regression, bayesian structural time series estimation with `CausalImpact`, and matrix completion with `MCPanel`. For each outcome model you can supply an optional set of parameters, see documentation for details. -->
+Besides ridge regression, fitting the factor model directly with `gsynth` is also available. For each outcome model you can supply an optional set of parameters, see documentation for details. -->
 
 ### Additional plot types and inference options
 

@@ -11,12 +11,9 @@
 #' @param t_int Time of intervention
 #' @param data Panel data as dataframe
 #' @param progfunc What function to use to impute control outcomes
-#'                 ridge=Ridge regression (allows for standard errors),
+#'                 ridge=Ridge regression,
 #'                 none=No outcome model,
-#'                 en=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 mcp=MCPanel,
-#'                 cits=Comparitive Interuppted Time Series
-#'                 causalimpact=Bayesian structural time series with CausalImpact
+#'                 gsyn=gSynth
 #' @param scm Whether the SCM weighting function is used.  If FALSE, then package will fit the outcome model, but not calculate new donor weights to match pre-treatment covariates.  Instead, each donor unit will be equally weighted.  If TRUE, weights on donor pool will be calculated.
 #' @param fixedeff Whether to include a unit fixed effect, default F
 #' @param cov_agg Covariate aggregation functions, if NULL then use mean with NAs omitted
@@ -143,17 +140,11 @@ fit_augsynth_internal <- function(wide, synth_data, Z, progfunc,
                                    synth_data = fit_synth_data,
                                    Z = Z, V = V,
                                    ridge = FALSE, scm = scm, ...)))
+    } else if(progfunc == "gsyn") {
+        augsynth <- fit_augsyn(fit_wide, fit_synth_data,
+                               progfunc, scm, ...)
     } else {
-        ## Other outcome models
-        progfuncs = c("ridge", "none", "en", "rf", "gsyn", "mcp",
-                      "cits", "causalimpact", "seq2seq")
-        if (progfunc %in% progfuncs) {
-            augsynth <- fit_augsyn(fit_wide, fit_synth_data,
-                                   progfunc, scm, ...)
-        } else {
-            stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq', 'None'")
-        }
-
+        stop("progfunc must be one of 'ridge', 'none', 'gsyn'")
     }
 
     augsynth$mhat <- mhat + cbind(matrix(0, nrow = n, ncol = t0),

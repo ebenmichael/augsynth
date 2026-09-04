@@ -30,7 +30,7 @@ augsynth_multiout(
 \item{data}{Panel data as dataframe}
 
 \item{progfunc}{What function to use to impute control outcomes
-Ridge=Ridge regression (allows for standard errors),
+Ridge=Ridge regression,
 None=No outcome model,}
 
 \item{scm}{Whether the SCM weighting function is used}

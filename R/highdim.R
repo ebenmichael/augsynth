@@ -67,10 +67,7 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #' @param wide_data Output of `format_ipw`
 #' @param synth_data Output of `synth_data`
 #' @param progfunc What function to use to impute control outcomes
-#'                 EN=Elastic Net, RF=Random Forest, GSYN=gSynth,
-#'                 Comp=softImpute, MCP=MCPanel, CITS=CITS
-#'                 CausalImpact=Bayesian structural time series with CausalImpact
-#'                 seq2seq=Sequence to sequence learning with feedforward nets
+#'                 gsyn=gSynth
 #' @param scm Whether the SCM weighting function is used
 #' @param ... optional arguments for outcome model
 #' @noRd
@@ -81,26 +78,14 @@ fit_augsyn_formatted <- function(wide_data, synth_data,
 #'          \item{"mhat"}{Outcome model estimate}
 #' }
 fit_augsyn <- function(wide_data, synth_data,
-                       progfunc=c("EN", "RF", "GSYN", "MCP","CITS", "CausalImpact", "seq2seq"),
+                       progfunc="gsyn",
                        scm=T, ...) {
     ## prognostic score and weight functions to use
     progfunc = tolower(progfunc)
-    if(progfunc == "en") {
-        progf <- fit_prog_reg
-    } else if(progfunc == "rf") {
-        progf <- fit_prog_rf
-    } else if(progfunc == "gsyn"){
+    if(progfunc == "gsyn"){
         progf <- fit_prog_gsynth
-    } else if(progfunc == "mcp"){
-        progf <- fit_prog_mcpanel
-    } else if(progfunc == "cits") {
-        progf <- fit_prog_cits
-    } else if(progfunc == "causalimpact") {
-        progf <- fit_prog_causalimpact
-    } else if(progfunc == "seq2seq"){
-        progf <- fit_prog_seq2seq
     } else {
-        stop("progfunc must be one of 'EN', 'RF', 'GSYN', 'MCP', 'CITS', 'CausalImpact', 'seq2seq'")
+        stop("progfunc must be one of 'ridge', 'none', 'gsyn'")
     }
 
     if(scm) {
@@ -116,104 +101,4 @@ fit_augsyn <- function(wide_data, synth_data,
 
 
 
-### Combine synth and gsynth by balancing pre-period residuals
-#' Fit outcome model and balance residuals
-#'
-#' @param wide_data Output of `format_data`
-#' @param synth_data Output of `format_synth`
-#' @param fit_progscore Function to fit prognostic score
-#' @param fit_weights Function to fit synth weights
-#' @param ... optional arguments for outcome model
-#' @noRd
-#' @return \itemize{
-#'          \item{"weights"}{Ridge ASCM weights}
-#'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
-#'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
-#'          \item{"mhat"}{Outcome model estimate}
-#' }
-fit_residaug_formatted <- function(wide_data, synth_data,
-                                  fit_progscore, fit_weights, ...) {
-
-
-    X <- wide_data$X
-    y <- wide_data$y
-    trt <- wide_data$trt
-
-    ## fit prognostic scores
-    fitout <- do.call(fit_progscore, list(X=X, y=y, trt=trt, ...))
-
-    
-    y0hat <- fitout$y0hat
-
-    ## get residuals
-    ctrl_resids <- fitout$params$ctrl_resids
-    trt_resids <- fitout$params$trt_resids
-    
-    ## replace outcomes with pre-period residuals
-    t0 <- dim(X)[2]
-
-    synth_data$Z0 <- ctrl_resids[1:t0, ]
-    synth_data$Z1 <- as.matrix(trt_resids[1:t0])
-    
-    ## fit synth weights
-    syn <- fit_weights(synth_data)
-
-    syn$params <- fitout$params    
-
-    ## return predicted values for treatment and control
-    syn$mhat <- y0hat
-    
-    return(syn)
-}
-#' Fit outcome model and balance residuals
-#'
-#' @param wide_data Output of `format_data`
-#' @param synth_data Output of `format_synth`
-#' @param progfunc What function to use to impute control outcomes
-#'                 GSYN=gSynth, MCP=MCPanel,
-#'                 CITS=Comparative interrupted time series
-#'                 CausalImpact=Bayesian structural time series with CausalImpact
-#' @param weightfunc What function to use to fit weights
-#'                   SCM=Vanilla Synthetic Controls
-#'                   NONE=No reweighting, just outcome model
-#' @param ... optional arguments for outcome model
-#' @noRd
-#' @return \itemize{
-#'          \item{"weights"}{Ridge ASCM weights}
-#'          \item{"l2_imbalance"}{Imbalance in pre-period outcomes, measured by the L2 norm}
-#'          \item{"scaled_l2_imbalance"}{L2 imbalance scaled by L2 imbalance of uniform weights}
-#'          \item{"mhat"}{Outcome model estimate}
-#' }
-fit_residaug <- function(wide_data, synth_data,
-                        progfunc=c("GSYN", "MCP", "CITS", "CausalImpact"),
-                        weightfunc=c("SC","ENT", "SVD", "NONE"), ...) {
-
-    ## prognostic score and weight functions to use
-    if(progfunc == "GSYN"){
-        progf <- fit_prog_gsynth
-    } else if(progfunc == "MCP"){
-        progf <- fit_prog_mcpanel
-    } else if(progfunc == "CITS") {
-        progf <- fit_prog_cits
-    } else if(progfunc == "CausalImpact") {
-        progf <- fit_prog_causalimpact
-    } else {
-        stop("progfunc must be one of 'GSYN', 'MCP', 'CITS', 'CausalImpact'")
-    }
-
-    
-    ## weight function to use
-    if(weightfunc == "SCM") {
-        weightf <- fit_synth_formatted
-    } else if(weightfunc == "NONE") {
-        ## still fit synth even if none
-        ## TODO: This is a dumb wasteful hack
-        weightf <- fit_synth_formatted
-    } else {
-        stop("weightfunc must be one of 'SCM', 'NONE'")
-    }
-
-    return(fit_residaug_formatted(wide_data, synth_data,
-                                  progf, weightf, ...))
-}
 
