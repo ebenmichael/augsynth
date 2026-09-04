@@ -58,26 +58,51 @@ fit_synth_formatted <- function(synth_data, V = NULL) {
 }
 
 #' Solve the synth QP directly
+#'
+#' Introduces an auxiliary variable theta = t(X0) %*% gamma (the synthetic
+#' control's implied outcome path) tied to the donor weights gamma by a
+#' linear equality constraint, and puts the quadratic term on theta
+#' (t0 x t0) instead of gamma (n0 x n0). This avoids ever forming the dense
+#' n0 x n0 donor Gram matrix X0 %*% V %*% t(X0), which is the memory/time
+#' bottleneck for large donor pools; solutions are algebraically identical
+#' to the direct Gram-matrix formulation, up to solver tolerance. Mirrors
+#' the auxiliary-variable pattern already used in multisynth_qp()
+#' (make_constraint_mats()/make_Pmat() in multi_synth_qp.R), adapted to
+#' this function's V convention (V is used directly, not squared).
 #' @param X1 Target vector
 #' @param X0 Matrix of control outcomes
 #' @param V Scaling matrix
 #' @noRd
 synth_qp <- function(X1, X0, V) {
 
-    Pmat <- X0 %*% V %*% t(X0)
-    qvec <- - t(X1) %*% V %*% t(X0)
-
     n0 <- nrow(X0)
-    A <- rbind(rep(1, n0), diag(n0))
-    l <- c(1, numeric(n0))
-    u <- c(1, rep(1, n0))
+    t0 <- ncol(X0)
+
+    ## variables are z = [gamma (n0); theta (t0)]
+    Pmat <- Matrix::bdiag(Matrix::Matrix(0, n0, n0, sparse = TRUE), V)
+    qvec <- c(numeric(n0), - t(V) %*% X1)
+
+    Amat <- Matrix::rbind2(
+        Matrix::rbind2(
+            ## sum-to-one on gamma
+            Matrix::Matrix(c(rep(1, n0), rep(0, t0)), nrow = 1, sparse = TRUE),
+            ## box constraint 0 <= gamma <= 1
+            Matrix::cbind2(Matrix::Diagonal(n0),
+                           Matrix::Matrix(0, n0, t0, sparse = TRUE))
+        ),
+        ## theta = t(X0) %*% gamma; X0 is n0 x t0, so its gamma-block here
+        ## (t0 rows) is -t(X0), not -X0
+        Matrix::cbind2(-t(X0), Matrix::Diagonal(t0))
+    )
+    l <- c(1, numeric(n0), numeric(t0))
+    u <- c(1, rep(1, n0), numeric(t0))
 
     settings = osqp::osqpSettings(verbose = FALSE,
                                   eps_rel = 1e-8,
                                   eps_abs = 1e-8)
     sol <- osqp::solve_osqp(P = Pmat, q = qvec,
-                            A = A, l = l, u = u,
+                            A = Amat, l = l, u = u,
                             pars = settings)
 
-    return(sol$x)
+    return(sol$x[1:n0])
 }
