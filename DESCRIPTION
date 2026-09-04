@@ -14,7 +14,7 @@ Imports:
     LiblineaR,
     Formula,
     Matrix,
-    osqp,
+    osqp (>= 1.0.0),
     rlang,
     purrr,
     FNN

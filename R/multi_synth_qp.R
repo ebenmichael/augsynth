@@ -192,6 +192,9 @@ multisynth_qp <- function(X, trt, mask, Z = NULL, n_leads=NULL, n_lags=NULL,
     # manually enforce non-negativity constraint
     # (osqp solver only enforces constraint up to a tolerance)
     weights <- pmax(weights, 0)
+    # manually enforce sum-to-1 constraint for the same reason
+    col_sums <- colSums(weights)
+    weights <- sweep(weights, 2, ifelse(col_sums > 0, col_sums, 1), "/")
 
     output <- list(weights = weights,
                    imbalance = cbind(avg_imbal, imbalance),
