@@ -35,7 +35,6 @@ only)}
          \item{"alpha"}{Fraction of balance for individual balance}
          \item{"lambda"}{Regularization hyperparameter, default = 0}
          \item{"force"}{Include "none", "unit", "time", "two-way" fixed effects. Default: "two-way"}
-         \item{"n_factors"}{Number of factors for interactive fixed effects, default does CV}
         }
 }}
 }

@@ -15,7 +15,6 @@ multisynth(
   lambda = 0,
   V = NULL,
   fixedeff = TRUE,
-  n_factors = 0,
   scm = T,
   time_cohort = F,
   how_match = "knn",
@@ -55,8 +54,6 @@ If covariates are time-varying, their average value before the first unit is tre
 
 \item{fixedeff}{Whether to include a unit fixed effect, default TRUE}
 
-\item{n_factors}{Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0}
-
 \item{scm}{Whether to fit scm weights}
 
 \item{time_cohort}{Whether to average synthetic controls into time cohorts, default FALSE}
@@ -88,7 +85,6 @@ multisynth object that contains:
          \item{"grps"}{Time periods for treated units}
          \item{"y0hat"}{Pilot estimates of control outcomes}
          \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
-         \item{"n_factors"}{Number of factors for interactive fixed effects}
         }
 }
 \description{

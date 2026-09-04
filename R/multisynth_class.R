@@ -23,7 +23,6 @@
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param V Scaling matrix for synth optimization, default NULL is identity
 #' @param fixedeff Whether to include a unit fixed effect, default TRUE
-#' @param n_factors Number of factors for interactive fixed effects, setting to NULL fits with CV, default is 0
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts, default FALSE
 #' @param cov_agg Covariate aggregation function
@@ -48,14 +47,12 @@
 #'          \item{"grps"}{Time periods for treated units}
 #'          \item{"y0hat"}{Pilot estimates of control outcomes}
 #'          \item{"residuals"}{Difference between the observed outcomes and the pilot estimates}
-#'          \item{"n_factors"}{Number of factors for interactive fixed effects}
 #'         }
 #' @export
 multisynth <- function(form, unit, time, data,
                        n_leads=NULL, n_lags=NULL,
                        nu=NULL, lambda=0, V = NULL,
                        fixedeff = TRUE,
-                       n_factors=0,
                        scm=T,
                        time_cohort = F,
                        how_match = "knn",
@@ -145,7 +142,7 @@ multisynth <- function(form, unit, time, data,
     msynth <- multisynth_formatted(wide = wide, relative = T,
                                 n_leads = n_leads, n_lags = n_lags,
                                 nu = nu, lambda = lambda, V = V,
-                                force = force, n_factors = n_factors,
+                                force = force,
                                 scm = scm, time_cohort = time_cohort,
                                 time_w = F, lambda_t = 0,
                                 fit_resids = TRUE, eps_abs = eps_abs,
@@ -205,7 +202,6 @@ multisynth <- function(form, unit, time, data,
 #' @param lambda Regularization hyperparameter, default = 0
 #' @param V Scaling matrix for synth optimization, default NULL is identity
 #' @param force c(0,1,2,3) what type of fixed effects to include
-#' @param n_factors Number of factors for interactive fixed effects, default does CV
 #' @param scm Whether to fit scm weights
 #' @param time_cohort Whether to average synthetic controls into time cohorts
 #' @param time_w Whether to fit time weights
@@ -221,7 +217,6 @@ multisynth <- function(form, unit, time, data,
 multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
                        nu, lambda, V,
                        force,
-                       n_factors,
                        scm, time_cohort,
                        time_w, lambda_t,
                        fit_resids,
@@ -245,29 +240,7 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
         y0hat <- out$y0hat
         residuals <- out$residuals
         params <- out$time_weights
-    } else if(is.null(n_factors)) {
-        out <- tryCatch({
-            fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt, force=force)
-        }, error = function(error_condition) {
-            stop("Cannot run CV because there are too few pre-treatment periods.")
-        })
-
-        y0hat <- out$y0hat
-        params <- out$params
-        n_factors <- ncol(params$factor)
-        ## get residuals from outcome model
-        residuals <- cbind(wide$X, wide$y) - y0hat
-
-    } else if (n_factors != 0) {
-        ## if number of factors is provided don't do CV
-        out <- fit_gsynth_multi(long_df, cbind(wide$X, wide$y), wide$trt,
-                                r=n_factors, CV=0, force=force)
-        y0hat <- out$y0hat
-        params <- out$params
-
-        ## get residuals from outcome model
-        residuals <- cbind(wide$X, wide$y) - y0hat
-    } else if(force == 0 & n_factors == 0) {
+    } else if(force == 0) {
         # if no fixed effects or factors, just take out
         # control averages at each time point
         # time fixed effects from pure controls
@@ -385,7 +358,6 @@ multisynth_formatted <- function(wide, relative=T, n_leads, n_lags,
     msynth$y0hat <- y0hat
     msynth$residuals <- residuals
 
-    msynth$n_factors <- n_factors
     msynth$force <- force
 
 

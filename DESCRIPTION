@@ -28,7 +28,7 @@ Suggests:
     testthat,
     CausalImpact,
     keras,
-    gsynth,
+    gsynth (>= 1.3.0),
     knitr,
     rmarkdown,
     softImpute,

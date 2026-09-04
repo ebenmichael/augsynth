@@ -20,17 +20,3 @@ test_that("progfunc = 'GSYN' runs on a panel with time ids 1..30", {
     expect_equal(summary(asyn, inf_type = "none")$average_att$Estimate,
                  0.4796335, tolerance = 1e-4)
 })
-
-test_that("multisynth with a gsynth outcome model runs on a panel with time ids 1..30", {
-    skip_if_not_installed("gsynth")
-    set.seed(42)
-    n_t <- 30
-    units <- paste0("u", 1:8)
-    df <- expand.grid(region = units, period = 1:n_t, stringsAsFactors = FALSE)
-    df$y <- 100 + 5 * sin(df$period / 3) +
-        as.numeric(factor(df$region)) * 10 + rnorm(nrow(df))
-    df$trt <- ifelse(df$region %in% c("u1", "u2") & df$period > 25, 1, 0)
-
-    msyn <- multisynth(y ~ trt, region, period, df, n_factors = 2)
-    expect_true(all(is.finite(predict(msyn))))
-})

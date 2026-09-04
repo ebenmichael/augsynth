@@ -1045,7 +1045,7 @@ drop_unit_i_multi <- function(msyn, i) {
                       n_leads = msyn$n_leads, n_lags = msyn$n_lags,
                       nu = msyn$nu, lambda = msyn$lambda,
                       V = msyn$V,
-                      force = msyn$force, n_factors = msyn$n_factors,
+                      force = msyn$force,
                       scm = msyn$scm, time_w = msyn$time_w,
                       lambda_t = msyn$lambda_t,
                       fit_resids = msyn$fit_resids,
