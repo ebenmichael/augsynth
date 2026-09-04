@@ -27,14 +27,42 @@ fit_gsynth_multi <- function(long_df, X, trt, r=0, force=3, CV=1) {
     gsyn <- gsynth::gsynth(data = long_df, Y = labels[4], D = labels[3], index = c(labels[1], labels[2]), force = force, CV = CV, r=r)
     
     y0hat <- matrix(0, nrow=n, ncol=ttot)
-    y0hat[!is.finite(trt),]  <- t(gsyn$Y.co - gsyn$est.co$residuals)
-    
-    y0hat[is.finite(trt),] <- t(gsyn$Y.ct)
-    
-    ## add treated prediction for whole pre-period
-    gsyn$est.co$Y.ct <- gsyn$Y.ct
+    if(!is.null(gsyn$est.co)) {
+        ## gsynth < 1.3.0
+        y0hat[!is.finite(trt),]  <- t(gsyn$Y.co - gsyn$est.co$residuals)
+
+        y0hat[is.finite(trt),] <- t(gsyn$Y.ct)
+
+        params <- gsyn$est.co
+        ## add treated prediction for whole pre-period
+        params$Y.ct <- gsyn$Y.ct
+    } else {
+        ## gsynth >= 1.3.0 (fect): est.co is renamed est and Y.ct holds
+        ## imputed Y(0) for all units, in gsyn$id order
+        if(!is.null(rownames(X))) {
+            unit_cols <- match(rownames(X), as.character(gsyn$id))
+            if(anyNA(unit_cols)) {
+                stop("Failed to map units onto the columns of gsynth's Y.ct ",
+                     "(no match in gsyn$id for: ",
+                     paste(rownames(X)[is.na(unit_cols)], collapse = ", "), ")")
+            }
+            y0hat[,] <- t(gsyn$Y.ct[, unit_cols, drop=FALSE])
+        } else {
+            ## no unit names: fall back to gsynth's control/treated ordering
+            y0hat[!is.finite(trt),] <- t(gsyn$Y.ct[, gsyn$co, drop=FALSE])
+            y0hat[is.finite(trt),]  <- t(gsyn$Y.ct[, gsyn$tr, drop=FALSE])
+        }
+
+        params <- gsyn$est
+        ## add treated prediction for whole pre-period
+        params$Y.ct <- gsyn$Y.ct[, gsyn$tr, drop=FALSE]
+        if(is.null(params$factor)) {
+            ## 0-column matrix so ncol(params$factor) works downstream
+            params$factor <- matrix(0, nrow=ttot, ncol=0)
+        }
+    }
     return(list(y0hat=y0hat,
-                params=gsyn$est.co))
+                params=params))
 }
 
 

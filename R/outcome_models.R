@@ -195,9 +195,10 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     long_df_y = gather(df_y, time, obs, -c(unit,trt))
     long_df = rbind(long_df_x, long_df_y)
 
-    transform(long_df, time = as.numeric(time))
-    transform(long_df, unit = as.numeric(unit))
-    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt", 
+    ## time comes from gathered column names as character (#107); recode to
+    ## consecutive integers since the names need not be numeric strings
+    long_df$time <- match(long_df$time, unique(long_df$time))
+    gsyn <- gsynth::gsynth(data = long_df, Y = "obs", D = "trt",
                            index = c("unit", "time"), force = force, CV = CV, r = r)
 
     t0 <- dim(X)[2]
@@ -205,21 +206,43 @@ fit_prog_gsynth <- function(X, y, trt, r=0, r.end=5, force=3, CV=1, ...) {
     n <- dim(X)[1]
     ## get predicted outcomes
     y0hat <- matrix(0, nrow=n, ncol=(t_final-t0))
-    y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] -
-                             gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
+    if(!is.null(gsyn$est.co)) {
+        ## gsynth < 1.3.0
+        y0hat[trt==0,]  <- t(gsyn$Y.co[(t0+1):t_final,,drop=FALSE] -
+                                 gsyn$est.co$residuals[(t0+1):t_final,,drop=FALSE])
 
-    y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
+        y0hat[trt==1,] <- gsyn$Y.ct[(t0+1):t_final,]
 
-    ## add treated prediction for whole pre-period
-    gsyn$est.co$Y.ct <- gsyn$Y.ct
+        params <- gsyn$est.co
+        ## add treated prediction for whole pre-period
+        params$Y.ct <- gsyn$Y.ct
+    } else {
+        ## gsynth >= 1.3.0 (fect): est.co is renamed est and Y.ct holds
+        ## imputed Y(0) for all units, in gsyn$id order
+        unit_cols <- match(df_x$unit, as.character(gsyn$id))
+        if(anyNA(unit_cols)) {
+            stop("Failed to map units onto the columns of gsynth's Y.ct ",
+                 "(no match in gsyn$id for: ",
+                 paste(df_x$unit[is.na(unit_cols)], collapse = ", "), ")")
+        }
+        y0hat[,] <- t(gsyn$Y.ct[(t0+1):t_final, unit_cols, drop=FALSE])
+
+        params <- gsyn$est
+        ## add treated prediction for whole pre-period
+        params$Y.ct <- gsyn$Y.ct[, gsyn$tr, drop=FALSE]
+        if(is.null(params$factor)) {
+            ## 0-column matrix so ncol(params$factor) works downstream
+            params$factor <- matrix(0, nrow=t_final, ncol=0)
+        }
+    }
 
     ## control and treated residuals
-    gsyn$est.co$ctrl_resids <- gsyn$est.co$residuals
-    gsyn$est.co$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
-                                             y[trt==1,,drop=FALSE])) -
-        rowMeans(gsyn$est.co$Y.ct)
+    params$ctrl_resids <- params$residuals
+    params$trt_resids <- colMeans(cbind(X[trt==1,,drop=FALSE],
+                                        y[trt==1,,drop=FALSE])) -
+        rowMeans(params$Y.ct)
     return(list(y0hat=y0hat,
-                params=gsyn$est.co))
+                params=params))
 }
 
 
