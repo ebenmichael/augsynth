@@ -41,6 +41,12 @@ get_placebo_gaps = function( ascm, att = TRUE ) {
     dim( ests )
     pds = as.numeric( predict( ascm, att = att ) )
     pds
+    if( sum( wide_data$trt == 1 ) > 1 ) {
+        stop( paste( "Placebo (permutation) inference is only supported for a",
+                     "single treated unit. Use inf_type = 'conformal' or",
+                     "inf_type = 'jackknife+' for designs with multiple treated",
+                     "units." ), call. = FALSE )
+    }
     if( !all( round( ests[ , which( wide_data$trt == 1 ) ] - pds, digits=4 ) == 0 ) ) {
         stop( "Two versions of estimated impacts do not correspond.  Serious error.  Please contact package maintainers." )
     }
@@ -204,6 +210,23 @@ get_long_data <- function( augsynth ) {
 
 
 add_placebo_distribution <- function(augsynth) {
+
+    # Placebo/permutation inference is only defined for a single treated unit.
+    # With more than one treated unit single_augsynth() pools the treated units
+    # into one averaged series, but the placebo machinery below (the leave-one-in
+    # refit in get_placebo_gaps(), the per-unit ID bookkeeping in get_long_data(),
+    # and the `trt == 1` treated-row selection) all assume exactly one treated
+    # unit and would otherwise fail with an opaque internal error. Stop early with
+    # an actionable message instead.
+    if (sum(augsynth$data$trt == 1) > 1) {
+        stop(paste0(
+            "Placebo (permutation) inference is only supported for a single ",
+            "treated unit, but this augsynth object has ",
+            sum(augsynth$data$trt == 1), " treated units. ",
+            "Use inf_type = 'conformal' or inf_type = 'jackknife+' for ",
+            "designs with multiple treated units."
+        ), call. = FALSE)
+    }
 
     # Run permutations
     ests <- get_placebo_gaps(augsynth, att = FALSE)
