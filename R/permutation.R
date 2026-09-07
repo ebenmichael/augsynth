@@ -393,8 +393,14 @@ treated_table <- function(augsynth) {
     df <- bind_cols(augsynth$data$X, augsynth$data$y)
     # synth_unit <- t(df[-trt_index, ]) %*% augsynth$weights
     synth_unit <- predict(augsynth)
-    average_unit <- df[-trt_index, ] %>% colMeans()
-    treated_unit <- t(df[trt_index, ])
+    # Average over the donor and the treated pools so that each series has
+    # length n_time. When there is more than one treated unit, augsynth pools
+    # them and predict() returns the synthetic control for their average, so
+    # the treated series must likewise be averaged over the treated units
+    # (t(df[trt_index, ]) would otherwise stack them into a length
+    # n_time * n_treated vector and break the tibble() below).
+    average_unit <- colMeans(df[-trt_index, , drop = FALSE])
+    treated_unit <- colMeans(df[trt_index, , drop = FALSE])
     lvls = tibble(
         time = as.numeric( colnames(df) ),
         Yobs = as.numeric( treated_unit ),
